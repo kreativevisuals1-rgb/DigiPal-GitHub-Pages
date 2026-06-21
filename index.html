@@ -164,7 +164,12 @@ footer{background:#04342C;color:rgba(255,255,255,.75);padding:3rem 5% 1.5rem}
 .nav-item .ni{font-size:1.1rem}
 .sidebar-footer{padding:1rem 1.5rem;border-top:1px solid var(--border);margin-top:auto}
 .user-chip{display:flex;align-items:center;gap:.65rem}
-.avatar{width:36px;height:36px;border-radius:50%;background:var(--brand);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.9rem;flex-shrink:0}
+.avatar{width:36px;height:36px;border-radius:50%;background:var(--brand);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.9rem;flex-shrink:0;overflow:hidden}
+.avatar img,.avatar-lg img{width:100%;height:100%;object-fit:cover;border-radius:50%}
+.avatar-wrap{position:relative;display:inline-flex;flex-shrink:0}
+.avatar-edit-btn{position:absolute;bottom:-2px;right:-2px;width:26px;height:26px;border-radius:50%;background:var(--brand);color:#fff;border:2px solid #fff;display:flex;align-items:center;justify-content:center;font-size:.78rem;cursor:pointer;transition:background .15s}
+.avatar-edit-btn:hover{background:var(--brand-dark)}
+.avatar-edit-btn:disabled{opacity:.6;cursor:not-allowed}
 .user-info{overflow:hidden}
 .user-name{font-size:.85rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .user-email{font-size:.75rem;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -206,7 +211,7 @@ footer{background:#04342C;color:rgba(255,255,255,.75);padding:3rem 5% 1.5rem}
 .profile-section{background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:1.75rem;margin-bottom:1.5rem}
 .profile-section h3{font-size:1rem;font-weight:700;margin-bottom:1.25rem;padding-bottom:.75rem;border-bottom:1px solid var(--border)}
 .profile-avatar-row{display:flex;align-items:center;gap:1.25rem;margin-bottom:1.5rem}
-.avatar-lg{width:72px;height:72px;border-radius:50%;background:var(--brand);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1.6rem;flex-shrink:0}
+.avatar-lg{width:72px;height:72px;border-radius:50%;background:var(--brand);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1.6rem;flex-shrink:0;overflow:hidden}
 .profile-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
 .dash-tab{display:none}
 .dash-tab.active{display:block}
@@ -869,7 +874,11 @@ html,body{overflow-x:hidden;max-width:100vw}
       <div class="profile-section">
         <h3>Personal Information</h3>
         <div class="profile-avatar-row">
-          <div class="avatar-lg" id="profile-avatar">?</div>
+          <div class="avatar-wrap">
+            <div class="avatar-lg" id="profile-avatar">?</div>
+            <button class="avatar-edit-btn" id="avatar-edit-btn" onclick="document.getElementById('avatar-file-input').click()" title="Change profile photo">📷</button>
+            <input type="file" id="avatar-file-input" accept="image/png,image/jpeg,image/webp" style="display:none" onchange="handleAvatarUpload(event)"/>
+          </div>
           <div>
             <div style="font-size:1.1rem;font-weight:700" id="profile-fullname">—</div>
             <div style="font-size:.88rem;color:var(--text-muted)" id="profile-email-display">—</div>
@@ -882,7 +891,7 @@ html,body{overflow-x:hidden;max-width:100vw}
           <div class="form-group"><label>Email</label><input type="email" id="profile-email-input" placeholder="Email" disabled style="opacity:.6"/></div>
           <div class="form-group"><label>Phone Number</label><input type="tel" id="profile-phone-input" placeholder="08012345678"/></div>
         </div>
-        <button class="btn btn-primary" onclick="showToast('👤 Profile updates are launching soon!', 'info', 4000)">Save Changes</button>
+        <button class="btn btn-primary" id="profile-save-btn" onclick="handleProfileSave()">Save Changes</button>
       </div>
       <div class="profile-section">
         <h3>Referral Program</h3>
@@ -1308,10 +1317,10 @@ function loadDashboard(user) {
   const email = user.email;
 
   document.getElementById('dash-firstname').textContent = firstName;
-  document.getElementById('sb-avatar').textContent = initials.toUpperCase() || '?';
+  renderAvatar('sb-avatar', meta.avatar_url, initials);
   document.getElementById('sb-name').textContent = fullName;
   document.getElementById('sb-email').textContent = email;
-  document.getElementById('profile-avatar').textContent = initials.toUpperCase() || '?';
+  renderAvatar('profile-avatar', meta.avatar_url, initials);
   document.getElementById('profile-fullname').textContent = fullName;
   document.getElementById('profile-email-display').textContent = email;
   document.getElementById('profile-firstname-input').value = firstName;
@@ -1325,6 +1334,173 @@ function loadDashboard(user) {
   loadWalletBalance();
   loadTransactions();
   loadEarnCredits();
+}
+
+// ════════════════════════════════════════════════
+//  PROFILE PHOTO (Supabase Storage)
+// ════════════════════════════════════════════════
+
+// Renders either the user's real photo (if avatar_url is set) or their
+// initials, into the given avatar element. Used for both the small
+// sidebar avatar and the large profile-tab avatar.
+function renderAvatar(elementId, avatarUrl, initials) {
+  const el = document.getElementById(elementId);
+  if (!el) return;
+  if (avatarUrl) {
+    el.innerHTML = `<img src="${avatarUrl}" alt="Profile photo"/>`;
+  } else {
+    el.textContent = (initials || '').toUpperCase() || '?';
+  }
+}
+
+// Resizes/compresses an image client-side before upload, so a 12MB phone
+// photo doesn't get uploaded as-is. Caps the longest edge at 400px and
+// re-encodes as JPEG — plenty for an avatar, and keeps storage/bandwidth
+// costs low.
+function resizeImageFile(file, maxDimension = 400, quality = 0.85) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const reader = new FileReader();
+    reader.onload = (e) => { img.src = e.target.result; };
+    reader.onerror = () => reject(new Error('Could not read the selected file.'));
+    img.onload = () => {
+      let { width, height } = img;
+      if (width > height && width > maxDimension) {
+        height = Math.round(height * (maxDimension / width));
+        width = maxDimension;
+      } else if (height > maxDimension) {
+        width = Math.round(width * (maxDimension / height));
+        height = maxDimension;
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, width, height);
+      canvas.toBlob(
+        (blob) => blob ? resolve(blob) : reject(new Error('Could not process the image.')),
+        'image/jpeg',
+        quality
+      );
+    };
+    img.onerror = () => reject(new Error('That file could not be read as an image.'));
+    reader.readAsDataURL(file);
+  });
+}
+
+async function handleAvatarUpload(event) {
+  const file = event.target.files?.[0];
+  event.target.value = ''; // allow re-selecting the same file later
+  if (!file) return;
+
+  if (!currentUser || !sb) { showToast('Please log in first.', 'red'); return; }
+
+  const allowedTypes = ['image/png', 'image/jpeg', 'image/webp'];
+  if (!allowedTypes.includes(file.type)) {
+    showToast('Please choose a PNG, JPG, or WEBP image.', 'red');
+    return;
+  }
+  const maxOriginalSizeMB = 10;
+  if (file.size > maxOriginalSizeMB * 1024 * 1024) {
+    showToast(`Image is too large. Please choose a file under ${maxOriginalSizeMB}MB.`, 'red');
+    return;
+  }
+
+  const btn = document.getElementById('avatar-edit-btn');
+  const originalLabel = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = '…'; }
+
+  try {
+    const resizedBlob = await resizeImageFile(file);
+
+    // Stored under the user's own ID as the top-level folder — this is
+    // exactly what the storage policies check, so only this user can
+    // write/overwrite/delete this path.
+    const filePath = `${currentUser.id}/avatar.jpg`;
+
+    const { error: uploadErr } = await sb.storage
+      .from('avatars')
+      .upload(filePath, resizedBlob, {
+        contentType: 'image/jpeg',
+        upsert: true // overwrite any previous photo at this same path
+      });
+    if (uploadErr) throw uploadErr;
+
+    const { data: urlData } = sb.storage.from('avatars').getPublicUrl(filePath);
+    // Cache-bust so the browser doesn't keep showing the old cached image
+    // at the same URL after an update.
+    const avatarUrl = `${urlData.publicUrl}?t=${Date.now()}`;
+
+    const { data: updateData, error: updateErr } = await sb.auth.updateUser({
+      data: { avatar_url: avatarUrl }
+    });
+    if (updateErr) throw updateErr;
+
+    currentUser = updateData.user;
+    const meta = currentUser.user_metadata || {};
+    const firstName = meta.first_name || currentUser.email.split('@')[0];
+    const lastName = meta.last_name || '';
+    const initials = (firstName[0] || '') + (lastName[0] || '');
+    renderAvatar('sb-avatar', avatarUrl, initials);
+    renderAvatar('profile-avatar', avatarUrl, initials);
+
+    showToast('✅ Profile photo updated!', 'success', 4000);
+  } catch (err) {
+    console.error('Avatar upload error:', err);
+    showToast('❌ Could not update photo: ' + (err.message || 'Please try again.'), 'red', 6000);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = originalLabel; }
+  }
+}
+
+// Basic Nigerian phone number check: 11 digits, starting with 0
+// (e.g. 08012345678). Not a network/carrier check — just format sanity.
+function isValidNigerianPhone(phone) {
+  return /^0\d{10}$/.test(phone.trim());
+}
+
+async function handleProfileSave() {
+  if (!currentUser || !sb) { showToast('Please log in first.', 'red'); return; }
+
+  const firstName = document.getElementById('profile-firstname-input').value.trim();
+  const lastName = document.getElementById('profile-lastname-input').value.trim();
+  const phone = document.getElementById('profile-phone-input').value.trim();
+
+  if (!firstName) { showToast('First name cannot be empty.', 'red'); return; }
+  if (!lastName) { showToast('Last name cannot be empty.', 'red'); return; }
+  if (phone && !isValidNigerianPhone(phone)) {
+    showToast('Enter a valid 11-digit phone number, e.g. 08012345678.', 'red');
+    return;
+  }
+
+  const btn = document.getElementById('profile-save-btn');
+  const originalLabel = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
+
+  try {
+    const { data, error } = await sb.auth.updateUser({
+      data: { first_name: firstName, last_name: lastName, phone }
+    });
+    if (error) throw error;
+
+    currentUser = data.user;
+    const meta = currentUser.user_metadata || {};
+    const fullName = (firstName + ' ' + lastName).trim();
+    const initials = (firstName[0] || '') + (lastName[0] || '');
+
+    document.getElementById('dash-firstname').textContent = firstName;
+    document.getElementById('sb-name').textContent = fullName;
+    document.getElementById('profile-fullname').textContent = fullName;
+    renderAvatar('sb-avatar', meta.avatar_url, initials);
+    renderAvatar('profile-avatar', meta.avatar_url, initials);
+
+    showToast('✅ Profile updated successfully!', 'success', 4000);
+  } catch (err) {
+    console.error('Profile save error:', err);
+    showToast('❌ Could not save changes: ' + (err.message || 'Please try again.'), 'red', 6000);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = originalLabel; }
+  }
 }
 
 function loadEarnCredits() {
