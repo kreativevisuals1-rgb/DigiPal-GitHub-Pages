@@ -820,7 +820,7 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 const PAYSTACK_PUBLIC_KEY = 'pk_live_490eca6743e76032f283987f31f2de6c5c1f397b';
 // ══════════════════════════════════════════════
 
-let supabase = null;
+let sb = null;
 let currentUser = null;
 let pendingEmail = '';
 let walletBalance = 0;
@@ -840,7 +840,7 @@ function initSupabase() {
     return false;
   }
   try {
-    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     return true;
   } catch(e) {
     console.error('Supabase init error:', e);
@@ -924,7 +924,7 @@ async function handleRegister() {
   if (password.length < 6) {
     return showAlert('reg-error', 'Password must be at least 6 characters.', 'error');
   }
-  if (!supabase) {
+  if (!sb) {
     return showAlert('reg-error', 'Supabase is not configured. Please add your API keys.', 'error');
   }
 
@@ -932,7 +932,7 @@ async function handleRegister() {
   btn.disabled = true; btn.textContent = 'Creating account…';
 
   try {
-    const { data, error } = await supabase.auth.signUp({
+    const { data, error } = await sb.auth.signUp({
       email,
       password,
       options: {
@@ -954,9 +954,9 @@ async function handleRegister() {
 
 // ── RESEND VERIFICATION ──
 async function resendVerification() {
-  if (!supabase || !pendingEmail) return alert('No email on record. Please register again.');
+  if (!sb || !pendingEmail) return alert('No email on record. Please register again.');
   try {
-    await supabase.auth.resend({ type: 'signup', email: pendingEmail });
+    await sb.auth.resend({ type: 'signup', email: pendingEmail });
     alert('Verification email resent! Check your inbox.');
   } catch(e) {
     alert('Could not resend: ' + e.message);
@@ -972,7 +972,7 @@ async function handleLogin() {
   if (!email || !password) {
     return showAlert('login-error', 'Please enter your email and password.', 'error');
   }
-  if (!supabase) {
+  if (!sb) {
     return showAlert('login-error', 'Supabase is not configured. Please add your API keys.', 'error');
   }
 
@@ -980,7 +980,7 @@ async function handleLogin() {
   btn.disabled = true; btn.textContent = 'Logging in…';
 
   try {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await sb.auth.signInWithPassword({ email, password });
     if (error) throw error;
     currentUser = data.user;
     loadDashboard(data.user);
@@ -997,7 +997,7 @@ async function handleLogin() {
 
 // ── LOGOUT ──
 async function handleLogout() {
-  if (supabase) await supabase.auth.signOut();
+  if (sb) await sb.auth.signOut();
   currentUser = null;
   showPage('landing');
 }
@@ -1042,9 +1042,9 @@ function copyReferral() {
 //  WALLET BALANCE
 // ════════════════════════════════════════════════
 async function loadWalletBalance() {
-  if (!supabase || !currentUser) return;
+  if (!sb || !currentUser) return;
   try {
-    const { data, error } = await supabase
+    const { data, error } = await sb
       .from('wallets')
       .select('balance')
       .eq('user_id', currentUser.id)
@@ -1071,11 +1071,11 @@ function updateBalanceUI(amount) {
 //  DEDICATED VIRTUAL ACCOUNT (DVA)
 // ════════════════════════════════════════════════
 async function loadDVA() {
-  if (!supabase || !currentUser) return;
+  if (!sb || !currentUser) return;
 
   try {
     // Check if user already has a DVA
-    const { data: profile, error } = await supabase
+    const { data: profile, error } = await sb
       .from('wallets')
       .select('dva_bank_name, dva_account_number, dva_account_name')
       .eq('user_id', currentUser.id)
@@ -1092,7 +1092,7 @@ async function loadDVA() {
     const lastName = meta.last_name || '';
     const phone = meta.phone || '';
 
-    const res = await supabase.functions.invoke('create-dva', {
+    const res = await sb.functions.invoke('create-dva', {
       body: {
         user_id: currentUser.id,
         email: currentUser.email,
@@ -1147,9 +1147,9 @@ function copyDVA() {
 //  TRANSACTION HISTORY
 // ════════════════════════════════════════════════
 async function loadTransactions() {
-  if (!supabase || !currentUser) return;
+  if (!sb || !currentUser) return;
   try {
-    const { data, error } = await supabase
+    const { data, error } = await sb
       .from('transactions')
       .select('*')
       .eq('user_id', currentUser.id)
@@ -1279,7 +1279,7 @@ async function verifyAndCredit(reference, expectedAmount) {
         procSub.textContent = `Checking with Paystack (attempt ${attempt}/${MAX_ATTEMPTS})`;
       }
 
-      const res = await supabase.functions.invoke('verify-payment', {
+      const res = await sb.functions.invoke('verify-payment', {
         body: { reference, user_id: currentUser.id, amount: expectedAmount }
       });
 
@@ -1336,14 +1336,14 @@ async function init() {
   const ready = initSupabase();
   if (!ready) return;
 
-  const { data: { session } } = await supabase.auth.getSession();
+  const { data: { session } } = await sb.auth.getSession();
   if (session?.user) {
     currentUser = session.user;
     loadDashboard(session.user);
     showPage('dashboard');
   }
 
-  supabase.auth.onAuthStateChange((event, session) => {
+  sb.auth.onAuthStateChange((event, session) => {
     if (event === 'SIGNED_IN' && session?.user) {
       currentUser = session.user;
       loadDashboard(session.user);
