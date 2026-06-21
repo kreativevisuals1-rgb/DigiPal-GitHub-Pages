@@ -1472,20 +1472,44 @@ async function resolveWithdrawAccount(accountNumber, bankCode) {
   btn.disabled = true;
 
   let accountName = null;
-  let apiReachable = false; // did any API respond at all (even with invalid account)?
+  let apiReachable = false;
+  let debugErr = '';
 
-  // Try 1: Supabase edge function
+  // Try 1: Supabase edge function (holds Paystack SECRET key server-side)
   if (sb) {
     try {
       const res = await sb.functions.invoke('resolve-account', {
         body: { account_number: accountNumber, bank_code: bankCode }
       });
-      apiReachable = true;
-      if (!res.error && res.data?.account_name) accountName = res.data.account_name;
-    } catch (_) {}
+      if (res.error) {
+        debugErr = 'Supabase fn error: ' + JSON.stringify(res.error);
+      } else {
+        apiReachable = true;
+        if (res.data?.account_name) accountName = res.data.account_name;
+        else if (res.data?.status === false) {
+          // Paystack returned status:false = genuinely invalid account
+          apiReachable = true;
+        }
+      }
+    } catch (e) { debugErr = 'Supabase fn threw: ' + e.message; }
   }
 
-  // Try 2: Paystack via allorigins CORS proxy
+  // Try 2: Paystack via corsproxy.io (free CORS proxy, no auth needed client-side)
+  if (!apiReachable) {
+    try {
+      const r = await fetch(
+        `https://corsproxy.io/?https://api.paystack.co/bank/resolve?account_number=${accountNumber}&bank_code=${bankCode}`,
+        { headers: { 'Authorization': 'Bearer ' + PAYSTACK_PUBLIC_KEY } }
+      );
+      apiReachable = true;
+      if (r.ok) {
+        const json = await r.json();
+        if (json?.data?.account_name) accountName = json.data.account_name;
+      }
+    } catch (e) { debugErr += ' | proxy2: ' + e.message; }
+  }
+
+  // Try 3: allorigins proxy
   if (!apiReachable) {
     try {
       const target = encodeURIComponent(
@@ -1495,43 +1519,31 @@ async function resolveWithdrawAccount(accountNumber, bankCode) {
       if (r.ok) {
         apiReachable = true;
         const wrapper = await r.json();
-        const json = JSON.parse(wrapper.contents);
-        if (json?.data?.account_name) accountName = json.data.account_name;
+        try {
+          const json = JSON.parse(wrapper.contents);
+          if (json?.data?.account_name) accountName = json.data.account_name;
+        } catch (_) {}
       }
-    } catch (_) {}
+    } catch (e) { debugErr += ' | proxy3: ' + e.message; }
   }
 
-  // Try 3: Direct Paystack call
-  if (!apiReachable) {
-    try {
-      const r = await fetch(
-        `https://api.paystack.co/bank/resolve?account_number=${accountNumber}&bank_code=${bankCode}`,
-        { headers: { 'Authorization': 'Bearer ' + PAYSTACK_PUBLIC_KEY } }
-      );
-      apiReachable = true;
-      if (r.ok) {
-        const json = await r.json();
-        if (json?.data?.account_name) accountName = json.data.account_name;
-      }
-    } catch (_) {}
-  }
+  if (debugErr) console.warn('[DigiPal resolve-account]', debugErr);
 
   const bankName = document.getElementById('bank-display-text').textContent;
 
   if (accountName) {
-    // ✅ Valid account — verified, allow withdrawal
     withdrawResolvedAccount = { account_number: accountNumber, account_name: accountName, bank_code: bankCode, bank_name: bankName, verified: true };
     nameEl.innerHTML = '<span style="color:var(--brand);font-weight:700">✓ ' + accountName + '</span>';
     btn.disabled = false;
   } else if (apiReachable) {
-    // ❌ API responded but found no match — account+bank combo is invalid, block withdrawal
+    // API responded — account genuinely invalid for this bank
     withdrawResolvedAccount = null;
-    nameEl.innerHTML = '<span style="color:#dc2626;font-weight:600">❌ Invalid account — this account number does not match the selected bank.</span>';
+    nameEl.innerHTML = '<span style="color:#dc2626;font-weight:600">❌ Invalid account — this number does not match the selected bank.</span>';
     btn.disabled = true;
   } else {
-    // ⚠️ APIs all unreachable (network issue) — warn but allow, flag as unverified
+    // All APIs unreachable — network/CORS issue, not the user’s fault
     withdrawResolvedAccount = { account_number: accountNumber, account_name: 'Unverified', bank_code: bankCode, bank_name: bankName, verified: false };
-    nameEl.innerHTML = '<span style="color:#b45309;">⚠️ Verification service unavailable — proceed only if you are sure of the details.</span>';
+    nameEl.innerHTML = '<span style="color:#b45309;">⚠️ Verification service unavailable. Proceed only if you’re certain the details are correct.</span>';
     btn.disabled = false;
   }
 }
