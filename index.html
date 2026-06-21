@@ -585,6 +585,7 @@ footer{background:#04342C;color:rgba(255,255,255,.75);padding:3rem 5% 1.5rem}
       </div>
       <div class="stats-grid">
         <div class="stat-card"><div class="stat-label">Wallet Balance</div><div class="stat-value green">₦0.00</div><div class="stat-sub">Fund your wallet to get started</div></div>
+        <div class="stat-card"><div class="stat-label">Credits Balance</div><div class="stat-value" id="credits-balance-display" style="color:#8a6d00">₦0.00</div><div class="stat-sub">Earned via Read &amp; Earn</div></div>
         <div class="stat-card"><div class="stat-label">Transactions</div><div class="stat-value">0</div><div class="stat-sub">No transactions yet</div></div>
         <div class="stat-card"><div class="stat-label">Referrals</div><div class="stat-value">0</div><div class="stat-sub">Invite friends to earn</div></div>
         <div class="stat-card"><div class="stat-label">Courses Enrolled</div><div class="stat-value">0</div><div class="stat-sub">Start learning today</div></div>
@@ -754,9 +755,14 @@ footer{background:#04342C;color:rgba(255,255,255,.75);padding:3rem 5% 1.5rem}
 
     <!-- VTU TAB -->
     <div class="dash-tab" id="tab-vtu">
-      <div class="dash-header"><div><h1>⚡ VTU Services</h1><p>Instant airtime, data, and bill payments — paid from your wallet balance.</p></div></div>
-      <div id="vtu-balance-note" style="background:#e8f5e9;border:1px solid #a7f3d0;border-radius:10px;padding:10px 16px;margin-bottom:16px;font-size:.88rem;color:#009624;font-weight:600">
-        Wallet balance: ₦<span id="vtu-balance-display">0.00</span>
+      <div class="dash-header"><div><h1>⚡ VTU Services</h1><p>Instant airtime, data, and bill payments — Read & Earn credits are used first, then your wallet.</p></div></div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px">
+        <div id="vtu-credits-note" style="background:#fff8e1;border:1px solid #ffe082;border-radius:10px;padding:10px 16px;font-size:.88rem;color:#8a6d00;font-weight:600;flex:1;min-width:220px">
+          🎁 Credits balance: ₦<span id="vtu-credits-display">0.00</span>
+        </div>
+        <div id="vtu-balance-note" style="background:#e8f5e9;border:1px solid #a7f3d0;border-radius:10px;padding:10px 16px;font-size:.88rem;color:#009624;font-weight:600;flex:1;min-width:220px">
+          💰 Wallet balance: ₦<span id="vtu-balance-display">0.00</span>
+        </div>
       </div>
       <div class="dash-grid">
         <div class="dash-card">
@@ -894,14 +900,19 @@ footer{background:#04342C;color:rgba(255,255,255,.75);padding:3rem 5% 1.5rem}
         <div style="font-weight:700;margin-bottom:1rem">⚡ Your Credits Balance</div>
         <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap">
           <div>
-            <div style="font-size:.8rem;color:var(--text-muted);margin-bottom:.2rem">Total Credits Earned</div>
-            <div style="font-size:2rem;font-weight:800;color:#009624" id="earn-credits-display">0</div>
-            <div style="font-size:.78rem;color:var(--text-muted)">≈ ₦<span id="earn-credits-naira">0</span></div>
+            <div style="font-size:.8rem;color:var(--text-muted);margin-bottom:.2rem">Spendable Now</div>
+            <div style="font-size:2rem;font-weight:800;color:#009624">₦<span id="earn-credits-naira">0.00</span></div>
+            <div style="font-size:.78rem;color:var(--text-muted)">Used first on VTU, or withdrawable</div>
           </div>
           <div style="border-left:1px solid var(--border);padding-left:1rem;margin-left:.5rem">
             <div style="font-size:.8rem;color:var(--text-muted);margin-bottom:.2rem">Earned Today</div>
             <div style="font-size:1.5rem;font-weight:800" id="earn-today-display">0</div>
             <div style="font-size:.78rem;color:var(--text-muted)">of 500 daily max</div>
+          </div>
+          <div style="border-left:1px solid var(--border);padding-left:1rem;margin-left:.5rem">
+            <div style="font-size:.8rem;color:var(--text-muted);margin-bottom:.2rem">Lifetime Earned</div>
+            <div style="font-size:1.5rem;font-weight:800;color:var(--text-muted)" id="earn-credits-display">0</div>
+            <div style="font-size:.78rem;color:var(--text-muted)">total ever earned</div>
           </div>
         </div>
       </div>
@@ -1044,6 +1055,7 @@ let sb = null;
 let currentUser = null;
 let pendingEmail = '';
 let walletBalance = 0;
+let creditsBalance = 0; // Read & Earn money — real, server-tracked, spent before wallet on VTU
 
 // ── TOAST ──
 function showToast(msg, type = 'info', duration = 4000) {
@@ -1103,7 +1115,7 @@ function switchTab(name) {
   if (map[name] !== undefined) items[map[name]].classList.add('active');
   closeSidebar();
   if (name === 'earn') { initEarnTab(); loadEarnCredits(); }
-  if (name === 'vtu') { vtuInitTab(); }
+  if (name === 'vtu') { vtuInitTab(); loadWalletBalance(); }
 }
 
 // ── FAQ ──
@@ -1310,7 +1322,10 @@ function loadEarnCredits() {
   const nairaEl = document.getElementById('earn-credits-naira');
   const todayEl = document.getElementById('earn-today-display');
   if (earnEl) earnEl.textContent = total.toLocaleString();
-  if (nairaEl) nairaEl.textContent = total.toLocaleString();
+  // The real, spendable credits balance lives in Supabase (creditsBalance) —
+  // refreshed by loadWalletBalance()/loadCreditsBalance(). Fall back to the
+  // localStorage total only if the user isn't logged in yet.
+  if (nairaEl) nairaEl.textContent = (currentUser ? creditsBalance : total).toLocaleString('en-NG', {minimumFractionDigits: 2, maximumFractionDigits: 2});
   if (todayEl) todayEl.textContent = todayState.earned || 0;
 }
 
@@ -1329,15 +1344,39 @@ async function loadWalletBalance() {
   try {
     const { data, error } = await sb
       .from('wallets')
-      .select('balance')
+      .select('balance, credits_balance')
       .eq('user_id', currentUser.id)
       .maybeSingle();
 
     if (error) throw error;
     walletBalance = data?.balance ?? 0;
+    creditsBalance = data?.credits_balance ?? 0;
     updateBalanceUI(walletBalance);
+    updateCreditsUI(creditsBalance);
   } catch (err) {
     console.error('Failed to load balance:', err);
+  }
+}
+
+// Kept as a separate named function since other code calls it directly
+// (e.g. right after a Read & Earn reward) without needing the wallet
+// balance refreshed at the same time.
+async function loadCreditsBalance() {
+  if (!sb || !currentUser) return;
+  try {
+    const { data, error } = await sb
+      .from('wallets')
+      .select('balance, credits_balance')
+      .eq('user_id', currentUser.id)
+      .maybeSingle();
+
+    if (error) throw error;
+    walletBalance = data?.balance ?? 0;
+    creditsBalance = data?.credits_balance ?? 0;
+    updateBalanceUI(walletBalance);
+    updateCreditsUI(creditsBalance);
+  } catch (err) {
+    console.error('Failed to load credits balance:', err);
   }
 }
 
@@ -1351,6 +1390,19 @@ function updateBalanceUI(amount) {
   // Also update the VTU tab's balance note
   const vtuBal = document.getElementById('vtu-balance-display');
   if (vtuBal) vtuBal.textContent = Number(amount).toLocaleString('en-NG', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+}
+
+// Updates every on-screen display of the REAL, server-tracked credits
+// balance (separate from wallet). This is distinct from the Read & Earn
+// tab's own localStorage-based "today earned" / "lifetime total" stats —
+// this is the actual spendable/withdrawable amount.
+function updateCreditsUI(amount) {
+  const fmt = '₦' + Number(amount).toLocaleString('en-NG', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+  const plain = Number(amount).toLocaleString('en-NG', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+  const el = document.getElementById('credits-balance-display');
+  if (el) el.textContent = fmt;
+  const vtuEl = document.getElementById('vtu-credits-display');
+  if (vtuEl) vtuEl.textContent = plain;
 }
 
 // ════════════════════════════════════════════════
@@ -1400,8 +1452,10 @@ async function vtuLoadVariations(kind) {
 }
 
 // Shared purchase call used by all four VTU forms below.
-// Debits the REAL Supabase wallet balance — completely separate from
-// Read & Earn, which only ever touches localStorage credits.
+// Spends from the user's REAL credits_balance first (Read & Earn money) —
+// but ONLY if it fully covers the purchase amount; credits and wallet are
+// never combined in a single purchase. If credits don't fully cover it,
+// the entire amount is debited from wallets.balance instead.
 async function vtuPurchase({ service, serviceID, billersCode, variation_code, amount, phone, btnId, btnLabel }) {
   if (!vtuCheckConfigured()) return;
   if (!currentUser) { showToast('Please log in first.', 'red'); return; }
@@ -1419,34 +1473,53 @@ async function vtuPurchase({ service, serviceID, billersCode, variation_code, am
   const meta = currentUser.user_metadata || {};
   const userName = ((meta.first_name || '') + ' ' + (meta.last_name || '')).trim() || currentUser.email;
   let debited = false;
+  let fundingSource = null; // 'credits' or 'wallet' — whichever actually got debited
   let newBalance = walletBalance;
+  let newCredits = creditsBalance;
 
   try {
-    // 1. Re-check the live balance and debit it BEFORE calling the VTU worker,
-    //    so the user can never spend more than they actually have.
+    // 1. Re-check live balances and decide where to debit from.
+    //    Credits cover it fully, or they're not used at all — no splitting.
     const { data: walletData, error: walletErr } = await sb
       .from('wallets')
-      .select('balance')
+      .select('balance, credits_balance')
       .eq('user_id', currentUser.id)
       .maybeSingle();
     if (walletErr) throw walletErr;
 
     const currentBalance = walletData?.balance ?? 0;
-    if (numericAmount > currentBalance) {
-      throw new Error('Insufficient wallet balance. Please fund your wallet and try again.');
+    const currentCredits = walletData?.credits_balance ?? 0;
+
+    if (currentCredits >= numericAmount) {
+      // Credits fully cover it — spend from credits only.
+      fundingSource = 'credits';
+      newCredits = currentCredits - numericAmount;
+      const { error: updateErr } = await sb
+        .from('wallets')
+        .update({ credits_balance: newCredits })
+        .eq('user_id', currentUser.id);
+      if (updateErr) throw updateErr;
+      debited = true;
+
+      creditsBalance = newCredits;
+      updateCreditsUI(creditsBalance);
+    } else {
+      // Credits don't fully cover it — use wallet instead (no splitting).
+      if (numericAmount > currentBalance) {
+        throw new Error('Insufficient balance. Please fund your wallet or earn more credits and try again.');
+      }
+      fundingSource = 'wallet';
+      newBalance = currentBalance - numericAmount;
+      const { error: updateErr } = await sb
+        .from('wallets')
+        .update({ balance: newBalance })
+        .eq('user_id', currentUser.id);
+      if (updateErr) throw updateErr;
+      debited = true;
+
+      walletBalance = newBalance;
+      updateBalanceUI(walletBalance);
     }
-
-    newBalance = currentBalance - numericAmount;
-    const { error: updateErr } = await sb
-      .from('wallets')
-      .update({ balance: newBalance })
-      .eq('user_id', currentUser.id);
-    if (updateErr) throw updateErr;
-    debited = true;
-
-    // Reflect the debit immediately in the UI while the purchase is in flight.
-    walletBalance = newBalance;
-    updateBalanceUI(walletBalance);
 
     // 2. Call the VTU worker to actually deliver the airtime/data/cable/bill.
     const accessToken = await vtuGetAccessToken();
@@ -1458,20 +1531,20 @@ async function vtuPurchase({ service, serviceID, billersCode, variation_code, am
     const result = await resp.json();
     if (!resp.ok) throw new Error(result.error || 'Purchase failed.');
 
-    // 3. Record a successful debit transaction.
+    // 3. Record a successful debit transaction, noting which balance paid for it.
     await sb.from('transactions').insert([{
       user_id: currentUser.id,
       type: 'debit',
-      category: 'vtu',
+      category: fundingSource === 'credits' ? 'vtu_credits' : 'vtu_wallet',
       status: 'success',
       amount: numericAmount,
-      description: `${service}${phone ? ' — ' + phone : ''}`,
+      description: `${service}${phone ? ' — ' + phone : ''} (paid with ${fundingSource === 'credits' ? 'credits' : 'wallet'})`,
       reference: txRef,
       user_name: userName,
       user_email: currentUser.email
     }]);
 
-    showToast(`✅ ${btnLabel || service} successful!`, 'success', 5000);
+    showToast(`✅ ${btnLabel || service} successful! Paid with ${fundingSource === 'credits' ? 'Read & Earn credits' : 'wallet balance'}.`, 'success', 5000);
     loadWalletBalance();
     loadTransactions();
     return true;
@@ -1479,23 +1552,34 @@ async function vtuPurchase({ service, serviceID, billersCode, variation_code, am
   } catch (err) {
     console.error('vtuPurchase error:', err);
 
-    // If we already debited the wallet but the VTU purchase itself failed,
-    // refund the user immediately so they never lose money on a failed order.
-    if (debited) {
+    // If we already debited a balance but the VTU purchase itself failed,
+    // refund the SAME source we took it from — never the other one.
+    if (debited && fundingSource) {
       try {
         const { data: refreshed } = await sb
           .from('wallets')
-          .select('balance')
+          .select('balance, credits_balance')
           .eq('user_id', currentUser.id)
           .maybeSingle();
-        const balanceNow = refreshed?.balance ?? newBalance;
-        const refundedBalance = balanceNow + numericAmount;
-        await sb.from('wallets').update({ balance: refundedBalance }).eq('user_id', currentUser.id);
+
+        if (fundingSource === 'credits') {
+          const creditsNow = refreshed?.credits_balance ?? newCredits;
+          const refundedCredits = creditsNow + numericAmount;
+          await sb.from('wallets').update({ credits_balance: refundedCredits }).eq('user_id', currentUser.id);
+          creditsBalance = refundedCredits;
+          updateCreditsUI(creditsBalance);
+        } else {
+          const balanceNow = refreshed?.balance ?? newBalance;
+          const refundedBalance = balanceNow + numericAmount;
+          await sb.from('wallets').update({ balance: refundedBalance }).eq('user_id', currentUser.id);
+          walletBalance = refundedBalance;
+          updateBalanceUI(walletBalance);
+        }
 
         await sb.from('transactions').insert([{
           user_id: currentUser.id,
           type: 'credit',
-          category: 'vtu_refund',
+          category: fundingSource === 'credits' ? 'vtu_refund_credits' : 'vtu_refund_wallet',
           status: 'success',
           amount: numericAmount,
           description: `Refund — failed ${service} purchase`,
@@ -1504,10 +1588,8 @@ async function vtuPurchase({ service, serviceID, billersCode, variation_code, am
           user_email: currentUser.email
         }]);
 
-        walletBalance = refundedBalance;
-        updateBalanceUI(walletBalance);
         loadTransactions();
-        showToast('❌ ' + err.message + ' Your wallet has been refunded.', 'red', 7000);
+        showToast('❌ ' + err.message + ` Your ${fundingSource === 'credits' ? 'credits' : 'wallet'} balance has been refunded.`, 'red', 7000);
       } catch (refundErr) {
         console.error('vtuPurchase refund error:', refundErr);
         showToast('❌ Purchase failed and the refund could not be completed automatically. Please contact support with reference ' + txRef, 'red', 9000);
@@ -2226,36 +2308,54 @@ function earnSaveState(s) {
 function earnGetTotalCredits() { return parseInt(localStorage.getItem('digipal_total_credits') || '0'); }
 function earnAddCredits(n) { localStorage.setItem('digipal_total_credits', earnGetTotalCredits() + n); }
 
-// Push earned credits into the user's real wallet balance (1 credit = ₦1)
-// so Read & Earn rewards actually become withdrawable money, not just a
-// local counter on this device.
+// Push earned credits into the user's REAL credits balance in Supabase —
+// kept separate from wallets.balance (Paystack-funded money). Credits are
+// spendable on VTU (checked first, before wallet) and withdrawable as
+// cash, but never combine with wallet inside a single VTU purchase.
 async function earnCreditWallet(award) {
   if (!sb || !currentUser) return; // not logged in — credits stay local-only
   try {
     const { data, error } = await sb
       .from('wallets')
-      .select('balance')
+      .select('credits_balance')
       .eq('user_id', currentUser.id)
       .maybeSingle();
     if (error) throw error;
 
     if (data) {
-      const newBalance = (data.balance || 0) + award;
+      const newCredits = (data.credits_balance || 0) + award;
       const { error: updErr } = await sb
         .from('wallets')
-        .update({ balance: newBalance })
+        .update({ credits_balance: newCredits })
         .eq('user_id', currentUser.id);
       if (updErr) throw updErr;
     } else {
       const { error: insErr } = await sb
         .from('wallets')
-        .insert({ user_id: currentUser.id, balance: award });
+        .insert({ user_id: currentUser.id, balance: 0, credits_balance: award });
       if (insErr) throw insErr;
     }
-    loadWalletBalance();
+
+    // Log it as a transaction too, so it shows up in transaction history
+    // just like wallet funding does.
+    const meta = currentUser.user_metadata || {};
+    const userName = ((meta.first_name || '') + ' ' + (meta.last_name || '')).trim() || currentUser.email;
+    await sb.from('transactions').insert([{
+      user_id: currentUser.id,
+      type: 'credit',
+      category: 'earn_credit',
+      status: 'success',
+      amount: award,
+      description: 'Read & Earn reward',
+      reference: 'EARN_' + Date.now() + '_' + Math.random().toString(36).slice(2,7).toUpperCase(),
+      user_name: userName,
+      user_email: currentUser.email
+    }]);
+
+    loadCreditsBalance();
   } catch (err) {
-    console.error('Failed to credit wallet for earn reward:', err);
-    showToast('Credits saved, but wallet sync failed — contact support if your balance looks wrong.', 'red');
+    console.error('Failed to credit balance for earn reward:', err);
+    showToast('Credits saved, but balance sync failed — contact support if your balance looks wrong.', 'red');
   }
 }
 function earnGetPosts() {
