@@ -383,7 +383,7 @@
         <div class="card">
           <h3>🤖 AI Post Generator</h3>
           <div class="ai-strip">
-            <div>Generate a full article with <strong>Claude AI</strong> — just describe the topic and select a category.</div>
+            <div>Generate a full article with <strong>AI</strong> — just describe the topic and select a category.</div>
           </div>
           <div class="row-2">
             <div class="form-row">
@@ -669,34 +669,43 @@ async function generatePost() {
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner"></span> Generating…';
   status.style.display = 'block';
-  status.textContent = 'Claude is writing your article…';
+  status.textContent = 'AI is writing your article…';
 
   const catLabels = { tech: 'Technology', finance: 'Finance', business: 'Business', lifestyle: 'Lifestyle' };
 
+  // ⚠️ IMPORTANT: replace this with YOUR Cloudflare Worker URL after deploying
+  // digipal-ai-proxy-worker.js (see setup instructions in that file).
+  const WORKER_URL = 'https://digipal-ai-proxy.kreativevisuals1.workers.dev/';
+
   try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 1000,
-        system: `You are a content writer for DigiPal, a Nigerian digital platform. Write engaging, informative articles for Nigerian readers. The article should be relevant to everyday Nigerian life, written in a clear and friendly tone. 
+    if (WORKER_URL.includes('YOUR-SUBDOMAIN')) {
+      throw new Error('AI proxy not configured yet. Deploy digipal-ai-proxy-worker.js and update WORKER_URL.');
+    }
+
+    const systemPrompt = `You are a content writer for DigiPal, a Nigerian digital platform. Write engaging, informative articles for Nigerian readers. The article should be relevant to everyday Nigerian life, written in a clear and friendly tone.
 
 Respond ONLY with valid JSON in this exact format (no markdown, no backticks):
 {
   "title": "compelling article title",
   "excerpt": "1-2 sentence teaser for the card preview",
   "body": "full HTML article body using only <p>, <h3>, and <strong> tags, 5-8 paragraphs"
-}`,
-        messages: [{
-          role: 'user',
-          content: `Write a ${catLabels[category]} article about: ${topic}. Make it relevant to Nigerian readers and approximately 600-800 words.`
-        }]
-      })
+}`;
+
+    const userPrompt = `Write a ${catLabels[category]} article about: ${topic}. Make it relevant to Nigerian readers and approximately 600-800 words.`;
+
+    const response = await fetch(WORKER_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ system: systemPrompt, prompt: userPrompt })
     });
 
+    if (!response.ok) {
+      const errBody = await response.text();
+      throw new Error(`Proxy/API error (${response.status}): ${errBody.slice(0, 200)}`);
+    }
+
     const data = await response.json();
-    const text = data.content.map(i => i.text || '').join('');
+    const text = data.choices?.[0]?.message?.content || '';
     const clean = text.replace(/```json|```/g, '').trim();
     const result = JSON.parse(clean);
 
@@ -709,8 +718,9 @@ Respond ONLY with valid JSON in this exact format (no markdown, no backticks):
     showToast('AI article generated!', 'green');
 
   } catch(err) {
-    status.textContent = '❌ Generation failed. Try again.';
-    showToast('Generation failed.', 'red');
+    status.textContent = '❌ Generation failed: ' + err.message;
+    showToast('Generation failed: ' + err.message, 'red');
+    console.error('generatePost error:', err);
   }
 
   btn.disabled = false;
