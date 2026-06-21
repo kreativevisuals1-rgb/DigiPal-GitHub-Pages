@@ -602,32 +602,17 @@ footer{background:#04342C;color:rgba(255,255,255,.75);padding:3rem 5% 1.5rem}
           <div class="wallet-amount" id="wallet-balance-display">₦0.00</div>
           <div class="wallet-actions">
             <div class="wallet-btn wallet-btn-primary" onclick="openFundModal()">+ Fund Wallet</div>
-            <div class="wallet-btn wallet-btn-primary" onclick="alert('Withdrawal coming soon!')">Withdraw</div>
+            <div class="wallet-btn wallet-btn-primary" onclick="openWithdrawModal()">Withdraw</div>
           </div>
         </div>
 
-        <!-- Permanent Funding Account (DVA) — Coming Soon -->
-        <div class="dva-card" id="dva-card" onclick="handleDVAClick()" style="cursor:pointer">
-          <div class="dva-card-header">
-            <h3>🏦 Permanent Funding Account</h3>
-            <span class="dva-badge" style="background:#fef3c7;color:#92400e">COMING SOON</span>
+        <!-- Permanent Funding Account (DVA) — small teaser box -->
+        <div class="dva-card" id="dva-card" onclick="handleDVAClick()" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:1rem 1.25rem">
+          <div>
+            <div style="font-weight:700;font-size:.92rem">🏦 Permanent Funding Account</div>
+            <div style="font-size:.78rem;color:var(--text-muted);margin-top:.15rem">A dedicated account number just for you</div>
           </div>
-          <p style="font-size:.82rem;color:var(--text-muted);margin-bottom:1rem">Get a personal bank account number you can transfer to anytime — your wallet credits automatically. We're finishing setup with our banking partner.</p>
-          <div id="dva-content">
-            <div class="dva-row">
-              <span class="dva-field">Bank Name</span>
-              <span class="dva-value" style="color:var(--text-muted)">—</span>
-            </div>
-            <div class="dva-row">
-              <span class="dva-field">Account Number</span>
-              <span class="dva-value" style="color:var(--text-muted)">—</span>
-            </div>
-            <div class="dva-row">
-              <span class="dva-field">Account Name</span>
-              <span class="dva-value" style="color:var(--text-muted)">—</span>
-            </div>
-          </div>
-          <p style="font-size:.82rem;color:var(--brand);margin-top:.75rem;font-weight:600">Tap to get notified when this is ready →</p>
+          <span class="btn btn-outline" style="font-size:.8rem;padding:.45rem 1rem;flex-shrink:0">Get Account</span>
         </div>
 
         <!-- Transaction History -->
@@ -665,6 +650,43 @@ footer{background:#04342C;color:rgba(255,255,255,.75);padding:3rem 5% 1.5rem}
       </div>
     </div>
 
+    <!-- WITHDRAW MODAL -->
+    <div class="modal-overlay" id="withdraw-modal" onclick="if(event.target===this)closeWithdrawModal()">
+      <div class="modal-box">
+        <div class="modal-title">💸 Withdraw to Bank</div>
+        <div class="modal-sub">Funds are sent directly to your bank account</div>
+
+        <div class="form-group">
+          <label style="font-size:.85rem;font-weight:600">Bank</label>
+          <select id="withdraw-bank-select"
+            style="width:100%;padding:.65rem .9rem;border:1.5px solid var(--border);border-radius:8px;font-size:.9rem;outline:none;color:var(--text);margin-top:.4rem">
+            <option value="">Loading banks…</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label style="font-size:.85rem;font-weight:600">Account Number</label>
+          <input type="text" id="withdraw-account-input" placeholder="0123456789" maxlength="10" inputmode="numeric"
+            style="width:100%;padding:.7rem 1rem;border:1.5px solid var(--border);border-radius:8px;font-size:1rem;margin-top:.4rem;outline:none"
+            oninput="onWithdrawAccountInput()"/>
+          <div id="withdraw-account-name" style="font-size:.85rem;margin-top:.4rem;min-height:1.2em"></div>
+        </div>
+
+        <div class="form-group">
+          <label style="font-size:.85rem;font-weight:600">Amount (₦)</label>
+          <input type="number" id="withdraw-amount-input" placeholder="e.g. 5000" min="100"
+            style="width:100%;padding:.7rem 1rem;border:1.5px solid var(--border);border-radius:8px;font-size:1rem;margin-top:.4rem;outline:none"/>
+          <div id="withdraw-balance-hint" style="font-size:.78rem;color:var(--text-muted);margin-top:.35rem">Available balance: ₦0.00</div>
+        </div>
+
+        <p id="withdraw-modal-error" style="display:none;font-size:.83rem;color:#dc2626;margin-top:.25rem"></p>
+        <div class="modal-actions">
+          <button class="btn btn-outline" style="flex:1" onclick="closeWithdrawModal()">Cancel</button>
+          <button class="btn btn-primary" style="flex:2" onclick="submitWithdrawal()" id="withdraw-submit-btn">Withdraw</button>
+        </div>
+      </div>
+    </div>
+
     <!-- PROCESSING OVERLAY -->
     <div class="pay-processing" id="pay-processing">
       <div class="spin"></div>
@@ -688,7 +710,7 @@ footer{background:#04342C;color:rgba(255,255,255,.75);padding:3rem 5% 1.5rem}
           </div>
           <div class="form-group"><label>Phone Number</label><input type="tel" placeholder="08012345678"/></div>
           <div class="form-group"><label>Amount (₦)</label><input type="number" placeholder="100"/></div>
-          <button class="btn btn-primary" style="width:100%" onclick="alert('Fund your wallet first to use this service.')">Buy Airtime</button>
+          <button class="btn btn-primary" style="width:100%" onclick="showToast('Please fund your wallet first to use this service.', 'info', 4000)">Buy Airtime</button>
         </div>
         <div class="dash-card">
           <h3>📶 Buy Data</h3>
@@ -703,7 +725,7 @@ footer{background:#04342C;color:rgba(255,255,255,.75);padding:3rem 5% 1.5rem}
               <option>500MB — ₦150</option><option>1GB — ₦265</option><option>2GB — ₦460</option><option>5GB — ₦1,200</option><option>10GB — ₦2,000</option>
             </select>
           </div>
-          <button class="btn btn-primary" style="width:100%" onclick="alert('Fund your wallet first to use this service.')">Buy Data</button>
+          <button class="btn btn-primary" style="width:100%" onclick="showToast('Please fund your wallet first to use this service.', 'info', 4000)">Buy Data</button>
         </div>
         <div class="dash-card">
           <h3>📺 Cable TV</h3>
@@ -718,7 +740,7 @@ footer{background:#04342C;color:rgba(255,255,255,.75);padding:3rem 5% 1.5rem}
               <option>Padi — ₦2,565</option><option>Yanga — ₦3,090</option><option>Confam — ₦5,140</option><option>Compact — ₦9,800</option><option>Premium — ₦29,500</option>
             </select>
           </div>
-          <button class="btn btn-primary" style="width:100%" onclick="alert('Fund your wallet first to use this service.')">Pay Now</button>
+          <button class="btn btn-primary" style="width:100%" onclick="showToast('Please fund your wallet first to use this service.', 'info', 4000)">Pay Now</button>
         </div>
         <div class="dash-card">
           <h3>💡 Electricity Bill</h3>
@@ -729,7 +751,7 @@ footer{background:#04342C;color:rgba(255,255,255,.75);padding:3rem 5% 1.5rem}
           </div>
           <div class="form-group"><label>Meter Number</label><input type="text" placeholder="Enter meter number"/></div>
           <div class="form-group"><label>Amount (₦)</label><input type="number" placeholder="1000"/></div>
-          <button class="btn btn-primary" style="width:100%" onclick="alert('Fund your wallet first to use this service.')">Pay Bill</button>
+          <button class="btn btn-primary" style="width:100%" onclick="showToast('Please fund your wallet first to use this service.', 'info', 4000)">Pay Bill</button>
         </div>
       </div>
     </div>
@@ -738,12 +760,12 @@ footer{background:#04342C;color:rgba(255,255,255,.75);padding:3rem 5% 1.5rem}
     <div class="dash-tab" id="tab-courses">
       <div class="dash-header"><div><h1>🎓 Digital Courses</h1><p>Master high-income digital skills.</p></div></div>
       <div class="grid-3">
-        <div class="feat-card"><div class="feat-icon">💻</div><h3>Freelancing Mastery</h3><p>Learn how to earn $500–$5,000/month freelancing on Upwork, Fiverr, and Toptal.</p><button class="btn btn-primary" style="margin-top:1rem;width:100%" onclick="alert('Enrol to access this course.')">Enrol — ₦5,000</button></div>
-        <div class="feat-card"><div class="feat-icon">📊</div><h3>Digital Marketing</h3><p>Master Facebook Ads, Google Ads, SEO, and content marketing to grow any business.</p><button class="btn btn-primary" style="margin-top:1rem;width:100%" onclick="alert('Enrol to access this course.')">Enrol — ₦7,500</button></div>
-        <div class="feat-card"><div class="feat-icon">🎨</div><h3>Graphics Design</h3><p>From Canva to Adobe Illustrator — build a design skill set clients will pay for.</p><button class="btn btn-primary" style="margin-top:1rem;width:100%" onclick="alert('Enrol to access this course.')">Enrol — ₦4,500</button></div>
-        <div class="feat-card"><div class="feat-icon">📹</div><h3>Video Editing</h3><p>Edit professional videos using CapCut and Premiere Pro for content creators and brands.</p><button class="btn btn-primary" style="margin-top:1rem;width:100%" onclick="alert('Enrol to access this course.')">Enrol — ₦6,000</button></div>
-        <div class="feat-card"><div class="feat-icon">🤖</div><h3>AI for Business</h3><p>Use AI tools like ChatGPT, Claude, and Midjourney to 10× your productivity and income.</p><button class="btn btn-primary" style="margin-top:1rem;width:100%" onclick="alert('Enrol to access this course.')">Enrol — ₦8,000</button></div>
-        <div class="feat-card"><div class="feat-icon">🛒</div><h3>E-Commerce & Dropshipping</h3><p>Build a profitable online store and start selling products without holding inventory.</p><button class="btn btn-primary" style="margin-top:1rem;width:100%" onclick="alert('Enrol to access this course.')">Enrol — ₦9,500</button></div>
+        <div class="feat-card"><div class="feat-icon">💻</div><h3>Freelancing Mastery</h3><p>Learn how to earn $500–$5,000/month freelancing on Upwork, Fiverr, and Toptal.</p><button class="btn btn-primary" style="margin-top:1rem;width:100%" onclick="showToast('🎓 Course enrolment is launching soon!', 'info', 4000)">Enrol — ₦5,000</button></div>
+        <div class="feat-card"><div class="feat-icon">📊</div><h3>Digital Marketing</h3><p>Master Facebook Ads, Google Ads, SEO, and content marketing to grow any business.</p><button class="btn btn-primary" style="margin-top:1rem;width:100%" onclick="showToast('🎓 Course enrolment is launching soon!', 'info', 4000)">Enrol — ₦7,500</button></div>
+        <div class="feat-card"><div class="feat-icon">🎨</div><h3>Graphics Design</h3><p>From Canva to Adobe Illustrator — build a design skill set clients will pay for.</p><button class="btn btn-primary" style="margin-top:1rem;width:100%" onclick="showToast('🎓 Course enrolment is launching soon!', 'info', 4000)">Enrol — ₦4,500</button></div>
+        <div class="feat-card"><div class="feat-icon">📹</div><h3>Video Editing</h3><p>Edit professional videos using CapCut and Premiere Pro for content creators and brands.</p><button class="btn btn-primary" style="margin-top:1rem;width:100%" onclick="showToast('🎓 Course enrolment is launching soon!', 'info', 4000)">Enrol — ₦6,000</button></div>
+        <div class="feat-card"><div class="feat-icon">🤖</div><h3>AI for Business</h3><p>Use AI tools like ChatGPT, Claude, and Midjourney to 10× your productivity and income.</p><button class="btn btn-primary" style="margin-top:1rem;width:100%" onclick="showToast('🎓 Course enrolment is launching soon!', 'info', 4000)">Enrol — ₦8,000</button></div>
+        <div class="feat-card"><div class="feat-icon">🛒</div><h3>E-Commerce & Dropshipping</h3><p>Build a profitable online store and start selling products without holding inventory.</p><button class="btn btn-primary" style="margin-top:1rem;width:100%" onclick="showToast('🎓 Course enrolment is launching soon!', 'info', 4000)">Enrol — ₦9,500</button></div>
       </div>
     </div>
 
@@ -754,7 +776,7 @@ footer{background:#04342C;color:rgba(255,255,255,.75);padding:3rem 5% 1.5rem}
         <div style="font-size:3.5rem;margin-bottom:1rem">🚀</div>
         <h3 style="font-size:1.3rem;font-weight:700;margin-bottom:.5rem">Marketplace Coming Soon</h3>
         <p style="color:var(--text-muted);max-width:380px;margin:0 auto 1.5rem">We're building something amazing. Be the first to know when it launches.</p>
-        <button class="btn btn-primary" onclick="alert('You\'ll be notified when the marketplace launches!')">Notify Me</button>
+        <button class="btn btn-primary" onclick="showToast('🛍️ You\'ll be notified when the marketplace launches!', 'success', 4000)">Notify Me</button>
       </div>
     </div>
 
@@ -777,7 +799,7 @@ footer{background:#04342C;color:rgba(255,255,255,.75);padding:3rem 5% 1.5rem}
           <div class="form-group"><label>Email</label><input type="email" id="profile-email-input" placeholder="Email" disabled style="opacity:.6"/></div>
           <div class="form-group"><label>Phone Number</label><input type="tel" id="profile-phone-input" placeholder="08012345678"/></div>
         </div>
-        <button class="btn btn-primary" onclick="alert('Profile update coming soon!')">Save Changes</button>
+        <button class="btn btn-primary" onclick="showToast('👤 Profile updates are launching soon!', 'info', 4000)">Save Changes</button>
       </div>
       <div class="profile-section">
         <h3>Referral Program</h3>
@@ -1260,7 +1282,156 @@ async function verifyAndCredit(reference, expectedAmount) {
   );
 }
 
-// ── AUTH STATE LISTENER ──
+// ════════════════════════════════════════════════
+//  WITHDRAW TO BANK
+// ════════════════════════════════════════════════
+let withdrawBanksLoaded = false;
+let withdrawResolvedAccount = null; // { account_number, account_name, bank_code, bank_name }
+
+function openWithdrawModal() {
+  document.getElementById('withdraw-modal').classList.add('show');
+  document.getElementById('withdraw-amount-input').value = '';
+  document.getElementById('withdraw-account-input').value = '';
+  document.getElementById('withdraw-account-name').textContent = '';
+  document.getElementById('withdraw-modal-error').style.display = 'none';
+  document.getElementById('withdraw-balance-hint').textContent =
+    'Available balance: ₦' + Number(walletBalance).toLocaleString('en-NG', {minimumFractionDigits: 2});
+  withdrawResolvedAccount = null;
+  if (!withdrawBanksLoaded) loadWithdrawBanks();
+}
+
+function closeWithdrawModal() {
+  document.getElementById('withdraw-modal').classList.remove('show');
+}
+
+async function loadWithdrawBanks() {
+  const select = document.getElementById('withdraw-bank-select');
+  if (!sb) return;
+  try {
+    const res = await sb.functions.invoke('get-banks', { body: {} });
+    if (res.error) throw res.error;
+    const banks = res.data?.banks || res.data || [];
+    if (!Array.isArray(banks) || !banks.length) throw new Error('No banks returned');
+
+    select.innerHTML = '<option value="">Select your bank</option>' +
+      banks.map(b => `<option value="${b.code}">${b.name}</option>`).join('');
+    withdrawBanksLoaded = true;
+  } catch (err) {
+    console.error('Failed to load banks:', err);
+    select.innerHTML = '<option value="">Could not load banks — tap to retry</option>';
+    withdrawBanksLoaded = false;
+    select.onclick = () => { if (!withdrawBanksLoaded) loadWithdrawBanks(); };
+  }
+}
+
+let withdrawResolveTimer = null;
+function onWithdrawAccountInput() {
+  clearTimeout(withdrawResolveTimer);
+  withdrawResolvedAccount = null;
+  document.getElementById('withdraw-account-name').textContent = '';
+  const acct = document.getElementById('withdraw-account-input').value.trim();
+  const bankCode = document.getElementById('withdraw-bank-select').value;
+  if (acct.length !== 10 || !bankCode) return;
+
+  withdrawResolveTimer = setTimeout(() => resolveWithdrawAccount(acct, bankCode), 500);
+}
+
+async function resolveWithdrawAccount(accountNumber, bankCode) {
+  const nameEl = document.getElementById('withdraw-account-name');
+  nameEl.textContent = 'Verifying account…';
+  nameEl.style.color = 'var(--text-muted)';
+  try {
+    const res = await sb.functions.invoke('resolve-account', {
+      body: { account_number: accountNumber, bank_code: bankCode }
+    });
+    if (res.error) throw res.error;
+    const accountName = res.data?.account_name;
+    if (!accountName) throw new Error('Could not verify account');
+
+    const bankName = document.getElementById('withdraw-bank-select').selectedOptions[0].textContent;
+    withdrawResolvedAccount = { account_number: accountNumber, account_name: accountName, bank_code: bankCode, bank_name: bankName };
+    nameEl.textContent = '✓ ' + accountName;
+    nameEl.style.color = 'var(--brand)';
+  } catch (err) {
+    console.error('Resolve account error:', err);
+    nameEl.textContent = 'Could not verify this account number.';
+    nameEl.style.color = '#dc2626';
+    withdrawResolvedAccount = null;
+  }
+}
+
+async function submitWithdrawal() {
+  const errEl = document.getElementById('withdraw-modal-error');
+  errEl.style.display = 'none';
+
+  const amount = parseInt(document.getElementById('withdraw-amount-input').value);
+  const bankCode = document.getElementById('withdraw-bank-select').value;
+
+  if (!bankCode) {
+    errEl.textContent = 'Please select a bank.';
+    errEl.style.display = 'block';
+    return;
+  }
+  if (!withdrawResolvedAccount) {
+    errEl.textContent = 'Please enter a valid 10-digit account number and wait for verification.';
+    errEl.style.display = 'block';
+    return;
+  }
+  if (!amount || amount < 100) {
+    errEl.textContent = 'Minimum withdrawal amount is ₦100.';
+    errEl.style.display = 'block';
+    return;
+  }
+  if (amount > walletBalance) {
+    errEl.textContent = 'Withdrawal amount exceeds your wallet balance.';
+    errEl.style.display = 'block';
+    return;
+  }
+  if (!sb || !currentUser) {
+    errEl.textContent = 'You must be logged in to withdraw.';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  const btn = document.getElementById('withdraw-submit-btn');
+  btn.disabled = true;
+  btn.textContent = 'Processing…';
+
+  try {
+    const res = await sb.functions.invoke('withdraw', {
+      body: {
+        user_id: currentUser.id,
+        amount,
+        bank_code: withdrawResolvedAccount.bank_code,
+        bank_name: withdrawResolvedAccount.bank_name,
+        account_number: withdrawResolvedAccount.account_number,
+        account_name: withdrawResolvedAccount.account_name
+      }
+    });
+
+    if (res.error) throw res.error;
+    const result = res.data;
+    if (result?.status !== 'success') {
+      throw new Error(result?.error || 'Withdrawal failed. Please try again.');
+    }
+
+    closeWithdrawModal();
+    walletBalance = result.new_balance ?? (walletBalance - amount);
+    updateBalanceUI(walletBalance);
+    loadTransactions();
+    showToast(`✅ ₦${amount.toLocaleString()} is on its way to ${withdrawResolvedAccount.account_name}.`, 'success', 6000);
+
+  } catch (err) {
+    console.error('Withdrawal error:', err);
+    errEl.textContent = err.message || 'Withdrawal failed. Please try again.';
+    errEl.style.display = 'block';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Withdraw';
+  }
+}
+
+
 async function init() {
   const ready = initSupabase();
   if (!ready) return;
