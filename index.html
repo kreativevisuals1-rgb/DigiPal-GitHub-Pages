@@ -1084,7 +1084,7 @@ function switchTab(name) {
   const map = {overview:0, wallet:1, vtu:2, courses:3, marketplace:4, profile:5, earn:6};
   if (map[name] !== undefined) items[map[name]].classList.add('active');
   closeSidebar();
-  if (name === 'earn') { initEarnTab(); updateEarnDisplay(); }
+  if (name === 'earn') { initEarnTab(); loadEarnCredits(); }
 }
 
 // ── FAQ ──
@@ -1988,6 +1988,39 @@ function earnSaveState(s) {
 }
 function earnGetTotalCredits() { return parseInt(localStorage.getItem('digipal_total_credits') || '0'); }
 function earnAddCredits(n) { localStorage.setItem('digipal_total_credits', earnGetTotalCredits() + n); }
+
+// Push earned credits into the user's real wallet balance (1 credit = ₦1)
+// so Read & Earn rewards actually become withdrawable money, not just a
+// local counter on this device.
+async function earnCreditWallet(award) {
+  if (!sb || !currentUser) return; // not logged in — credits stay local-only
+  try {
+    const { data, error } = await sb
+      .from('wallets')
+      .select('balance')
+      .eq('user_id', currentUser.id)
+      .maybeSingle();
+    if (error) throw error;
+
+    if (data) {
+      const newBalance = (data.balance || 0) + award;
+      const { error: updErr } = await sb
+        .from('wallets')
+        .update({ balance: newBalance })
+        .eq('user_id', currentUser.id);
+      if (updErr) throw updErr;
+    } else {
+      const { error: insErr } = await sb
+        .from('wallets')
+        .insert({ user_id: currentUser.id, balance: award });
+      if (insErr) throw insErr;
+    }
+    loadWalletBalance();
+  } catch (err) {
+    console.error('Failed to credit wallet for earn reward:', err);
+    showToast('Credits saved, but wallet sync failed — contact support if your balance looks wrong.', 'red');
+  }
+}
 function earnGetPosts() {
   const adminPosts = localStorage.getItem('digipal_admin_posts');
   if (adminPosts) { try { return JSON.parse(adminPosts); } catch(e){} }
@@ -2154,9 +2187,10 @@ async function earnSubmitComment() {
       state.earned += award;
       earnSaveState(state);
       earnAddCredits(award);
+      await earnCreditWallet(award);
       earnUpdateLeaderboard(award);
       if (banner) { banner.style.display='block'; banner.style.background='#e8f5e9'; banner.style.color='#009624'; banner.style.border='1px solid #a7f3d0'; banner.style.borderRadius='10px'; banner.style.padding='14px 16px'; banner.innerHTML=`✅ Comment verified! <strong>+${award} credits</strong> added to your account.`; }
-      setTimeout(() => { earnCloseReader(); earnShowReward(award); earnRenderPosts(); updateEarnDisplay(); }, 1500);
+      setTimeout(() => { earnCloseReader(); earnShowReward(award); earnRenderPosts(); loadEarnCredits(); }, 1500);
     } else {
       if (banner) { banner.style.display='block'; banner.style.background='#fef2f2'; banner.style.color='#991b1b'; banner.style.border='1px solid #fca5a5'; banner.style.borderRadius='10px'; banner.style.padding='14px 16px'; banner.innerHTML=`❌ <strong>Not verified.</strong> ${result.reason} Please rewrite your comment.`; }
       document.getElementById('earn-submit-btn').disabled = false;
@@ -2186,7 +2220,7 @@ function earnShowReward(n) {
 }
 function earnCloseReward() {
   document.getElementById('earn-reward-overlay').style.display = 'none';
-  updateEarnDisplay();
+  loadEarnCredits();
 }
 
 document.addEventListener('click', function(e) {
