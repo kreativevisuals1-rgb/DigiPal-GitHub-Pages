@@ -1013,6 +1013,15 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 const PAYSTACK_PUBLIC_KEY = 'pk_live_490eca6743e76032f283987f31f2de6c5c1f397b';
 // ══════════════════════════════════════════════
 
+// ══════════════════════════════════════════════
+//  🔧 AI PROXY WORKER CONFIG
+//  Same Cloudflare Worker used by admin-digipal.html.
+//  Replace with your deployed Worker URL, e.g.
+//  https://digipal-ai-proxy.kreativevisuals1.workers.dev
+// ══════════════════════════════════════════════
+const WORKER_URL = 'https://digipal-ai-proxy.kreativevisuals1.workers.dev';
+// ══════════════════════════════════════════════
+
 let sb = null;
 let currentUser = null;
 let pendingEmail = '';
@@ -1303,9 +1312,9 @@ async function loadWalletBalance() {
       .from('wallets')
       .select('balance')
       .eq('user_id', currentUser.id)
-      .single();
+      .maybeSingle();
 
-    if (error && error.code !== 'PGRST116') throw error;
+    if (error) throw error;
     walletBalance = data?.balance ?? 0;
     updateBalanceUI(walletBalance);
   } catch (err) {
@@ -1833,9 +1842,9 @@ async function submitWithdrawal() {
       .from('wallets')
       .select('balance')
       .eq('user_id', currentUser.id)
-      .single();
+      .maybeSingle();
     if (walletErr) throw walletErr;
-    const currentBalance = walletData.balance;
+    const currentBalance = walletData?.balance ?? 0;
     if (amount > currentBalance) throw new Error('Insufficient balance. Please refresh and try again.');
 
     const newBalance = currentBalance - amount;
@@ -2112,16 +2121,26 @@ async function earnSubmitComment() {
   document.getElementById('earn-ai-checking').style.display = 'flex';
   document.getElementById('earn-result-banner').style.display = 'none';
   try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({
-        model:'claude-sonnet-4-6', max_tokens:1000,
-        system:`You are a comment quality moderator for DigiPal, a Nigerian digital platform. Decide if a user's comment on a blog post is GENUINE or SPAM/FAKE. A genuine comment shows the user actually engaged with the content, contains real opinions or personal experience, and is specific to the post topic. A fake comment repeats phrases, is unrelated, or is pure generic praise. Respond ONLY with valid JSON: {"verdict": "genuine" or "fake", "reason": "one short sentence"}`,
-        messages:[{ role:'user', content:`Post title: "${earnActivePost.title}"\n\nUser comment:\n${comment}` }]
-      })
+    if (WORKER_URL.includes('YOUR-SUBDOMAIN')) {
+      throw new Error('AI proxy not configured. Set WORKER_URL near the top of this file.');
+    }
+
+    const systemPrompt = `You are a comment quality moderator for DigiPal, a Nigerian digital platform. Decide if a user's comment on a blog post is GENUINE or SPAM/FAKE. A genuine comment shows the user actually engaged with the content, contains real opinions or personal experience, and is specific to the post topic. A fake comment repeats phrases, is unrelated, or is pure generic praise. Respond ONLY with valid JSON: {"verdict": "genuine" or "fake", "reason": "one short sentence"}`;
+    const userPrompt = `Post title: "${earnActivePost.title}"\n\nUser comment:\n${comment}`;
+
+    const response = await fetch(WORKER_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ system: systemPrompt, prompt: userPrompt })
     });
+
+    if (!response.ok) {
+      const errBody = await response.text();
+      throw new Error(`Proxy/API error (${response.status}): ${errBody.slice(0, 200)}`);
+    }
+
     const data = await response.json();
-    const text = data.content.map(i=>i.text||'').join('');
+    const text = data.choices?.[0]?.message?.content || '';
     let result;
     try { result = JSON.parse(text.replace(/```json|```/g,'').trim()); }
     catch(e) { result = { verdict:'genuine', reason:'Comment appears authentic.' }; }
@@ -2143,9 +2162,10 @@ async function earnSubmitComment() {
       document.getElementById('earn-submit-btn').disabled = false;
     }
   } catch(err) {
+    console.error('earnSubmitComment error:', err);
     document.getElementById('earn-ai-checking').style.display = 'none';
     const banner = document.getElementById('earn-result-banner');
-    if (banner) { banner.style.display='block'; banner.style.background='#fef2f2'; banner.style.color='#991b1b'; banner.style.border='1px solid #fca5a5'; banner.style.borderRadius='10px'; banner.style.padding='14px 16px'; banner.innerHTML='⚠️ Could not verify comment. Check your connection and try again.'; }
+    if (banner) { banner.style.display='block'; banner.style.background='#fef2f2'; banner.style.color='#991b1b'; banner.style.border='1px solid #fca5a5'; banner.style.borderRadius='10px'; banner.style.padding='14px 16px'; banner.innerHTML='⚠️ Could not verify comment: ' + err.message; }
     document.getElementById('earn-submit-btn').disabled = false;
   }
 }
