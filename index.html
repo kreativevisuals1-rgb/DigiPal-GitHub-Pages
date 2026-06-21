@@ -1306,22 +1306,64 @@ function closeWithdrawModal() {
 
 async function loadWithdrawBanks() {
   const select = document.getElementById('withdraw-bank-select');
-  if (!sb) return;
-  try {
-    const res = await sb.functions.invoke('get-banks', { body: {} });
-    if (res.error) throw res.error;
-    const banks = res.data?.banks || res.data || [];
-    if (!Array.isArray(banks) || !banks.length) throw new Error('No banks returned');
+  select.innerHTML = '<option value="">Loading banks…</option>';
+  select.onclick = null;
 
-    select.innerHTML = '<option value="">Select your bank</option>' +
-      banks.map(b => `<option value="${b.code}">${b.name}</option>`).join('');
-    withdrawBanksLoaded = true;
-  } catch (err) {
-    console.error('Failed to load banks:', err);
-    select.innerHTML = '<option value="">Could not load banks — tap to retry</option>';
-    withdrawBanksLoaded = false;
-    select.onclick = () => { if (!withdrawBanksLoaded) loadWithdrawBanks(); };
+  // Try 1: Supabase edge function
+  if (sb) {
+    try {
+      const res = await sb.functions.invoke('get-banks', { body: {} });
+      if (!res.error) {
+        const banks = res.data?.banks || res.data || [];
+        if (Array.isArray(banks) && banks.length) {
+          select.innerHTML = '<option value="">Select your bank</option>' +
+            banks.map(b => `<option value="${b.code}">${b.name}</option>`).join('');
+          withdrawBanksLoaded = true;
+          return;
+        }
+      }
+    } catch (_) {}
   }
+
+  // Try 2: Paystack public banks API (CORS-friendly via a proxy-free approach)
+  try {
+    const r = await fetch('https://api.paystack.co/bank?currency=NGN&perPage=100', {
+      headers: { 'Authorization': 'Bearer ' + (window.PAYSTACK_PUBLIC_KEY || '') }
+    });
+    if (r.ok) {
+      const json = await r.json();
+      const banks = json?.data || [];
+      if (Array.isArray(banks) && banks.length) {
+        select.innerHTML = '<option value="">Select your bank</option>' +
+          banks.map(b => `<option value="${b.code}">${b.name}</option>`).join('');
+        withdrawBanksLoaded = true;
+        return;
+      }
+    }
+  } catch (_) {}
+
+  // Fallback: hardcoded list of major Nigerian banks
+  const fallbackBanks = [
+    {code:'044',name:'Access Bank'},{code:'023',name:'Citibank Nigeria'},
+    {code:'050',name:'Ecobank Nigeria'},{code:'070',name:'Fidelity Bank'},
+    {code:'011',name:'First Bank of Nigeria'},{code:'214',name:'First City Monument Bank (FCMB)'},
+    {code:'058',name:'Guaranty Trust Bank (GTB)'},{code:'030',name:'Heritage Bank'},
+    {code:'301',name:'Jaiz Bank'},{code:'082',name:'Keystone Bank'},
+    {code:'526',name:'Moniepoint MFB'},{code:'076',name:'Polaris Bank'},
+    {code:'101',name:'ProvidusBank'},{code:'221',name:'Stanbic IBTC Bank'},
+    {code:'068',name:'Standard Chartered Bank'},{code:'232',name:'Sterling Bank'},
+    {code:'100',name:'Suntrust Bank'},{code:'032',name:'Union Bank of Nigeria'},
+    {code:'033',name:'United Bank for Africa (UBA)'},{code:'215',name:'Unity Bank'},
+    {code:'035',name:'Wema Bank'},{code:'057',name:'Zenith Bank'},
+    {code:'120001',name:'9PSB (9 Payment Service Bank)'},{code:'090115',name:'Airtel Smartcash PSB'},
+    {code:'100004',name:'Opay'},{code:'100033',name:'PalmPay'},
+    {code:'627',name:'Kuda MFB'},{code:'090267',name:'Kuda Bank'},
+    {code:'565',name:'Carbon (One Finance)'},{code:'090405',name:'Palmpay'},
+  ];
+  select.innerHTML = '<option value="">Select your bank</option>' +
+    fallbackBanks.map(b => `<option value="${b.code}">${b.name}</option>`).join('');
+  withdrawBanksLoaded = true;
+  console.warn('Using fallback bank list — live API was unreachable.');
 }
 
 let withdrawResolveTimer = null;
