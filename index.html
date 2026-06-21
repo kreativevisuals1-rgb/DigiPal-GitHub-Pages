@@ -1319,6 +1319,8 @@ function openWithdrawModal() {
   document.getElementById('withdraw-modal-error').style.display = 'none';
   document.getElementById('withdraw-balance-hint').textContent =
     'Available balance: ₦' + Number(walletBalance).toLocaleString('en-NG', {minimumFractionDigits: 2});
+  // Disable Withdraw button until account is verified
+  document.getElementById('withdraw-submit-btn').disabled = true;
   withdrawResolvedAccount = null;
   if (!withdrawBanksLoaded) loadWithdrawBanks();
 }
@@ -1448,20 +1450,29 @@ let withdrawResolveTimer = null;
 function onWithdrawAccountInput() {
   clearTimeout(withdrawResolveTimer);
   withdrawResolvedAccount = null;
-  document.getElementById('withdraw-account-name').textContent = '';
+  const nameEl = document.getElementById('withdraw-account-name');
+  const btn = document.getElementById('withdraw-submit-btn');
+  nameEl.textContent = '';
+  btn.disabled = true;
   const acct = document.getElementById('withdraw-account-input').value.trim();
   const bankCode = document.getElementById('withdraw-bank-select').value;
   if (acct.length !== 10 || !bankCode) return;
 
-  withdrawResolveTimer = setTimeout(() => resolveWithdrawAccount(acct, bankCode), 500);
+  nameEl.textContent = 'Waiting…';
+  nameEl.style.color = 'var(--text-muted)';
+  withdrawResolveTimer = setTimeout(() => resolveWithdrawAccount(acct, bankCode), 600);
 }
 
 async function resolveWithdrawAccount(accountNumber, bankCode) {
   const nameEl = document.getElementById('withdraw-account-name');
+  const btn = document.getElementById('withdraw-submit-btn');
   nameEl.textContent = 'Verifying account…';
   nameEl.style.color = 'var(--text-muted)';
+  withdrawResolvedAccount = null;
+  btn.disabled = true;
 
   let accountName = null;
+  let apiReachable = false; // did any API respond at all (even with invalid account)?
 
   // Try 1: Supabase edge function
   if (sb) {
@@ -1469,18 +1480,20 @@ async function resolveWithdrawAccount(accountNumber, bankCode) {
       const res = await sb.functions.invoke('resolve-account', {
         body: { account_number: accountNumber, bank_code: bankCode }
       });
+      apiReachable = true;
       if (!res.error && res.data?.account_name) accountName = res.data.account_name;
     } catch (_) {}
   }
 
-  // Try 2: Paystack via allorigins CORS proxy (avoids CORS restriction on secret key)
-  if (!accountName) {
+  // Try 2: Paystack via allorigins CORS proxy
+  if (!apiReachable) {
     try {
       const target = encodeURIComponent(
         `https://api.paystack.co/bank/resolve?account_number=${accountNumber}&bank_code=${bankCode}`
       );
       const r = await fetch(`https://api.allorigins.win/get?url=${target}`);
       if (r.ok) {
+        apiReachable = true;
         const wrapper = await r.json();
         const json = JSON.parse(wrapper.contents);
         if (json?.data?.account_name) accountName = json.data.account_name;
@@ -1488,13 +1501,14 @@ async function resolveWithdrawAccount(accountNumber, bankCode) {
     } catch (_) {}
   }
 
-  // Try 3: direct Paystack call (works if user opened the tab from Paystack origin or CORS allows)
-  if (!accountName) {
+  // Try 3: Direct Paystack call
+  if (!apiReachable) {
     try {
       const r = await fetch(
         `https://api.paystack.co/bank/resolve?account_number=${accountNumber}&bank_code=${bankCode}`,
         { headers: { 'Authorization': 'Bearer ' + PAYSTACK_PUBLIC_KEY } }
       );
+      apiReachable = true;
       if (r.ok) {
         const json = await r.json();
         if (json?.data?.account_name) accountName = json.data.account_name;
@@ -1502,17 +1516,23 @@ async function resolveWithdrawAccount(accountNumber, bankCode) {
     } catch (_) {}
   }
 
+  const bankName = document.getElementById('bank-display-text').textContent;
+
   if (accountName) {
-    const bankName = document.getElementById('bank-display-text').textContent;
-    withdrawResolvedAccount = { account_number: accountNumber, account_name: accountName, bank_code: bankCode, bank_name: bankName };
-    nameEl.textContent = '✓ ' + accountName;
-    nameEl.style.color = 'var(--brand)';
+    // ✅ Valid account — verified, allow withdrawal
+    withdrawResolvedAccount = { account_number: accountNumber, account_name: accountName, bank_code: bankCode, bank_name: bankName, verified: true };
+    nameEl.innerHTML = '<span style="color:var(--brand);font-weight:700">✓ ' + accountName + '</span>';
+    btn.disabled = false;
+  } else if (apiReachable) {
+    // ❌ API responded but found no match — account+bank combo is invalid, block withdrawal
+    withdrawResolvedAccount = null;
+    nameEl.innerHTML = '<span style="color:#dc2626;font-weight:600">❌ Invalid account — this account number does not match the selected bank.</span>';
+    btn.disabled = true;
   } else {
-    // Graceful fallback — let user proceed with manual entry, amber warning
-    const bankName = document.getElementById('bank-display-text').textContent;
-    withdrawResolvedAccount = { account_number: accountNumber, account_name: 'Unverified', bank_code: bankCode, bank_name: bankName };
-    nameEl.textContent = '⚠️ Could not auto-verify — please double-check details before withdrawing.';
-    nameEl.style.color = '#b45309';
+    // ⚠️ APIs all unreachable (network issue) — warn but allow, flag as unverified
+    withdrawResolvedAccount = { account_number: accountNumber, account_name: 'Unverified', bank_code: bankCode, bank_name: bankName, verified: false };
+    nameEl.innerHTML = '<span style="color:#b45309;">⚠️ Verification service unavailable — proceed only if you are sure of the details.</span>';
+    btn.disabled = false;
   }
 }
 
@@ -1530,9 +1550,16 @@ async function submitWithdrawal() {
     return;
   }
   if (!withdrawResolvedAccount) {
-    errEl.textContent = 'Please enter a valid 10-digit account number and wait for verification.';
+    errEl.textContent = 'Please enter a valid account number and wait for verification to complete.';
     errEl.style.display = 'block';
     return;
+  }
+  if (withdrawResolvedAccount.verified === false) {
+    // unverified (network issue) — warn once more but allow
+    const confirm = window.confirm(
+      'Account verification was unavailable. Are you sure the account number and bank are correct? Funds sent to a wrong account cannot be recovered.'
+    );
+    if (!confirm) return;
   }
   if (!amount || amount < 100) {
     errEl.textContent = 'Minimum withdrawal amount is ₦100.';
