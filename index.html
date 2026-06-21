@@ -1,0 +1,936 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>DigiPal Solutions</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --brand:#0F6E56;--brand-dark:#085041;--brand-light:#E1F5EE;
+  --accent:#EF9F27;--text:#1a1a1a;--text-muted:#555;
+  --bg:#fff;--bg2:#f7faf9;--border:#d6ede6;--radius:12px;
+  --shadow:0 2px 16px rgba(15,110,86,0.08);
+}
+html{scroll-behavior:smooth}
+body{font-family:'Segoe UI',system-ui,sans-serif;color:var(--text);background:var(--bg);line-height:1.6}
+a{text-decoration:none;color:inherit}
+img{max-width:100%;display:block}
+
+/* ── PAGES ── */
+.page{display:none}
+.page.active{display:block}
+
+/* ── NAV ── */
+nav{position:sticky;top:0;z-index:100;background:#fff;border-bottom:1px solid var(--border);padding:0 5%}
+.nav-inner{max-width:1100px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;height:64px}
+.logo{font-size:1.5rem;font-weight:700;color:var(--brand);cursor:pointer}
+.logo span{color:var(--accent)}
+.nav-links{display:flex;gap:2rem;font-size:.95rem;color:var(--text-muted)}
+.nav-links a:hover{color:var(--brand)}
+.nav-cta{display:flex;gap:.75rem;align-items:center}
+.btn{display:inline-flex;align-items:center;justify-content:center;padding:.55rem 1.4rem;border-radius:8px;font-size:.9rem;font-weight:600;cursor:pointer;transition:all .2s;border:none;gap:.4rem}
+.btn-outline{border:1.5px solid var(--brand);color:var(--brand);background:transparent}
+.btn-outline:hover{background:var(--brand-light)}
+.btn-primary{background:var(--brand);color:#fff}
+.btn-primary:hover{background:var(--brand-dark)}
+.btn-lg{padding:.8rem 2rem;font-size:1rem;border-radius:10px}
+.btn-accent{background:var(--accent);color:#fff}
+.btn-accent:hover{background:#d48a1e}
+.btn-danger{background:#dc2626;color:#fff}
+.btn-danger:hover{background:#b91c1c}
+.btn:disabled{opacity:.6;cursor:not-allowed}
+.nav-toggle{display:none;background:none;border:none;cursor:pointer;font-size:1.6rem;color:var(--brand)}
+
+/* ── HERO ── */
+.hero{background:linear-gradient(135deg,#04342C 0%,#0F6E56 60%,#1D9E75 100%);color:#fff;padding:80px 5% 60px;text-align:center}
+.hero-badge{display:inline-block;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);border-radius:999px;padding:.3rem 1rem;font-size:.8rem;letter-spacing:.05em;margin-bottom:1.5rem}
+.hero h1{font-size:clamp(1.8rem,5vw,3.2rem);font-weight:800;line-height:1.15;margin-bottom:1.2rem;max-width:700px;margin-left:auto;margin-right:auto}
+.hero h1 span{color:var(--accent)}
+.hero p{font-size:1.05rem;color:rgba(255,255,255,.85);max-width:580px;margin:0 auto 2rem}
+.hero-btns{display:flex;gap:1rem;justify-content:center;flex-wrap:wrap}
+.hero-stats{display:flex;justify-content:center;gap:3rem;margin-top:3.5rem;flex-wrap:wrap}
+.hero-stat{text-align:center}
+.hero-stat strong{display:block;font-size:1.8rem;font-weight:800;color:var(--accent)}
+.hero-stat span{font-size:.85rem;color:rgba(255,255,255,.7)}
+
+/* ── SECTIONS ── */
+section{padding:80px 5%}
+.section-inner{max-width:1100px;margin:0 auto}
+.section-label{display:inline-block;font-size:.78rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--brand);background:var(--brand-light);padding:.3rem .9rem;border-radius:999px;margin-bottom:1rem}
+.section-title{font-size:clamp(1.5rem,3vw,2.2rem);font-weight:800;margin-bottom:.6rem}
+.section-sub{font-size:1rem;color:var(--text-muted);max-width:540px}
+
+/* ── FEATURES ── */
+.features{background:var(--bg2)}
+.feat-header{text-align:center;margin-bottom:3rem}
+.feat-header .section-sub{margin:0 auto}
+.grid-3{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1.5rem}
+.feat-card{background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:1.75rem;transition:box-shadow .2s,transform .2s}
+.feat-card:hover{box-shadow:var(--shadow);transform:translateY(-3px)}
+.feat-icon{width:48px;height:48px;border-radius:10px;background:var(--brand-light);display:flex;align-items:center;justify-content:center;margin-bottom:1rem;font-size:1.4rem}
+.feat-card h3{font-size:1.05rem;font-weight:700;margin-bottom:.5rem}
+.feat-card p{font-size:.9rem;color:var(--text-muted);line-height:1.6}
+
+/* ── SHOWCASE ── */
+.showcase-row{display:grid;grid-template-columns:1fr 1fr;gap:4rem;align-items:center;margin-bottom:5rem}
+.showcase-row:last-child{margin-bottom:0}
+.showcase-row.reverse{direction:rtl}
+.showcase-row.reverse>*{direction:ltr}
+.showcase-img{border-radius:var(--radius);background:var(--brand-light);height:300px;display:flex;align-items:center;justify-content:center;font-size:5rem}
+.showcase-text h2{font-size:1.6rem;font-weight:800;margin-bottom:.8rem}
+.showcase-text p{color:var(--text-muted);margin-bottom:1.5rem}
+.check-list{list-style:none;display:flex;flex-direction:column;gap:.5rem}
+.check-list li{display:flex;align-items:center;gap:.6rem;font-size:.9rem}
+.check-list li::before{content:'✓';width:20px;height:20px;min-width:20px;background:var(--brand);color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.7rem}
+
+/* ── HOW IT WORKS ── */
+.how{background:var(--bg2)}
+.steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:2rem;margin-top:3rem}
+.step{text-align:center;padding:1.5rem}
+.step-num{width:52px;height:52px;border-radius:50%;background:var(--brand);color:#fff;font-size:1.2rem;font-weight:800;display:flex;align-items:center;justify-content:center;margin:0 auto 1rem}
+.step h3{font-size:1rem;font-weight:700;margin-bottom:.5rem}
+.step p{font-size:.88rem;color:var(--text-muted)}
+
+/* ── FAQ ── */
+.faq-list{margin-top:2.5rem;display:flex;flex-direction:column;gap:.75rem;max-width:760px}
+.faq-item{border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+.faq-q{width:100%;background:#fff;border:none;cursor:pointer;padding:1.1rem 1.25rem;font-size:.95rem;font-weight:600;text-align:left;display:flex;justify-content:space-between;align-items:center;color:var(--text);transition:background .15s}
+.faq-q:hover{background:var(--brand-light)}
+.faq-q .arrow{transition:transform .3s;font-size:1.1rem;color:var(--brand);flex-shrink:0}
+.faq-q.open .arrow{transform:rotate(180deg)}
+.faq-a{display:none;padding:0 1.25rem 1.1rem;font-size:.9rem;color:var(--text-muted);line-height:1.7}
+.faq-a.open{display:block}
+
+/* ── CTA BANNER ── */
+.cta-banner{background:linear-gradient(135deg,#04342C,#0F6E56);color:#fff;text-align:center;padding:80px 5%}
+.cta-banner h2{font-size:clamp(1.5rem,3vw,2.4rem);font-weight:800;margin-bottom:.8rem}
+.cta-banner p{color:rgba(255,255,255,.8);margin-bottom:2rem}
+.cta-banner-btns{display:flex;gap:1rem;justify-content:center;flex-wrap:wrap}
+
+/* ── FOOTER ── */
+footer{background:#04342C;color:rgba(255,255,255,.75);padding:3rem 5% 1.5rem}
+.footer-inner{max-width:1100px;margin:0 auto}
+.footer-top{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:2rem;margin-bottom:2.5rem}
+.footer-brand .logo{color:#fff;margin-bottom:.75rem}
+.footer-brand p{font-size:.88rem;line-height:1.6}
+.footer-col h4{font-size:.82rem;font-weight:700;color:#fff;margin-bottom:1rem;letter-spacing:.06em;text-transform:uppercase}
+.footer-col a{display:block;font-size:.88rem;margin-bottom:.5rem;color:rgba(255,255,255,.6);transition:color .2s}
+.footer-col a:hover{color:#fff}
+.footer-divider{border:none;border-top:1px solid rgba(255,255,255,.1);margin:0 0 1.2rem}
+.footer-bottom{display:flex;justify-content:space-between;align-items:center;font-size:.82rem;flex-wrap:wrap;gap:.5rem}
+.socials{display:flex;gap:.75rem;margin-top:1rem}
+.socials a{width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center;font-size:.8rem;transition:background .2s}
+.socials a:hover{background:var(--brand)}
+
+/* ── AUTH PAGES ── */
+.auth-page{min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--bg2);padding:2rem 1rem}
+.auth-box{background:#fff;border-radius:16px;border:1px solid var(--border);padding:2.5rem;width:100%;max-width:440px}
+.auth-logo{font-size:1.6rem;font-weight:800;color:var(--brand);margin-bottom:1.75rem;display:block}
+.auth-logo span{color:var(--accent)}
+.auth-box h2{font-size:1.5rem;font-weight:800;margin-bottom:.3rem}
+.auth-box .sub{color:var(--text-muted);font-size:.9rem;margin-bottom:1.75rem}
+.form-group{margin-bottom:1rem}
+.form-group label{display:block;font-size:.85rem;font-weight:600;margin-bottom:.4rem}
+.form-group input{width:100%;padding:.65rem .9rem;border:1.5px solid var(--border);border-radius:8px;font-size:.95rem;outline:none;transition:border .2s;color:var(--text)}
+.form-group input:focus{border-color:var(--brand)}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:.75rem}
+.auth-switch{text-align:center;margin-top:1.25rem;font-size:.85rem;color:var(--text-muted)}
+.auth-switch a{color:var(--brand);font-weight:600;cursor:pointer}
+.auth-switch a:hover{text-decoration:underline}
+.alert{padding:.75rem 1rem;border-radius:8px;font-size:.88rem;margin-bottom:1rem;display:none}
+.alert.show{display:block}
+.alert-error{background:#fef2f2;border:1px solid #fecaca;color:#dc2626}
+.alert-success{background:#f0fdf4;border:1px solid #bbf7d0;color:#15803d}
+.alert-info{background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8}
+
+/* ── VERIFY PAGE ── */
+.verify-box{text-align:center;max-width:420px}
+.verify-icon{font-size:4rem;margin-bottom:1rem}
+.verify-box h2{font-size:1.5rem;font-weight:800;margin-bottom:.75rem}
+.verify-box p{color:var(--text-muted);font-size:.95rem;margin-bottom:1.5rem}
+
+/* ── DASHBOARD ── */
+.dash-layout{display:flex;min-height:100vh;background:var(--bg2)}
+.sidebar{width:240px;background:#fff;border-right:1px solid var(--border);display:flex;flex-direction:column;padding:1.5rem 0;position:fixed;top:0;left:0;height:100vh;z-index:50}
+.sidebar-logo{font-size:1.3rem;font-weight:800;color:var(--brand);padding:0 1.5rem 1.5rem;border-bottom:1px solid var(--border);margin-bottom:1rem}
+.sidebar-logo span{color:var(--accent)}
+.sidebar-nav{display:flex;flex-direction:column;flex:1;padding:0 .75rem}
+.nav-item{display:flex;align-items:center;gap:.75rem;padding:.7rem .85rem;border-radius:8px;font-size:.9rem;font-weight:500;color:var(--text-muted);cursor:pointer;transition:all .15s;margin-bottom:.15rem}
+.nav-item:hover{background:var(--brand-light);color:var(--brand)}
+.nav-item.active{background:var(--brand-light);color:var(--brand);font-weight:600}
+.nav-item .ni{font-size:1.1rem}
+.sidebar-footer{padding:1rem 1.5rem;border-top:1px solid var(--border);margin-top:auto}
+.user-chip{display:flex;align-items:center;gap:.65rem}
+.avatar{width:36px;height:36px;border-radius:50%;background:var(--brand);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.9rem;flex-shrink:0}
+.user-info{overflow:hidden}
+.user-name{font-size:.85rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.user-email{font-size:.75rem;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dash-main{margin-left:240px;flex:1;padding:2rem}
+.dash-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:2rem;flex-wrap:wrap;gap:1rem}
+.dash-header h1{font-size:1.5rem;font-weight:800}
+.dash-header p{color:var(--text-muted);font-size:.9rem;margin-top:.15rem}
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem;margin-bottom:2rem}
+.stat-card{background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem 1.5rem}
+.stat-label{font-size:.8rem;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:.4rem}
+.stat-value{font-size:1.8rem;font-weight:800;color:var(--text)}
+.stat-value.green{color:var(--brand)}
+.stat-sub{font-size:.78rem;color:var(--text-muted);margin-top:.2rem}
+.dash-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-bottom:1.5rem}
+.dash-card{background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:1.5rem}
+.dash-card h3{font-size:1rem;font-weight:700;margin-bottom:1.25rem;display:flex;align-items:center;gap:.5rem}
+.service-grid{display:grid;grid-template-columns:1fr 1fr;gap:.75rem}
+.service-btn{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:1rem;text-align:center;cursor:pointer;transition:all .2s;display:flex;flex-direction:column;align-items:center;gap:.4rem}
+.service-btn:hover{border-color:var(--brand);background:var(--brand-light)}
+.service-btn .sico{font-size:1.5rem}
+.service-btn span{font-size:.8rem;font-weight:600;color:var(--text)}
+.tx-list{display:flex;flex-direction:column;gap:.6rem}
+.tx-item{display:flex;align-items:center;justify-content:space-between;padding:.6rem 0;border-bottom:1px solid var(--border)}
+.tx-item:last-child{border-bottom:none}
+.tx-left{display:flex;align-items:center;gap:.65rem}
+.tx-icon{width:36px;height:36px;border-radius:50%;background:var(--brand-light);display:flex;align-items:center;justify-content:center;font-size:.9rem;flex-shrink:0}
+.tx-desc{font-size:.85rem;font-weight:600}
+.tx-date{font-size:.75rem;color:var(--text-muted)}
+.tx-amount{font-size:.9rem;font-weight:700}
+.tx-amount.cr{color:var(--brand)}
+.tx-amount.dr{color:#dc2626}
+.wallet-card{background:linear-gradient(135deg,#04342C,#0F6E56);color:#fff;border-radius:14px;padding:1.5rem;margin-bottom:1rem}
+.wallet-label{font-size:.8rem;color:rgba(255,255,255,.7);margin-bottom:.3rem}
+.wallet-amount{font-size:2rem;font-weight:800}
+.wallet-actions{display:flex;gap:.75rem;margin-top:1rem}
+.wallet-btn{flex:1;padding:.6rem;border-radius:8px;font-size:.85rem;font-weight:600;cursor:pointer;text-align:center;transition:all .2s}
+.wallet-btn-primary{background:rgba(255,255,255,.2);color:#fff;border:1px solid rgba(255,255,255,.3)}
+.wallet-btn-primary:hover{background:rgba(255,255,255,.3)}
+.profile-section{background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:1.75rem;margin-bottom:1.5rem}
+.profile-section h3{font-size:1rem;font-weight:700;margin-bottom:1.25rem;padding-bottom:.75rem;border-bottom:1px solid var(--border)}
+.profile-avatar-row{display:flex;align-items:center;gap:1.25rem;margin-bottom:1.5rem}
+.avatar-lg{width:72px;height:72px;border-radius:50%;background:var(--brand);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1.6rem;flex-shrink:0}
+.profile-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+.dash-tab{display:none}
+.dash-tab.active{display:block}
+
+/* ── TOPBAR MOBILE ── */
+.dash-topbar{display:none;align-items:center;justify-content:space-between;padding:1rem 1.25rem;background:#fff;border-bottom:1px solid var(--border);position:sticky;top:0;z-index:40}
+.sidebar-toggle{background:none;border:none;font-size:1.4rem;cursor:pointer;color:var(--brand)}
+.sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:45}
+.sidebar-overlay.show{display:block}
+
+/* ── RESPONSIVE ── */
+@media(max-width:1024px){
+  .footer-top{grid-template-columns:1fr 1fr}
+  .dash-grid{grid-template-columns:1fr}
+}
+@media(max-width:900px){
+  .sidebar{transform:translateX(-100%);transition:transform .25s}
+  .sidebar.open{transform:translateX(0)}
+  .dash-main{margin-left:0}
+  .dash-topbar{display:flex}
+}
+@media(max-width:768px){
+  .nav-links,.nav-cta{display:none}
+  .nav-toggle{display:block}
+  .nav-mobile{display:none;flex-direction:column;gap:.75rem;padding:1rem 5% 1.5rem;background:#fff;border-bottom:1px solid var(--border)}
+  .nav-mobile.show{display:flex}
+  .nav-mobile a{color:var(--text);font-weight:500;padding:.4rem 0;border-bottom:1px solid var(--border)}
+  .nav-mobile .btn{text-align:center;width:100%;display:block;padding:.7rem}
+  section{padding:52px 5%}
+  .cta-banner{padding:52px 5%}
+  .hero{padding:52px 5% 40px}
+  .hero-btns{flex-direction:column;align-items:stretch}
+  .hero-btns .btn{text-align:center;width:100%}
+  .hero-stats{gap:1.2rem;margin-top:2.5rem}
+  .hero-stat strong{font-size:1.4rem}
+  .grid-3{grid-template-columns:1fr}
+  .showcase-row{grid-template-columns:1fr;gap:2rem;margin-bottom:3rem}
+  .showcase-row.reverse{direction:ltr}
+  .showcase-img{height:200px;font-size:3rem}
+  .steps{grid-template-columns:1fr 1fr;gap:1.25rem}
+  .faq-list{max-width:100%}
+  .cta-banner h2{font-size:1.4rem}
+  .cta-banner-btns{flex-direction:column;align-items:stretch}
+  .cta-banner-btns .btn{text-align:center;width:100%}
+  .footer-top{grid-template-columns:1fr}
+  .footer-bottom{flex-direction:column;text-align:center}
+  .form-row{grid-template-columns:1fr}
+  .profile-grid{grid-template-columns:1fr}
+  .stats-grid{grid-template-columns:1fr 1fr}
+  .service-grid{grid-template-columns:1fr 1fr}
+  .dash-main{padding:1.25rem}
+}
+@media(max-width:420px){
+  .hero h1{font-size:1.55rem}
+  .steps{grid-template-columns:1fr}
+  .hero-stats{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+  .hero-stat{background:rgba(255,255,255,.08);border-radius:10px;padding:.75rem}
+  .stats-grid{grid-template-columns:1fr}
+  .auth-box{padding:1.75rem 1.25rem}
+}
+</style>
+</head>
+<body>
+
+<!-- ══════════════ LANDING PAGE ══════════════ -->
+<div class="page active" id="page-landing">
+<nav>
+  <div class="nav-inner">
+    <span class="logo" onclick="showPage('landing')">Digi<span>Pal</span>.</span>
+    <div class="nav-links">
+      <a href="#features">Features</a>
+      <a href="#how">How It Works</a>
+      <a href="#services">Services</a>
+      <a href="#faq">FAQ</a>
+    </div>
+    <div class="nav-cta">
+      <button class="btn btn-outline" onclick="showPage('login')">Log In</button>
+      <button class="btn btn-primary" onclick="showPage('register')">Get Started</button>
+    </div>
+    <button class="nav-toggle" id="navToggle">&#9776;</button>
+  </div>
+  <div class="nav-mobile" id="navMobile">
+    <a href="#features" onclick="closeMobileNav()">Features</a>
+    <a href="#how" onclick="closeMobileNav()">How It Works</a>
+    <a href="#services" onclick="closeMobileNav()">Services</a>
+    <a href="#faq" onclick="closeMobileNav()">FAQ</a>
+    <button class="btn btn-outline" onclick="showPage('login')">Log In</button>
+    <button class="btn btn-primary" onclick="showPage('register')">Get Started</button>
+  </div>
+</nav>
+
+<section class="hero">
+  <div class="hero-badge">🇳🇬 Nigeria's #1 Digital Platform</div>
+  <h1>Premium Digital <span>Solutions</span> for Smart Nigerians</h1>
+  <p>Your all-in-one platform for leads generation, business visibility, social media growth, digital courses, e-commerce, and instant VTU services.</p>
+  <div class="hero-btns">
+    <button class="btn btn-accent btn-lg" onclick="showPage('register')">Get Started Free</button>
+    <button class="btn btn-lg" style="color:#fff;border:1.5px solid rgba(255,255,255,.5);background:transparent" onclick="showPage('login')">Login Dashboard</button>
+  </div>
+  <div class="hero-stats">
+    <div class="hero-stat"><strong>50,000+</strong><span>Active Users</span></div>
+    <div class="hero-stat"><strong>₦2B+</strong><span>Transactions</span></div>
+    <div class="hero-stat"><strong>99.9%</strong><span>Uptime</span></div>
+    <div class="hero-stat"><strong>6</strong><span>Core Services</span></div>
+  </div>
+</section>
+
+<section class="features" id="features">
+  <div class="section-inner">
+    <div class="feat-header">
+      <div class="section-label">Platform Features</div>
+      <h2 class="section-title">Everything You Need for Digital Growth</h2>
+      <p class="section-sub">Access powerful tools to grow your business, income, and digital presence — all in one place.</p>
+    </div>
+    <div class="grid-3">
+      <div class="feat-card"><div class="feat-icon">🎯</div><h3>Leads Generation</h3><p>Connect with high-quality leads and potential customers to accelerate your business growth across Nigeria.</p></div>
+      <div class="feat-card"><div class="feat-icon">📢</div><h3>Business Visibility</h3><p>Increase your brand awareness and reach a wider audience across the Nigerian digital space effectively.</p></div>
+      <div class="feat-card"><div class="feat-icon">📱</div><h3>Social Media Growth</h3><p>Professional tools and strategies to scale your social media presence and audience organically.</p></div>
+      <div class="feat-card"><div class="feat-icon">🎓</div><h3>Digital Courses</h3><p>Master high-income digital skills through our curated expert-led courses and mentorship programs.</p></div>
+      <div class="feat-card"><div class="feat-icon">🛍️</div><h3>Marketplace</h3><p>Buy and sell products seamlessly on our premium e-commerce marketplace with thousands of buyers.</p></div>
+      <div class="feat-card"><div class="feat-icon">⚡</div><h3>VTU Services</h3><p>Instant airtime, data, cable TV, and utility bill payments across all Nigerian networks with zero downtime.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="services">
+  <div class="section-inner">
+    <div class="showcase-row">
+      <div class="showcase-img">📡</div>
+      <div class="showcase-text">
+        <div class="section-label">Instant Top-up</div>
+        <h2>Airtime & Data Recharge</h2>
+        <p>Never run out of talk time again. Top up your phone or send airtime to loved ones instantly across all Nigerian networks.</p>
+        <ul class="check-list">
+          <li>All networks — MTN, Airtel, Glo, 9mobile</li>
+          <li>Instant delivery, no delays</li>
+          <li>Cheapest data bundles available</li>
+          <li>Send to any number in Nigeria</li>
+        </ul>
+      </div>
+    </div>
+    <div class="showcase-row reverse">
+      <div class="showcase-img">📺</div>
+      <div class="showcase-text">
+        <div class="section-label">Cable TV</div>
+        <h2>Smart Cable TV Payments</h2>
+        <p>Stay connected to your favourite shows. Renew DStv, GOtv, and StarTimes subscriptions in seconds.</p>
+        <ul class="check-list">
+          <li>DStv, GOtv & StarTimes supported</li>
+          <li>All bouquets and add-ons</li>
+          <li>Instant activation after payment</li>
+          <li>24/7 customer support</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="how" id="how">
+  <div class="section-inner">
+    <div class="section-label">Simple Process</div>
+    <h2 class="section-title">How It Works</h2>
+    <p class="section-sub">Get started in minutes. No technical knowledge required.</p>
+    <div class="steps">
+      <div class="step"><div class="step-num">1</div><h3>Create Account</h3><p>Sign up for free in under 2 minutes. No credit card required.</p></div>
+      <div class="step"><div class="step-num">2</div><h3>Verify Your Email</h3><p>Click the verification link sent to your email to activate your account.</p></div>
+      <div class="step"><div class="step-num">3</div><h3>Fund Your Wallet</h3><p>Add funds to your DigiPal wallet using any Nigerian bank or card.</p></div>
+      <div class="step"><div class="step-num">4</div><h3>Grow & Earn</h3><p>Access all services, earn commissions, and scale your digital business.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="faq">
+  <div class="section-inner">
+    <div class="section-label">FAQ</div>
+    <h2 class="section-title">Common Questions</h2>
+    <div class="faq-list">
+      <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)">How does DigiPal work? <span class="arrow">&#8964;</span></button><div class="faq-a">DigiPal is an all-in-one platform. Create a free account, fund your wallet, and access VTU services, digital courses, leads generation, the marketplace, and more from a single dashboard.</div></div>
+      <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)">Is it free to sign up? <span class="arrow">&#8964;</span></button><div class="faq-a">Yes! Registration is completely free. You only pay when you use services or purchase products. No hidden monthly fees for basic access.</div></div>
+      <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)">Which networks are supported for VTU? <span class="arrow">&#8964;</span></button><div class="faq-a">We support all major Nigerian networks: MTN, Airtel, Glo, and 9mobile — for airtime and data bundles. Cable TV includes DStv, GOtv, and StarTimes.</div></div>
+      <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)">How quickly are transactions processed? <span class="arrow">&#8964;</span></button><div class="faq-a">All VTU transactions are processed instantly — typically within seconds. Our platform guarantees 99.9% uptime.</div></div>
+      <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)">Can I earn money on DigiPal? <span class="arrow">&#8964;</span></button><div class="faq-a">Yes! Earn through our referral program, selling on the marketplace, reselling VTU services, and completing digital skill courses that open higher-income opportunities.</div></div>
+      <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)">Is my money and data safe? <span class="arrow">&#8964;</span></button><div class="faq-a">Absolutely. We use bank-grade SSL encryption to protect all transactions and personal data. Your wallet funds are secured and we never share your information with third parties.</div></div>
+    </div>
+  </div>
+</section>
+
+<section class="cta-banner">
+  <h2>Ready to Join Thousands of Smart Users?</h2>
+  <p>Create your free account and start exploring DigiPal today.</p>
+  <div class="cta-banner-btns">
+    <button class="btn btn-accent btn-lg" onclick="showPage('register')">Get Started — It's Free</button>
+    <button class="btn btn-lg" style="color:#fff;border:1.5px solid rgba(255,255,255,.4);background:transparent" onclick="showPage('login')">Already have an account?</button>
+  </div>
+</section>
+
+<footer>
+  <div class="footer-inner">
+    <div class="footer-top">
+      <div class="footer-brand">
+        <span class="logo" style="color:#fff;cursor:pointer" onclick="showPage('landing')">DigiPal.</span>
+        <p style="margin-top:.75rem">Your all-in-one platform for digital growth, VTU services, and business expansion in Nigeria.</p>
+        <div class="socials">
+          <a href="#" aria-label="Facebook">f</a>
+          <a href="#" aria-label="Twitter">𝕏</a>
+          <a href="#" aria-label="Instagram">ig</a>
+          <a href="#" aria-label="TikTok">tt</a>
+        </div>
+      </div>
+      <div class="footer-col"><h4>Platform</h4><a href="#features">Features</a><a href="#how">How It Works</a><a href="#services">Services</a><a href="#faq">FAQ</a></div>
+      <div class="footer-col"><h4>Services</h4><a href="#">VTU & Airtime</a><a href="#">Data Bundles</a><a href="#">Cable TV</a><a href="#">Digital Courses</a><a href="#">Marketplace</a></div>
+      <div class="footer-col"><h4>Company</h4><a href="#">About Us</a><a href="#">Contact</a><a href="#">Privacy Policy</a><a href="#">Terms of Service</a></div>
+    </div>
+    <hr class="footer-divider"/>
+    <div class="footer-bottom"><span>© 2026 DigiPal Solutions. All rights reserved.</span><span>Made with ❤️ for Nigeria</span></div>
+  </div>
+</footer>
+</div>
+
+<!-- ══════════════ REGISTER PAGE ══════════════ -->
+<div class="page" id="page-register">
+<div class="auth-page">
+  <div class="auth-box">
+    <span class="auth-logo" onclick="showPage('landing')" style="cursor:pointer">Digi<span>Pal</span>.</span>
+    <h2>Create Your Account</h2>
+    <p class="sub">Join thousands of smart Nigerians on DigiPal</p>
+    <div class="alert alert-error" id="reg-error"></div>
+    <div class="alert alert-success" id="reg-success"></div>
+    <div class="form-row">
+      <div class="form-group"><label>First Name</label><input type="text" id="reg-firstname" placeholder="John"/></div>
+      <div class="form-group"><label>Last Name</label><input type="text" id="reg-lastname" placeholder="Doe"/></div>
+    </div>
+    <div class="form-group"><label>Email Address</label><input type="email" id="reg-email" placeholder="you@example.com"/></div>
+    <div class="form-group"><label>Phone Number</label><input type="tel" id="reg-phone" placeholder="08012345678"/></div>
+    <div class="form-group"><label>Password</label><input type="password" id="reg-password" placeholder="Minimum 6 characters"/></div>
+    <div class="form-group"><label>Referral Code <span style="color:var(--text-muted);font-weight:400">(optional)</span></label><input type="text" id="reg-ref" placeholder="e.g. DGP-12345"/></div>
+    <button class="btn btn-primary" style="width:100%;padding:.75rem;font-size:1rem;margin-top:.25rem" id="reg-btn" onclick="handleRegister()">Create Account — Free</button>
+    <p class="auth-switch">Already have an account? <a onclick="showPage('login')">Log in</a></p>
+  </div>
+</div>
+</div>
+
+<!-- ══════════════ VERIFY EMAIL PAGE ══════════════ -->
+<div class="page" id="page-verify">
+<div class="auth-page">
+  <div class="auth-box verify-box">
+    <span class="auth-logo" onclick="showPage('landing')" style="cursor:pointer">Digi<span>Pal</span>.</span>
+    <div class="verify-icon">📬</div>
+    <h2>Check Your Email</h2>
+    <p>We've sent a verification link to <strong id="verify-email-display"></strong>. Click the link in that email to activate your account.</p>
+    <div class="alert alert-info show">Make sure to check your spam/junk folder if you don't see it within a minute.</div>
+    <button class="btn btn-primary btn-lg" style="width:100%;margin-top:.5rem" onclick="resendVerification()">Resend Verification Email</button>
+    <p class="auth-switch" style="margin-top:1rem">Already verified? <a onclick="showPage('login')">Log in</a></p>
+  </div>
+</div>
+</div>
+
+<!-- ══════════════ LOGIN PAGE ══════════════ -->
+<div class="page" id="page-login">
+<div class="auth-page">
+  <div class="auth-box">
+    <span class="auth-logo" onclick="showPage('landing')" style="cursor:pointer">Digi<span>Pal</span>.</span>
+    <h2>Welcome Back</h2>
+    <p class="sub">Log in to your DigiPal dashboard</p>
+    <div class="alert alert-error" id="login-error"></div>
+    <div class="alert alert-success" id="login-success"></div>
+    <div class="form-group"><label>Email Address</label><input type="email" id="login-email" placeholder="you@example.com"/></div>
+    <div class="form-group"><label>Password</label><input type="password" id="login-password" placeholder="••••••••"/></div>
+    <button class="btn btn-primary" style="width:100%;padding:.75rem;font-size:1rem;margin-top:.25rem" id="login-btn" onclick="handleLogin()">Log In</button>
+    <p class="auth-switch">Don't have an account? <a onclick="showPage('register')">Sign up free</a></p>
+  </div>
+</div>
+</div>
+
+<!-- ══════════════ DASHBOARD ══════════════ -->
+<div class="page" id="page-dashboard">
+<div class="dash-layout">
+
+  <!-- Mobile topbar -->
+  <div class="dash-topbar">
+    <button class="sidebar-toggle" onclick="toggleSidebar()">&#9776;</button>
+    <span class="logo">Digi<span>Pal</span>.</span>
+    <button class="btn btn-danger" style="padding:.4rem .9rem;font-size:.8rem" onclick="handleLogout()">Logout</button>
+  </div>
+
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+
+  <!-- Sidebar -->
+  <div class="sidebar" id="sidebar">
+    <div class="sidebar-logo">Digi<span>Pal</span>.</div>
+    <div class="sidebar-nav">
+      <div class="nav-item active" onclick="switchTab('overview')"><span class="ni">🏠</span> Overview</div>
+      <div class="nav-item" onclick="switchTab('wallet')"><span class="ni">💰</span> Wallet</div>
+      <div class="nav-item" onclick="switchTab('vtu')"><span class="ni">⚡</span> VTU Services</div>
+      <div class="nav-item" onclick="switchTab('courses')"><span class="ni">🎓</span> Courses</div>
+      <div class="nav-item" onclick="switchTab('marketplace')"><span class="ni">🛍️</span> Marketplace</div>
+      <div class="nav-item" onclick="switchTab('profile')"><span class="ni">👤</span> Profile</div>
+    </div>
+    <div class="sidebar-footer">
+      <div class="user-chip">
+        <div class="avatar" id="sb-avatar">?</div>
+        <div class="user-info">
+          <div class="user-name" id="sb-name">Loading...</div>
+          <div class="user-email" id="sb-email">—</div>
+        </div>
+      </div>
+      <button class="btn btn-danger" style="width:100%;margin-top:.85rem;padding:.55rem" onclick="handleLogout()">Log Out</button>
+    </div>
+  </div>
+
+  <!-- Main content -->
+  <div class="dash-main">
+
+    <!-- OVERVIEW TAB -->
+    <div class="dash-tab active" id="tab-overview">
+      <div class="dash-header">
+        <div><h1>👋 Welcome back, <span id="dash-firstname">there</span>!</h1><p>Here's what's happening on your account today.</p></div>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-label">Wallet Balance</div><div class="stat-value green">₦0.00</div><div class="stat-sub">Fund your wallet to get started</div></div>
+        <div class="stat-card"><div class="stat-label">Transactions</div><div class="stat-value">0</div><div class="stat-sub">No transactions yet</div></div>
+        <div class="stat-card"><div class="stat-label">Referrals</div><div class="stat-value">0</div><div class="stat-sub">Invite friends to earn</div></div>
+        <div class="stat-card"><div class="stat-label">Courses Enrolled</div><div class="stat-value">0</div><div class="stat-sub">Start learning today</div></div>
+      </div>
+      <div class="dash-grid">
+        <div class="dash-card">
+          <h3>⚡ Quick Services</h3>
+          <div class="service-grid">
+            <div class="service-btn" onclick="switchTab('vtu')"><span class="sico">📞</span><span>Buy Airtime</span></div>
+            <div class="service-btn" onclick="switchTab('vtu')"><span class="sico">📶</span><span>Buy Data</span></div>
+            <div class="service-btn" onclick="switchTab('vtu')"><span class="sico">📺</span><span>Cable TV</span></div>
+            <div class="service-btn" onclick="switchTab('wallet')"><span class="sico">💳</span><span>Fund Wallet</span></div>
+          </div>
+        </div>
+        <div class="dash-card">
+          <h3>📋 Recent Transactions</h3>
+          <div class="tx-list">
+            <div style="text-align:center;padding:2rem 0;color:var(--text-muted);font-size:.9rem">
+              <div style="font-size:2rem;margin-bottom:.5rem">📭</div>
+              No transactions yet.<br>Fund your wallet to get started.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- WALLET TAB -->
+    <div class="dash-tab" id="tab-wallet">
+      <div class="dash-header"><div><h1>💰 My Wallet</h1><p>Manage your DigiPal wallet balance.</p></div></div>
+      <div style="max-width:480px">
+        <div class="wallet-card">
+          <div class="wallet-label">Available Balance</div>
+          <div class="wallet-amount">₦0.00</div>
+          <div class="wallet-actions">
+            <div class="wallet-btn wallet-btn-primary" onclick="alert('Payment gateway integration coming soon!')">+ Fund Wallet</div>
+            <div class="wallet-btn wallet-btn-primary" onclick="alert('Withdrawal coming soon!')">Withdraw</div>
+          </div>
+        </div>
+        <div class="dash-card"><h3>Transaction History</h3><div style="text-align:center;padding:2rem;color:var(--text-muted);font-size:.9rem">📭 No transactions yet.</div></div>
+      </div>
+    </div>
+
+    <!-- VTU TAB -->
+    <div class="dash-tab" id="tab-vtu">
+      <div class="dash-header"><div><h1>⚡ VTU Services</h1><p>Instant airtime, data, and bill payments.</p></div></div>
+      <div class="dash-grid">
+        <div class="dash-card">
+          <h3>📞 Buy Airtime</h3>
+          <div class="form-group"><label>Network</label>
+            <select style="width:100%;padding:.65rem .9rem;border:1.5px solid var(--border);border-radius:8px;font-size:.9rem;outline:none;color:var(--text)">
+              <option>MTN</option><option>Airtel</option><option>Glo</option><option>9mobile</option>
+            </select>
+          </div>
+          <div class="form-group"><label>Phone Number</label><input type="tel" placeholder="08012345678"/></div>
+          <div class="form-group"><label>Amount (₦)</label><input type="number" placeholder="100"/></div>
+          <button class="btn btn-primary" style="width:100%" onclick="alert('Fund your wallet first to use this service.')">Buy Airtime</button>
+        </div>
+        <div class="dash-card">
+          <h3>📶 Buy Data</h3>
+          <div class="form-group"><label>Network</label>
+            <select style="width:100%;padding:.65rem .9rem;border:1.5px solid var(--border);border-radius:8px;font-size:.9rem;outline:none;color:var(--text)">
+              <option>MTN</option><option>Airtel</option><option>Glo</option><option>9mobile</option>
+            </select>
+          </div>
+          <div class="form-group"><label>Phone Number</label><input type="tel" placeholder="08012345678"/></div>
+          <div class="form-group"><label>Data Plan</label>
+            <select style="width:100%;padding:.65rem .9rem;border:1.5px solid var(--border);border-radius:8px;font-size:.9rem;outline:none;color:var(--text)">
+              <option>500MB — ₦150</option><option>1GB — ₦265</option><option>2GB — ₦460</option><option>5GB — ₦1,200</option><option>10GB — ₦2,000</option>
+            </select>
+          </div>
+          <button class="btn btn-primary" style="width:100%" onclick="alert('Fund your wallet first to use this service.')">Buy Data</button>
+        </div>
+        <div class="dash-card">
+          <h3>📺 Cable TV</h3>
+          <div class="form-group"><label>Provider</label>
+            <select style="width:100%;padding:.65rem .9rem;border:1.5px solid var(--border);border-radius:8px;font-size:.9rem;outline:none;color:var(--text)">
+              <option>DStv</option><option>GOtv</option><option>StarTimes</option>
+            </select>
+          </div>
+          <div class="form-group"><label>Smart Card Number</label><input type="text" placeholder="Enter smart card number"/></div>
+          <div class="form-group"><label>Package</label>
+            <select style="width:100%;padding:.65rem .9rem;border:1.5px solid var(--border);border-radius:8px;font-size:.9rem;outline:none;color:var(--text)">
+              <option>Padi — ₦2,565</option><option>Yanga — ₦3,090</option><option>Confam — ₦5,140</option><option>Compact — ₦9,800</option><option>Premium — ₦29,500</option>
+            </select>
+          </div>
+          <button class="btn btn-primary" style="width:100%" onclick="alert('Fund your wallet first to use this service.')">Pay Now</button>
+        </div>
+        <div class="dash-card">
+          <h3>💡 Electricity Bill</h3>
+          <div class="form-group"><label>Disco</label>
+            <select style="width:100%;padding:.65rem .9rem;border:1.5px solid var(--border);border-radius:8px;font-size:.9rem;outline:none;color:var(--text)">
+              <option>EKEDC (Eko)</option><option>IKEDC (Ikeja)</option><option>AEDC (Abuja)</option><option>PHEDC (Port Harcourt)</option>
+            </select>
+          </div>
+          <div class="form-group"><label>Meter Number</label><input type="text" placeholder="Enter meter number"/></div>
+          <div class="form-group"><label>Amount (₦)</label><input type="number" placeholder="1000"/></div>
+          <button class="btn btn-primary" style="width:100%" onclick="alert('Fund your wallet first to use this service.')">Pay Bill</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- COURSES TAB -->
+    <div class="dash-tab" id="tab-courses">
+      <div class="dash-header"><div><h1>🎓 Digital Courses</h1><p>Master high-income digital skills.</p></div></div>
+      <div class="grid-3">
+        <div class="feat-card"><div class="feat-icon">💻</div><h3>Freelancing Mastery</h3><p>Learn how to earn $500–$5,000/month freelancing on Upwork, Fiverr, and Toptal.</p><button class="btn btn-primary" style="margin-top:1rem;width:100%" onclick="alert('Enrol to access this course.')">Enrol — ₦5,000</button></div>
+        <div class="feat-card"><div class="feat-icon">📊</div><h3>Digital Marketing</h3><p>Master Facebook Ads, Google Ads, SEO, and content marketing to grow any business.</p><button class="btn btn-primary" style="margin-top:1rem;width:100%" onclick="alert('Enrol to access this course.')">Enrol — ₦7,500</button></div>
+        <div class="feat-card"><div class="feat-icon">🎨</div><h3>Graphics Design</h3><p>From Canva to Adobe Illustrator — build a design skill set clients will pay for.</p><button class="btn btn-primary" style="margin-top:1rem;width:100%" onclick="alert('Enrol to access this course.')">Enrol — ₦4,500</button></div>
+        <div class="feat-card"><div class="feat-icon">📹</div><h3>Video Editing</h3><p>Edit professional videos using CapCut and Premiere Pro for content creators and brands.</p><button class="btn btn-primary" style="margin-top:1rem;width:100%" onclick="alert('Enrol to access this course.')">Enrol — ₦6,000</button></div>
+        <div class="feat-card"><div class="feat-icon">🤖</div><h3>AI for Business</h3><p>Use AI tools like ChatGPT, Claude, and Midjourney to 10× your productivity and income.</p><button class="btn btn-primary" style="margin-top:1rem;width:100%" onclick="alert('Enrol to access this course.')">Enrol — ₦8,000</button></div>
+        <div class="feat-card"><div class="feat-icon">🛒</div><h3>E-Commerce & Dropshipping</h3><p>Build a profitable online store and start selling products without holding inventory.</p><button class="btn btn-primary" style="margin-top:1rem;width:100%" onclick="alert('Enrol to access this course.')">Enrol — ₦9,500</button></div>
+      </div>
+    </div>
+
+    <!-- MARKETPLACE TAB -->
+    <div class="dash-tab" id="tab-marketplace">
+      <div class="dash-header"><div><h1>🛍️ Marketplace</h1><p>Buy and sell products with thousands of Nigerians.</p></div></div>
+      <div style="text-align:center;padding:4rem 2rem;background:#fff;border:1px solid var(--border);border-radius:var(--radius)">
+        <div style="font-size:3.5rem;margin-bottom:1rem">🚀</div>
+        <h3 style="font-size:1.3rem;font-weight:700;margin-bottom:.5rem">Marketplace Coming Soon</h3>
+        <p style="color:var(--text-muted);max-width:380px;margin:0 auto 1.5rem">We're building something amazing. Be the first to know when it launches.</p>
+        <button class="btn btn-primary" onclick="alert('You\'ll be notified when the marketplace launches!')">Notify Me</button>
+      </div>
+    </div>
+
+    <!-- PROFILE TAB -->
+    <div class="dash-tab" id="tab-profile">
+      <div class="dash-header"><div><h1>👤 My Profile</h1><p>Manage your account information.</p></div></div>
+      <div class="profile-section">
+        <h3>Personal Information</h3>
+        <div class="profile-avatar-row">
+          <div class="avatar-lg" id="profile-avatar">?</div>
+          <div>
+            <div style="font-size:1.1rem;font-weight:700" id="profile-fullname">—</div>
+            <div style="font-size:.88rem;color:var(--text-muted)" id="profile-email-display">—</div>
+            <div style="margin-top:.5rem"><span style="font-size:.78rem;background:var(--brand-light);color:var(--brand);padding:.2rem .7rem;border-radius:999px;font-weight:600">✓ Verified</span></div>
+          </div>
+        </div>
+        <div class="profile-grid">
+          <div class="form-group"><label>First Name</label><input type="text" id="profile-firstname-input" placeholder="First name"/></div>
+          <div class="form-group"><label>Last Name</label><input type="text" id="profile-lastname-input" placeholder="Last name"/></div>
+          <div class="form-group"><label>Email</label><input type="email" id="profile-email-input" placeholder="Email" disabled style="opacity:.6"/></div>
+          <div class="form-group"><label>Phone Number</label><input type="tel" id="profile-phone-input" placeholder="08012345678"/></div>
+        </div>
+        <button class="btn btn-primary" onclick="alert('Profile update coming soon!')">Save Changes</button>
+      </div>
+      <div class="profile-section">
+        <h3>Referral Program</h3>
+        <p style="color:var(--text-muted);font-size:.9rem;margin-bottom:1rem">Share your referral link and earn ₦500 for every friend who signs up and funds their wallet.</p>
+        <div style="display:flex;gap:.75rem;flex-wrap:wrap">
+          <input type="text" id="referral-link" style="flex:1;min-width:200px;padding:.65rem .9rem;border:1.5px solid var(--border);border-radius:8px;font-size:.88rem;color:var(--text-muted)" readonly value="Loading..."/>
+          <button class="btn btn-primary" onclick="copyReferral()">Copy Link</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+</div>
+
+<!-- ══════════════ CONFIG NOTICE ══════════════ -->
+<div id="config-notice" style="display:none;position:fixed;bottom:1rem;left:50%;transform:translateX(-50%);background:#1a1a1a;color:#fff;padding:1rem 1.5rem;border-radius:12px;font-size:.88rem;z-index:9999;max-width:90vw;text-align:center;box-shadow:0 4px 24px rgba(0,0,0,.3)">
+  ⚙️ <strong>Setup required:</strong> Add your Supabase URL and Anon Key in the &lt;script&gt; section to enable real auth.
+  <button onclick="this.parentElement.style.display='none'" style="margin-left:1rem;background:rgba(255,255,255,.15);border:none;color:#fff;padding:.3rem .7rem;border-radius:6px;cursor:pointer">✕</button>
+</div>
+
+<script>
+// ══════════════════════════════════════════════
+//  🔧 SUPABASE CONFIG — Replace these two values
+//  1. Go to https://supabase.com → create a free project
+//  2. Settings → API → copy Project URL and anon key
+// ══════════════════════════════════════════════
+const SUPABASE_URL = 'https://sskfelkrlmrrgrmbskvj.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_tI5tTKNU75GmLwi9-Au2MA__CZyFgMF';
+// ══════════════════════════════════════════════
+
+let supabase = null;
+let currentUser = null;
+let pendingEmail = '';
+
+function initSupabase() {
+  if (SUPABASE_URL === 'YOUR_SUPABASE_URL' || SUPABASE_ANON_KEY === 'YOUR_SUPABASE_ANON_KEY') {
+    document.getElementById('config-notice').style.display = 'block';
+    return false;
+  }
+  try {
+    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    return true;
+  } catch(e) {
+    console.error('Supabase init error:', e);
+    return false;
+  }
+}
+
+// ── PAGE ROUTING ──
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  window.scrollTo(0, 0);
+}
+
+// ── MOBILE NAV ──
+document.getElementById('navToggle').addEventListener('click', () => {
+  document.getElementById('navMobile').classList.toggle('show');
+});
+function closeMobileNav() {
+  document.getElementById('navMobile').classList.remove('show');
+}
+
+// ── SIDEBAR (mobile) ──
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('sidebarOverlay').classList.toggle('show');
+}
+function closeSidebar() {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('sidebarOverlay').classList.remove('show');
+}
+
+// ── DASHBOARD TABS ──
+function switchTab(name) {
+  document.querySelectorAll('.dash-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  const items = document.querySelectorAll('.nav-item');
+  const map = {overview:0, wallet:1, vtu:2, courses:3, marketplace:4, profile:5};
+  if (map[name] !== undefined) items[map[name]].classList.add('active');
+  closeSidebar();
+}
+
+// ── FAQ ──
+function toggleFaq(btn) {
+  const a = btn.nextElementSibling;
+  const isOpen = btn.classList.contains('open');
+  document.querySelectorAll('.faq-q.open').forEach(b => {
+    b.classList.remove('open');
+    b.nextElementSibling.classList.remove('open');
+  });
+  if (!isOpen) { btn.classList.add('open'); a.classList.add('open'); }
+}
+
+// ── ALERTS ──
+function showAlert(id, msg, type) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.className = 'alert alert-' + type + ' show';
+  el.textContent = msg;
+}
+function hideAlerts(...ids) {
+  ids.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) { el.className = 'alert'; el.textContent = ''; }
+  });
+}
+
+// ── REGISTER ──
+async function handleRegister() {
+  hideAlerts('reg-error', 'reg-success');
+  const firstname = document.getElementById('reg-firstname').value.trim();
+  const lastname = document.getElementById('reg-lastname').value.trim();
+  const email = document.getElementById('reg-email').value.trim();
+  const phone = document.getElementById('reg-phone').value.trim();
+  const password = document.getElementById('reg-password').value;
+
+  if (!firstname || !lastname || !email || !phone || !password) {
+    return showAlert('reg-error', 'Please fill in all required fields.', 'error');
+  }
+  if (password.length < 6) {
+    return showAlert('reg-error', 'Password must be at least 6 characters.', 'error');
+  }
+  if (!supabase) {
+    return showAlert('reg-error', 'Supabase is not configured. Please add your API keys.', 'error');
+  }
+
+  const btn = document.getElementById('reg-btn');
+  btn.disabled = true; btn.textContent = 'Creating account…';
+
+  try {
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: { first_name: firstname, last_name: lastname, phone }
+      }
+    });
+
+    if (error) throw error;
+
+    pendingEmail = email;
+    document.getElementById('verify-email-display').textContent = email;
+    showPage('verify');
+  } catch (err) {
+    showAlert('reg-error', err.message || 'Registration failed. Please try again.', 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Create Account — Free';
+  }
+}
+
+// ── RESEND VERIFICATION ──
+async function resendVerification() {
+  if (!supabase || !pendingEmail) return alert('No email on record. Please register again.');
+  try {
+    await supabase.auth.resend({ type: 'signup', email: pendingEmail });
+    alert('Verification email resent! Check your inbox.');
+  } catch(e) {
+    alert('Could not resend: ' + e.message);
+  }
+}
+
+// ── LOGIN ──
+async function handleLogin() {
+  hideAlerts('login-error', 'login-success');
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+
+  if (!email || !password) {
+    return showAlert('login-error', 'Please enter your email and password.', 'error');
+  }
+  if (!supabase) {
+    return showAlert('login-error', 'Supabase is not configured. Please add your API keys.', 'error');
+  }
+
+  const btn = document.getElementById('login-btn');
+  btn.disabled = true; btn.textContent = 'Logging in…';
+
+  try {
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) throw error;
+    currentUser = data.user;
+    loadDashboard(data.user);
+    showPage('dashboard');
+  } catch (err) {
+    let msg = err.message;
+    if (msg.includes('Email not confirmed')) msg = 'Please verify your email before logging in.';
+    if (msg.includes('Invalid login')) msg = 'Incorrect email or password.';
+    showAlert('login-error', msg, 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Log In';
+  }
+}
+
+// ── LOGOUT ──
+async function handleLogout() {
+  if (supabase) await supabase.auth.signOut();
+  currentUser = null;
+  showPage('landing');
+}
+
+// ── LOAD DASHBOARD ──
+function loadDashboard(user) {
+  const meta = user.user_metadata || {};
+  const firstName = meta.first_name || user.email.split('@')[0];
+  const lastName = meta.last_name || '';
+  const fullName = (firstName + ' ' + lastName).trim();
+  const initials = (firstName[0] || '') + (lastName[0] || '');
+  const email = user.email;
+
+  document.getElementById('dash-firstname').textContent = firstName;
+  document.getElementById('sb-avatar').textContent = initials.toUpperCase() || '?';
+  document.getElementById('sb-name').textContent = fullName;
+  document.getElementById('sb-email').textContent = email;
+  document.getElementById('profile-avatar').textContent = initials.toUpperCase() || '?';
+  document.getElementById('profile-fullname').textContent = fullName;
+  document.getElementById('profile-email-display').textContent = email;
+  document.getElementById('profile-firstname-input').value = firstName;
+  document.getElementById('profile-lastname-input').value = lastName;
+  document.getElementById('profile-email-input').value = email;
+  document.getElementById('profile-phone-input').value = meta.phone || '';
+  document.getElementById('referral-link').value = `https://digipal.ng/ref/${user.id.slice(0,8)}`;
+  switchTab('overview');
+}
+
+// ── COPY REFERRAL ──
+function copyReferral() {
+  const input = document.getElementById('referral-link');
+  input.select();
+  navigator.clipboard.writeText(input.value).then(() => alert('Referral link copied!')).catch(() => alert('Copied!'));
+}
+
+// ── AUTH STATE LISTENER ──
+async function init() {
+  const ready = initSupabase();
+  if (!ready) return;
+
+  const { data: { session } } = await supabase.auth.getSession();
+  if (session?.user) {
+    currentUser = session.user;
+    loadDashboard(session.user);
+    showPage('dashboard');
+  }
+
+  supabase.auth.onAuthStateChange((event, session) => {
+    if (event === 'SIGNED_IN' && session?.user) {
+      currentUser = session.user;
+      loadDashboard(session.user);
+      showPage('dashboard');
+    }
+    if (event === 'SIGNED_OUT') {
+      currentUser = null;
+      showPage('landing');
+    }
+  });
+}
+
+init();
+</script>
+</body>
+</html>
