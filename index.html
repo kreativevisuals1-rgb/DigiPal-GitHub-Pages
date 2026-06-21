@@ -1496,33 +1496,234 @@ function showFundingSuccess(amount, newBalance) {
     </div>
 
     <!-- STEP INDICATOR -->
-    <div id="withdrawStepIndicator" style="display:flex; gap:8px; margin-bottom:24px; align-items:center;">
-      <div id="wstep1dot" style="width:28px;height:28px;border-radius:50%;background:#00b359;color:#fff;font-size:.8rem;font-weight:700;display:flex;align-items:center;justify-content:center;">1</div>
-      <div style="flex:1;height:2px;background:#e5e7eb;" id="wstepline"></div>
-      <div id="wstep2dot" style="width:28px;height:28px;border-radius:50%;background:#e5e7eb;color:#6b7280;font-size:.8rem;font-weight:700;display:flex;align-items:center;justify-content:center;">2</div>
-      <span id="wstep1label" style="font-size:.78rem;color:#00b359;font-weight:600;position:absolute;margin-top:44px;margin-left:0;">Bank Details</span>
-      <span id="wstep2label" style="font-size:.78rem;color:#6b7280;font-weight:600;"></span>
+    <div style="display:flex; gap:8px; margin-bottom:24px; align-items:center;">
+      <div id="wstep1dot" style="width:28px;height:28px;border-radius:50%;background:#00b359;color:#fff;font-size:.8rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;">1</div>
+      <div style="flex:1;height:2px;background:#e5e7eb;"></div>
+      <div id="wstep2dot" style="width:28px;height:28px;border-radius:50%;background:#e5e7eb;color:#6b7280;font-size:.8rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;">2</div>
     </div>
 
     <!-- STEP 1: Bank Details -->
     <div id="withdrawStep1">
+      <!-- Bank selector -->
       <div style="margin-bottom:14px;">
-        <label style="font-size:.8rem;font-weight:600;color:#444;display:block;margin-bottom:6px;">Bank Name</label>
-        <select id="wBankName" style="
+        <label style="font-size:.8rem;font-weight:600;color:#444;display:block;margin-bottom:6px;">Bank / Institution</label>
+        <select id="wBankCode" onchange="onBankOrAccChange()" style="
           width:100%;padding:12px 16px;border:2px solid #e8e8e8;border-radius:12px;
-          font-size:.95rem;outline:none;transition:border-color .2s;background:#fff;color:#1a1a2e;
+          font-size:.93rem;outline:none;transition:border-color .2s;background:#fff;color:#1a1a2e;
+          appearance:auto;
         " onfocus="this.style.borderColor='#00b359'" onblur="this.style.borderColor='#e8e8e8'">
-          <option value="">— Select your bank —</option>
-          <option>Access Bank</option><option>Fidelity Bank</option><option>First Bank</option>
-          <option>First City Monument Bank (FCMB)</option><option>Guaranty Trust Bank (GTBank)</option>
-          <option>Heritage Bank</option><option>Keystone Bank</option><option>Opay</option>
-          <option>Palmpay</option><option>Polaris Bank</option><option>Providus Bank</option>
-          <option>Stanbic IBTC Bank</option><option>Sterling Bank</option><option>UBA</option>
-          <option>Union Bank</option><option>Unity Bank</option><option>Wema Bank</option>
-          <option>Zenith Bank</option><option>Kuda Bank</option><option>Moniepoint</option>
+          <option value="">— Select bank or institution —</option>
+          <optgroup label="Commercial Banks (CBN Licensed)">
+            <option value="044">Access Bank</option>
+            <option value="023">Citibank Nigeria</option>
+            <option value="050">Ecobank Nigeria</option>
+            <option value="070">Fidelity Bank</option>
+            <option value="011">First Bank of Nigeria</option>
+            <option value="214">First City Monument Bank (FCMB)</option>
+            <option value="058">Guaranty Trust Bank (GTBank)</option>
+            <option value="030">Heritage Bank</option>
+            <option value="301">Jaiz Bank</option>
+            <option value="082">Keystone Bank</option>
+            <option value="014">MainStreet Bank</option>
+            <option value="076">Polaris Bank</option>
+            <option value="101">Providus Bank</option>
+            <option value="221">Stanbic IBTC Bank</option>
+            <option value="068">Standard Chartered Bank</option>
+            <option value="232">Sterling Bank</option>
+            <option value="100">SunTrust Bank</option>
+            <option value="032">Union Bank of Nigeria</option>
+            <option value="033">United Bank for Africa (UBA)</option>
+            <option value="215">Unity Bank</option>
+            <option value="035">Wema Bank</option>
+            <option value="057">Zenith Bank</option>
+          </optgroup>
+          <optgroup label="Fintech &amp; Mobile Money">
+            <option value="565">Carbon (One Finance)</option>
+            <option value="50515">FairMoney Microfinance Bank</option>
+            <option value="090267">Kuda Bank</option>
+            <option value="50515">Moniepoint Microfinance Bank</option>
+            <option value="100004">Opay (PAYCOM)</option>
+            <option value="999991">Palmpay</option>
+            <option value="000026">Taj Bank</option>
+            <option value="000027">Titan Trust Bank</option>
+            <option value="100033">PocketApp (formerly PiggyVest)</option>
+            <option value="50094">Rubies Microfinance Bank</option>
+            <option value="090175">Dot Microfinance Bank</option>
+            <option value="090286">Safe Haven Microfinance Bank</option>
+          </optgroup>
+          <optgroup label="Microfinance Banks (CBN Licensed)">
+            <option value="090110">VFD Microfinance Bank</option>
+            <option value="090115">TCF Microfinance Bank</option>
+            <option value="090118">IBILE Microfinance Bank</option>
+            <option value="090119">Advans La Fayette MFB</option>
+            <option value="090120">Creditville Microfinance Bank</option>
+            <option value="090121">Hasal Microfinance Bank</option>
+            <option value="090122">Baines Credit Microfinance Bank</option>
+            <option value="090123">Finatrust Microfinance Bank</option>
+            <option value="090124">Xslnce Microfinance Bank</option>
+            <option value="090125">Regent Microfinance Bank</option>
+            <option value="090126">Pennywise Microfinance Bank</option>
+            <option value="090127">BC Kash Microfinance Bank</option>
+            <option value="090128">Ndiorah Microfinance Bank</option>
+            <option value="090129">Money Trust Microfinance Bank</option>
+            <option value="090131">AccesMFB Microfinance Bank</option>
+            <option value="090132">Astrapolaris Microfinance Bank</option>
+            <option value="090134">Layer3</option>
+            <option value="090135">FFS Microfinance Bank</option>
+            <option value="090136">Be-InGroup Microfinance Bank</option>
+            <option value="090137">Lapo Microfinance Bank</option>
+            <option value="090138">Gateway Mortgage Bank</option>
+            <option value="090139">Auchi Microfinance Bank</option>
+            <option value="090140">Lovonus Microfinance Bank</option>
+            <option value="090141">Unilag Microfinance Bank</option>
+            <option value="090142">CIT Microfinance Bank</option>
+            <option value="090143">Fundquest Microfinance Bank</option>
+            <option value="090144">Titan Microfinance Bank</option>
+            <option value="090145">Futo Microfinance Bank</option>
+            <option value="090146">Rigo Microfinance Bank</option>
+            <option value="090147">Hackman Microfinance Bank</option>
+            <option value="090148">Bowen Microfinance Bank</option>
+            <option value="090149">NNEW Women Microfinance Bank</option>
+            <option value="090150">Esan Microfinance Bank</option>
+            <option value="090151">Mutual Trust Microfinance Bank</option>
+            <option value="090152">Nkpolu-Ust Microfinance Bank</option>
+            <option value="090153">Unaab Microfinance Bank</option>
+            <option value="090154">Wetland Microfinance Bank</option>
+            <option value="090155">Virtue Microfinance Bank</option>
+            <option value="090156">Sherperd Trust Microfinance Bank</option>
+            <option value="090157">Ibeto Microfinance Bank</option>
+            <option value="090158">Imo State Microfinance Bank</option>
+            <option value="090159">Esie Microfinance Bank</option>
+            <option value="090160">Finca Microfinance Bank</option>
+            <option value="090161">Gashua Microfinance Bank</option>
+            <option value="090162">Stanford Microfinance Bank</option>
+            <option value="090163">First Option Microfinance Bank</option>
+            <option value="090164">FCT Microfinance Bank</option>
+            <option value="090165">Malachy Microfinance Bank</option>
+            <option value="090166">Bosak Microfinance Bank</option>
+            <option value="090167">Palmpay Microfinance Bank</option>
+            <option value="090168">Eyowo</option>
+            <option value="090169">Afekhafe Microfinance Bank</option>
+            <option value="090171">Mainstreet Microfinance Bank</option>
+            <option value="090172">Richway Microfinance Bank</option>
+            <option value="090173">MGT Microfinance Bank</option>
+            <option value="090174">Empire Trust Microfinance Bank</option>
+            <option value="090176">Meridian Microfinance Bank</option>
+            <option value="090177">Apeks Microfinance Bank</option>
+            <option value="090178">Cemcs Microfinance Bank</option>
+            <option value="090179">Bankly</option>
+            <option value="090180">Amju Unique Microfinance Bank</option>
+            <option value="090261">Infinity Microfinance Bank</option>
+            <option value="090263">Mayfresh Mortgage Bank</option>
+            <option value="090264">Addosser Microfinance Bank</option>
+            <option value="090265">Daylight Microfinance Bank</option>
+            <option value="090268">Mint Finex MFB</option>
+            <option value="090270">AB Microfinance Bank</option>
+            <option value="090271">Lavender Microfinance Bank</option>
+            <option value="090272">Olabisi Onabanjo University Microfinance Bank</option>
+            <option value="090273">Emeralds Microfinance Bank</option>
+            <option value="090274">Trustbanc J6 Microfinance Bank</option>
+            <option value="090275">Coastline Microfinance Bank</option>
+            <option value="090276">Balogun Gambari Microfinance Bank</option>
+            <option value="090277">Kuda Bank</option>
+            <option value="090278">Glory Microfinance Bank</option>
+            <option value="090279">FCMB MFB</option>
+            <option value="090280">Ile-Oluji Microfinance Bank</option>
+            <option value="090281">New Dawn Microfinance Bank</option>
+            <option value="090282">Arise MFB</option>
+            <option value="090283">A&amp;A Microfinance Bank</option>
+            <option value="090285">First Trust Mortgage Bank</option>
+            <option value="090290">Chikum Microfinance Bank</option>
+            <option value="090291">Oraukwu Microfinance Bank</option>
+            <option value="090292">Kontagora Microfinance Bank</option>
+            <option value="090293">Abia State Microfinance Bank</option>
+            <option value="090294">Assetmatrix Microfinance Bank</option>
+            <option value="090295">Yobe Microfinance Bank</option>
+            <option value="090296">Susu Microfinance Bank</option>
+            <option value="090297">Isuofia Microfinance Bank</option>
+            <option value="090298">Boctrust Microfinance Bank</option>
+            <option value="090299">UNN MFB</option>
+            <option value="090300">Oche Microfinance Bank</option>
+            <option value="090303">Palmpay MFB</option>
+            <option value="090304">Evangel Microfinance Bank</option>
+            <option value="090305">Borgu Microfinance Bank</option>
+            <option value="090306">Polyunwana Microfinance Bank</option>
+            <option value="090307">Girei Microfinance Bank</option>
+            <option value="090308">Brightway Microfinance Bank</option>
+            <option value="090309">ASBA Microfinance Bank</option>
+            <option value="090310">Davodani Microfinance Bank</option>
+            <option value="090311">Seedvest Microfinance Bank</option>
+            <option value="090312">Changa Microfinance Bank</option>
+            <option value="090313">Calabar Microfinance Bank</option>
+            <option value="090315">Zinternet Nigeria Limited</option>
+            <option value="090317">Patrickgold Microfinance Bank</option>
+            <option value="090318">Federal University Dutse Microfinance Bank</option>
+            <option value="090320">Kadpoly Microfinance Bank</option>
+            <option value="090321">Mayfair Microfinance Bank</option>
+            <option value="090322">Rusaltrust Microfinance Bank</option>
+            <option value="090323">Mkobo Microfinance Bank</option>
+            <option value="090324">Ikire Microfinance Bank</option>
+            <option value="090325">Ahantaman Microfinance Bank</option>
+            <option value="090326">Benysta Microfinance Bank</option>
+            <option value="090327">Nwannegadi Microfinance Bank</option>
+            <option value="090328">Obowo Microfinance Bank</option>
+            <option value="090329">Quickfund Microfinance Bank</option>
+            <option value="090330">Amu Microfinance Bank</option>
+            <option value="090331">Manny Microfinance Bank</option>
+            <option value="090332">Olorun Ni Mi Microfinance Bank</option>
+            <option value="090333">Purplemoney Microfinance Bank</option>
+            <option value="090334">Ohafia Microfinance Bank</option>
+            <option value="090335">Nnew Microfinance Bank</option>
+            <option value="090336">Solid Allianze Microfinance Bank</option>
+            <option value="090337">Oke-Aro Oredegbe Microfinance Bank</option>
+            <option value="090338">Swiftcheck Microfinance Bank</option>
+            <option value="090339">Landgold Microfinance Bank</option>
+            <option value="090340">Ekondo Microfinance Bank</option>
+            <option value="090341">Foresight Microfinance Bank</option>
+            <option value="090342">Zenith Easy Wallet</option>
+            <option value="090343">Otuo Microfinance Bank</option>
+            <option value="090344">Headway Microfinance Bank</option>
+            <option value="090345">Hazard Microfinance Bank</option>
+            <option value="090346">Crescent Microfinance Bank</option>
+            <option value="090347">Alert Microfinance Bank</option>
+            <option value="090348">Moyofade Microfinance Bank</option>
+            <option value="090349">Aso Savings and Loans</option>
+            <option value="090350">Ilora Microfinance Bank</option>
+            <option value="090351">Nderibe Microfinance Bank</option>
+            <option value="090352">Jessefield Microfinance Bank</option>
+            <option value="090353">Izon Microfinance Bank</option>
+            <option value="090354">Verdant Microfinance Bank</option>
+            <option value="090355">Shongom Microfinance Bank</option>
+            <option value="090356">Unilag Microfinance Bank</option>
+            <option value="090357">Tsiga Microfinance Bank</option>
+            <option value="090358">Ummah Microfinance Bank</option>
+            <option value="090359">Alekun Microfinance Bank</option>
+            <option value="090360">Above Only Microfinance Bank</option>
+            <option value="090361">Ayedun Microfinance Bank</option>
+            <option value="090362">Mainland Microfinance Bank</option>
+            <option value="090363">Iwoama Microfinance Bank</option>
+          </optgroup>
+          <optgroup label="Mortgage Banks">
+            <option value="070001">Abbey Mortgage Bank</option>
+            <option value="070002">Access Homes Savings &amp; Loans</option>
+            <option value="070006">Covenant Microfinance Bank</option>
+            <option value="070007">FBN Mortgages</option>
+            <option value="070008">First Generation Mortgage Bank</option>
+            <option value="070009">First Trust Mortgage Bank</option>
+            <option value="070010">Jubilee Life Mortgage</option>
+            <option value="070011">Refuge Mortgage Bank</option>
+            <option value="070012">STB Mortgage Bank</option>
+            <option value="070013">Sun Trust Bank</option>
+            <option value="070014">Union Homes Savings &amp; Loans</option>
+            <option value="070015">Infinity Trust Mortgage Bank</option>
+            <option value="070016">Brent Mortgage Bank</option>
+            <option value="070017">Platinum Mortgage Bank</option>
+            <option value="070019">First Housing Finance</option>
+          </optgroup>
         </select>
       </div>
 
+      <!-- Account Number -->
       <div style="margin-bottom:14px;">
         <label style="font-size:.8rem;font-weight:600;color:#444;display:block;margin-bottom:6px;">Account Number</label>
         <input id="wAccountNumber" type="text" maxlength="10" placeholder="10-digit account number"
@@ -1531,18 +1732,25 @@ function showFundingSuccess(amount, newBalance) {
             font-size:.95rem;outline:none;transition:border-color .2s;box-sizing:border-box;color:#1a1a2e;
           "
           onfocus="this.style.borderColor='#00b359'" onblur="this.style.borderColor='#e8e8e8'"
-          oninput="this.value=this.value.replace(/\D/g,'')"
+          oninput="this.value=this.value.replace(/\D/g,''); onBankOrAccChange();"
         />
       </div>
 
+      <!-- Account Name — auto-filled, read-only -->
       <div style="margin-bottom:24px;">
-        <label style="font-size:.8rem;font-weight:600;color:#444;display:block;margin-bottom:6px;">Account Name</label>
-        <input id="wAccountName" type="text" placeholder="Full name on account"
+        <label style="font-size:.8rem;font-weight:600;color:#444;display:block;margin-bottom:6px;">
+          Account Name
+          <span id="wLookupSpinner" style="display:none;margin-left:8px;font-size:.75rem;color:#00b359;font-weight:500;">⏳ Verifying…</span>
+          <span id="wLookupTick"    style="display:none;margin-left:8px;font-size:.75rem;color:#00b359;font-weight:600;">✓ Verified</span>
+          <span id="wLookupErr"     style="display:none;margin-left:8px;font-size:.75rem;color:#ef4444;font-weight:500;"></span>
+        </label>
+        <input id="wAccountName" type="text" readonly placeholder="Auto-filled after verification"
           style="
             width:100%;padding:12px 16px;border:2px solid #e8e8e8;border-radius:12px;
-            font-size:.95rem;outline:none;transition:border-color .2s;box-sizing:border-box;color:#1a1a2e;
+            font-size:.95rem;outline:none;box-sizing:border-box;
+            background:#f9fafb;color:#1a1a2e;font-weight:600;
+            cursor:default;
           "
-          onfocus="this.style.borderColor='#00b359'" onblur="this.style.borderColor='#e8e8e8'"
         />
       </div>
 
@@ -1552,7 +1760,7 @@ function showFundingSuccess(amount, newBalance) {
         Save this bank account for future withdrawals
       </label>
 
-      <button onclick="withdrawGoToStep2()" style="
+      <button id="wContinueBtn" onclick="withdrawGoToStep2()" style="
         width:100%;padding:14px;background:linear-gradient(135deg,#00b359,#006633);
         color:#fff;border:none;border-radius:12px;font-size:1rem;font-weight:700;
         cursor:pointer;transition:opacity .2s;
@@ -1631,223 +1839,313 @@ function showFundingSuccess(amount, newBalance) {
 
 <script>
 /* ============================================================
-   WITHDRAWAL FLOW
+   WITHDRAWAL FLOW — with Paystack Account Name Lookup
+   ============================================================
+
+   SETUP REQUIRED — Supabase Edge Function:
+   Deploy this as supabase/functions/resolve-account/index.ts
+   and set PAYSTACK_SECRET_KEY in your Supabase secrets.
+
+   ┌─────────────────────────────────────────────────────┐
+   │ import { serve } from "https://deno.land/std/http/server.ts";
+   │
+   │ serve(async (req) => {
+   │   const { account_number, bank_code } = await req.json();
+   │   const res = await fetch(
+   │     `https://api.paystack.co/bank/resolve?account_number=${account_number}&bank_code=${bank_code}`,
+   │     { headers: { Authorization: `Bearer ${Deno.env.get('PAYSTACK_SECRET_KEY')}` } }
+   │   );
+   │   const data = await res.json();
+   │   return new Response(JSON.stringify(data), {
+   │     headers: { "Content-Type": "application/json",
+   │                "Access-Control-Allow-Origin": "*" }
+   │   });
+   │ });
+   └─────────────────────────────────────────────────────┘
+
+   Then set:
+     const RESOLVE_ACCOUNT_URL = 'https://<YOUR_PROJECT_REF>.supabase.co/functions/v1/resolve-account';
    ============================================================ */
 
-async function openWithdrawModal() {
-  const { data: { user } } = await _supabase.auth.getUser();
-  if (!user) { showToast('Please log in first.', 'error'); return; }
+  const RESOLVE_ACCOUNT_URL = 'https://sskfelkrlmrrgrmbskvj.supabase.co/functions/v1/resolve-account';
 
-  // Load balance
-  try {
-    const { data: wallet } = await _supabase
-      .from('wallets').select('balance').eq('user_id', user.id).single();
-    const bal = wallet ? parseFloat(wallet.balance) : 0;
-    document.getElementById('withdrawModalBalance').textContent =
-      '₦' + bal.toLocaleString('en-NG', { minimumFractionDigits: 2 });
-  } catch(e) {
-    document.getElementById('withdrawModalBalance').textContent = '₦0.00';
+  let _lookupTimer = null;
+  let _verifiedAccountName = '';
+
+  function onBankOrAccChange() {
+    // Reset verified state
+    _verifiedAccountName = '';
+    document.getElementById('wAccountName').value = '';
+    document.getElementById('wLookupTick').style.display = 'none';
+    document.getElementById('wLookupErr').style.display  = 'none';
+    document.getElementById('wLookupSpinner').style.display = 'none';
+
+    const bankCode = document.getElementById('wBankCode').value;
+    const accNum   = document.getElementById('wAccountNumber').value;
+
+    // Trigger lookup only when both are filled and account is 10 digits
+    if (!bankCode || accNum.length !== 10) return;
+
+    // Debounce 600ms
+    clearTimeout(_lookupTimer);
+    _lookupTimer = setTimeout(() => lookupAccountName(bankCode, accNum), 600);
   }
 
-  // Try to pre-fill saved bank account
-  try {
-    const { data: saved } = await _supabase
-      .from('bank_accounts')
-      .select('bank_name, account_number, account_name')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .single();
+  async function lookupAccountName(bankCode, accNum) {
+    document.getElementById('wLookupSpinner').style.display = 'inline';
+    document.getElementById('wLookupErr').style.display     = 'none';
+    document.getElementById('wLookupTick').style.display    = 'none';
+    document.getElementById('wAccountName').value           = '';
 
-    if (saved) {
-      const sel = document.getElementById('wBankName');
-      for (let i = 0; i < sel.options.length; i++) {
-        if (sel.options[i].text === saved.bank_name) { sel.selectedIndex = i; break; }
+    try {
+      const res  = await fetch(RESOLVE_ACCOUNT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ account_number: accNum, bank_code: bankCode })
+      });
+      const data = await res.json();
+
+      document.getElementById('wLookupSpinner').style.display = 'none';
+
+      if (data.status && data.data && data.data.account_name) {
+        _verifiedAccountName = data.data.account_name;
+        document.getElementById('wAccountName').value        = _verifiedAccountName;
+        document.getElementById('wLookupTick').style.display = 'inline';
+        document.getElementById('wAccountName').style.borderColor = '#00b359';
+      } else {
+        const msg = data.message || 'Account not found';
+        document.getElementById('wLookupErr').textContent    = msg;
+        document.getElementById('wLookupErr').style.display  = 'inline';
+        document.getElementById('wAccountName').style.borderColor = '#ef4444';
       }
-      document.getElementById('wAccountNumber').value = saved.account_number;
-      document.getElementById('wAccountName').value   = saved.account_name;
+    } catch(e) {
+      document.getElementById('wLookupSpinner').style.display = 'none';
+      document.getElementById('wLookupErr').textContent       = 'Lookup failed. Check connection.';
+      document.getElementById('wLookupErr').style.display     = 'inline';
     }
-  } catch(e) { /* no saved account, that's fine */ }
-
-  // Reset to step 1
-  withdrawGoToStep1();
-  document.getElementById('wAmount').value = '';
-  document.getElementById('wAmountError').style.display = 'none';
-  document.getElementById('withdrawOverlay').style.display = 'flex';
-}
-
-function closeWithdrawModal() {
-  const el = document.getElementById('withdrawOverlay');
-  if (el) el.style.display = 'none';
-}
-
-function withdrawGoToStep1() {
-  document.getElementById('withdrawStep1').style.display = 'block';
-  document.getElementById('withdrawStep2').style.display = 'none';
-  // Step indicator
-  document.getElementById('wstep1dot').style.background = '#00b359';
-  document.getElementById('wstep1dot').style.color = '#fff';
-  document.getElementById('wstep2dot').style.background = '#e5e7eb';
-  document.getElementById('wstep2dot').style.color = '#6b7280';
-}
-
-function withdrawGoToStep2() {
-  const bank    = document.getElementById('wBankName').value.trim();
-  const accNum  = document.getElementById('wAccountNumber').value.trim();
-  const accName = document.getElementById('wAccountName').value.trim();
-
-  if (!bank)    { showToast('Please select your bank.', 'error'); return; }
-  if (accNum.length !== 10) { showToast('Account number must be exactly 10 digits.', 'error'); return; }
-  if (!accName) { showToast('Please enter the account name.', 'error'); return; }
-
-  // Populate summary
-  document.getElementById('wSummaryName').textContent    = accName;
-  document.getElementById('wSummaryAccount').textContent = bank + ' · ' + accNum;
-
-  document.getElementById('withdrawStep1').style.display = 'none';
-  document.getElementById('withdrawStep2').style.display = 'block';
-
-  // Step indicator
-  document.getElementById('wstep1dot').style.background = '#00b359';
-  document.getElementById('wstep2dot').style.background = '#00b359';
-  document.getElementById('wstep2dot').style.color = '#fff';
-}
-
-function setWithdrawAmount(val) {
-  document.getElementById('wAmount').value = val;
-  document.getElementById('wAmount').focus();
-  document.getElementById('wAmountError').style.display = 'none';
-}
-
-async function submitWithdrawal() {
-  const amount  = parseFloat(document.getElementById('wAmount').value);
-  const bank    = document.getElementById('wBankName').value.trim();
-  const accNum  = document.getElementById('wAccountNumber').value.trim();
-  const accName = document.getElementById('wAccountName').value.trim();
-  const save    = document.getElementById('wSaveAccount').checked;
-
-  const errEl = document.getElementById('wAmountError');
-
-  if (!amount || amount <= 0) {
-    errEl.textContent = 'Please enter a valid amount.';
-    errEl.style.display = 'block'; return;
   }
 
-  const { data: { user } } = await _supabase.auth.getUser();
-  if (!user) { showToast('Session expired. Please log in again.', 'error'); return; }
+  async function openWithdrawModal() {
+    const { data: { user } } = await _supabase.auth.getUser();
+    if (!user) { showToast('Please log in first.', 'error'); return; }
 
-  // Fetch live balance
-  const { data: wallet, error: walletErr } = await _supabase
-    .from('wallets').select('balance').eq('user_id', user.id).single();
-
-  if (walletErr || !wallet) { showToast('Could not fetch wallet balance.', 'error'); return; }
-
-  const currentBalance = parseFloat(wallet.balance) || 0;
-
-  if (amount > currentBalance) {
-    errEl.textContent = 'Insufficient balance. Available: ₦' +
-      currentBalance.toLocaleString('en-NG', { minimumFractionDigits: 2 });
-    errEl.style.display = 'block'; return;
-  }
-
-  errEl.style.display = 'none';
-  const btn = document.getElementById('withdrawSubmitBtn');
-  btn.textContent = 'Processing…'; btn.disabled = true;
-
-  try {
-    const newBalance = currentBalance - amount;
-    const ref = 'WDRAW-' + Date.now() + '-' + Math.random().toString(36).substr(2,6).toUpperCase();
-
-    // 1. Debit wallet
-    const { error: debitErr } = await _supabase
-      .from('wallets')
-      .update({ balance: newBalance, updated_at: new Date().toISOString() })
-      .eq('user_id', user.id);
-    if (debitErr) throw debitErr;
-
-    // 2. Log transaction
-    const { error: txErr } = await _supabase
-      .from('transactions')
-      .insert({
-        user_id: user.id,
-        type: 'debit',
-        amount: amount,
-        description: `Withdrawal to ${bank} · ${accNum} (${accName})`,
-        reference: ref,
-        status: 'pending'
-      });
-    if (txErr) throw txErr;
-
-    // 3. Log withdrawal request
-    const { error: wdErr } = await _supabase
-      .from('withdrawals')
-      .insert({
-        user_id: user.id,
-        amount: amount,
-        bank_name: bank,
-        account_number: accNum,
-        account_name: accName,
-        reference: ref,
-        status: 'pending'
-      });
-    if (wdErr) throw wdErr;
-
-    // 4. Save bank account if ticked
-    if (save) {
-      await _supabase.from('bank_accounts').upsert({
-        user_id: user.id,
-        bank_name: bank,
-        account_number: accNum,
-        account_name: accName,
-        updated_at: new Date().toISOString()
-      }, { onConflict: 'user_id,account_number' });
+    // Load balance
+    try {
+      const { data: wallet } = await _supabase
+        .from('wallets').select('balance').eq('user_id', user.id).single();
+      const bal = wallet ? parseFloat(wallet.balance) : 0;
+      document.getElementById('withdrawModalBalance').textContent =
+        '₦' + bal.toLocaleString('en-NG', { minimumFractionDigits: 2 });
+    } catch(e) {
+      document.getElementById('withdrawModalBalance').textContent = '₦0.00';
     }
 
-    closeWithdrawModal();
-    showWithdrawalSuccess(amount, newBalance, bank, accNum);
+    // Reset fields
+    document.getElementById('wBankCode').value      = '';
+    document.getElementById('wAccountNumber').value = '';
+    document.getElementById('wAccountName').value   = '';
+    _verifiedAccountName = '';
+    document.getElementById('wLookupTick').style.display    = 'none';
+    document.getElementById('wLookupErr').style.display     = 'none';
+    document.getElementById('wLookupSpinner').style.display = 'none';
+    document.getElementById('wAccountName').style.borderColor = '#e8e8e8';
 
-    if (typeof loadDashboardData === 'function') loadDashboardData();
-    if (typeof loadWalletData    === 'function') loadWalletData();
+    // Try to pre-fill saved bank account
+    try {
+      const { data: saved } = await _supabase
+        .from('bank_accounts')
+        .select('bank_code, bank_name, account_number, account_name')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
 
-  } catch(err) {
-    console.error('Withdrawal error:', err);
-    btn.textContent = '🏦 Confirm Withdrawal'; btn.disabled = false;
-    showToast('Withdrawal failed: ' + err.message, 'error');
+      if (saved) {
+        const sel = document.getElementById('wBankCode');
+        // Try matching by bank_code first, then by text
+        for (let i = 0; i < sel.options.length; i++) {
+          if (sel.options[i].value === saved.bank_code) { sel.selectedIndex = i; break; }
+        }
+        document.getElementById('wAccountNumber').value = saved.account_number;
+        _verifiedAccountName = saved.account_name;
+        document.getElementById('wAccountName').value   = saved.account_name;
+        document.getElementById('wLookupTick').style.display = 'inline';
+        document.getElementById('wAccountName').style.borderColor = '#00b359';
+      }
+    } catch(e) { /* no saved account */ }
+
+    withdrawGoToStep1();
+    document.getElementById('wAmount').value = '';
+    document.getElementById('wAmountError').style.display = 'none';
+    document.getElementById('withdrawOverlay').style.display = 'flex';
   }
-}
 
-function showWithdrawalSuccess(amount, newBalance, bank, accNum) {
-  const toast = document.createElement('div');
-  toast.innerHTML = `
-    <div style="display:flex;align-items:center;gap:12px;">
-      <div style="font-size:2rem;">✅</div>
-      <div>
-        <div style="font-weight:700;font-size:.95rem;">Withdrawal Requested!</div>
-        <div style="font-size:.82rem;opacity:.9;">
-          ₦${amount.toLocaleString('en-NG')} → ${bank} ···${accNum.slice(-4)}<br>
-          New balance: ₦${parseFloat(newBalance).toLocaleString('en-NG',{minimumFractionDigits:2})}
+  function closeWithdrawModal() {
+    const el = document.getElementById('withdrawOverlay');
+    if (el) el.style.display = 'none';
+    clearTimeout(_lookupTimer);
+  }
+
+  function withdrawGoToStep1() {
+    document.getElementById('withdrawStep1').style.display = 'block';
+    document.getElementById('withdrawStep2').style.display = 'none';
+    document.getElementById('wstep1dot').style.background  = '#00b359';
+    document.getElementById('wstep1dot').style.color       = '#fff';
+    document.getElementById('wstep2dot').style.background  = '#e5e7eb';
+    document.getElementById('wstep2dot').style.color       = '#6b7280';
+  }
+
+  function withdrawGoToStep2() {
+    const bankSel = document.getElementById('wBankCode');
+    const bankCode = bankSel.value;
+    const bankName = bankSel.options[bankSel.selectedIndex]?.text || '';
+    const accNum   = document.getElementById('wAccountNumber').value.trim();
+
+    if (!bankCode) { showToast('Please select your bank.', 'error'); return; }
+    if (accNum.length !== 10) { showToast('Account number must be exactly 10 digits.', 'error'); return; }
+    if (!_verifiedAccountName) {
+      showToast('Account name not verified yet. Please wait for verification.', 'error'); return;
+    }
+
+    document.getElementById('wSummaryName').textContent    = _verifiedAccountName;
+    document.getElementById('wSummaryAccount').textContent = bankName + ' · ' + accNum;
+
+    document.getElementById('withdrawStep1').style.display = 'none';
+    document.getElementById('withdrawStep2').style.display = 'block';
+    document.getElementById('wstep1dot').style.background  = '#00b359';
+    document.getElementById('wstep2dot').style.background  = '#00b359';
+    document.getElementById('wstep2dot').style.color       = '#fff';
+  }
+
+  function setWithdrawAmount(val) {
+    document.getElementById('wAmount').value = val;
+    document.getElementById('wAmount').focus();
+    document.getElementById('wAmountError').style.display = 'none';
+  }
+
+  async function submitWithdrawal() {
+    const amount   = parseFloat(document.getElementById('wAmount').value);
+    const bankSel  = document.getElementById('wBankCode');
+    const bankCode = bankSel.value;
+    const bankName = bankSel.options[bankSel.selectedIndex]?.text || '';
+    const accNum   = document.getElementById('wAccountNumber').value.trim();
+    const accName  = _verifiedAccountName;
+    const save     = document.getElementById('wSaveAccount').checked;
+
+    const errEl = document.getElementById('wAmountError');
+
+    if (!amount || amount <= 0) {
+      errEl.textContent = 'Please enter a valid amount.';
+      errEl.style.display = 'block'; return;
+    }
+
+    const { data: { user } } = await _supabase.auth.getUser();
+    if (!user) { showToast('Session expired. Please log in again.', 'error'); return; }
+
+    const { data: wallet, error: walletErr } = await _supabase
+      .from('wallets').select('balance').eq('user_id', user.id).single();
+
+    if (walletErr || !wallet) { showToast('Could not fetch wallet balance.', 'error'); return; }
+
+    const currentBalance = parseFloat(wallet.balance) || 0;
+
+    if (amount > currentBalance) {
+      errEl.textContent = 'Insufficient balance. Available: ₦' +
+        currentBalance.toLocaleString('en-NG', { minimumFractionDigits: 2 });
+      errEl.style.display = 'block'; return;
+    }
+
+    errEl.style.display = 'none';
+    const btn = document.getElementById('withdrawSubmitBtn');
+    btn.textContent = 'Processing…'; btn.disabled = true;
+
+    try {
+      const newBalance = currentBalance - amount;
+      const ref = 'WDRAW-' + Date.now() + '-' + Math.random().toString(36).substr(2,6).toUpperCase();
+
+      // 1. Debit wallet
+      const { error: debitErr } = await _supabase
+        .from('wallets')
+        .update({ balance: newBalance, updated_at: new Date().toISOString() })
+        .eq('user_id', user.id);
+      if (debitErr) throw debitErr;
+
+      // 2. Log transaction
+      const { error: txErr } = await _supabase
+        .from('transactions')
+        .insert({
+          user_id: user.id, type: 'debit', amount,
+          description: `Withdrawal to ${bankName} · ${accNum} (${accName})`,
+          reference: ref, status: 'pending'
+        });
+      if (txErr) throw txErr;
+
+      // 3. Log withdrawal request
+      const { error: wdErr } = await _supabase
+        .from('withdrawals')
+        .insert({
+          user_id: user.id, amount,
+          bank_name: bankName, bank_code: bankCode,
+          account_number: accNum, account_name: accName,
+          reference: ref, status: 'pending'
+        });
+      if (wdErr) throw wdErr;
+
+      // 4. Optionally save bank account
+      if (save) {
+        await _supabase.from('bank_accounts').upsert({
+          user_id: user.id,
+          bank_name: bankName, bank_code: bankCode,
+          account_number: accNum, account_name: accName,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'user_id,account_number' });
+      }
+
+      closeWithdrawModal();
+      showWithdrawalSuccess(amount, newBalance, bankName, accNum);
+
+      if (typeof loadDashboardData === 'function') loadDashboardData();
+      if (typeof loadWalletData    === 'function') loadWalletData();
+
+    } catch(err) {
+      console.error('Withdrawal error:', err);
+      btn.textContent = '🏦 Confirm Withdrawal'; btn.disabled = false;
+      showToast('Withdrawal failed: ' + err.message, 'error');
+    }
+  }
+
+  function showWithdrawalSuccess(amount, newBalance, bank, accNum) {
+    const toast = document.createElement('div');
+    toast.innerHTML = `
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div style="font-size:2rem;">✅</div>
+        <div>
+          <div style="font-weight:700;font-size:.95rem;">Withdrawal Requested!</div>
+          <div style="font-size:.82rem;opacity:.9;">
+            ₦${amount.toLocaleString('en-NG')} → ${bank} ···${accNum.slice(-4)}<br>
+            New balance: ₦${parseFloat(newBalance).toLocaleString('en-NG',{minimumFractionDigits:2})}
+          </div>
         </div>
       </div>
-    </div>
-  `;
-  toast.style.cssText = `
-    position:fixed;bottom:24px;left:50%;
-    transform:translateX(-50%) translateY(80px);
-    background:linear-gradient(135deg,#1a1a2e,#16213e);
-    color:#fff;padding:16px 24px;border-radius:14px;
-    box-shadow:0 8px 30px rgba(0,0,0,.35);
-    z-index:999999;font-family:inherit;min-width:290px;
-    transition:transform .4s cubic-bezier(.34,1.56,.64,1);cursor:pointer;
-    border-left:4px solid #00b359;
-  `;
-  document.body.appendChild(toast);
-  requestAnimationFrame(() => { toast.style.transform = 'translateX(-50%) translateY(0)'; });
-  setTimeout(() => {
-    toast.style.transform = 'translateX(-50%) translateY(80px)';
-    setTimeout(() => toast.remove(), 400);
-  }, 6000);
-  toast.onclick = () => toast.remove();
-}
+    `;
+    toast.style.cssText = `
+      position:fixed;bottom:24px;left:50%;
+      transform:translateX(-50%) translateY(80px);
+      background:linear-gradient(135deg,#1a1a2e,#16213e);
+      color:#fff;padding:16px 24px;border-radius:14px;
+      box-shadow:0 8px 30px rgba(0,0,0,.35);
+      z-index:999999;font-family:inherit;min-width:290px;
+      transition:transform .4s cubic-bezier(.34,1.56,.64,1);cursor:pointer;
+      border-left:4px solid #00b359;
+    `;
+    document.body.appendChild(toast);
+    requestAnimationFrame(() => { toast.style.transform = 'translateX(-50%) translateY(0)'; });
+    setTimeout(() => {
+      toast.style.transform = 'translateX(-50%) translateY(80px)';
+      setTimeout(() => toast.remove(), 400);
+    }, 6000);
+    toast.onclick = () => toast.remove();
+  }
 </script>
 
 </body>
