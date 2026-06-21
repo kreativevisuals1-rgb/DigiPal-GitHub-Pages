@@ -1134,11 +1134,33 @@ async function handleRegister() {
       }
     });
 
-    if (error) throw error;
+    if (error) {
+      // Common Supabase errors with friendlier messages
+      let msg = error.message || 'Registration failed.';
+      if (msg.toLowerCase().includes('already registered') || msg.toLowerCase().includes('user already exists')) {
+        msg = 'This email is already registered. Please log in instead.';
+      } else if (msg.toLowerCase().includes('invalid email')) {
+        msg = 'Please enter a valid email address.';
+      } else if (msg.toLowerCase().includes('password')) {
+        msg = 'Password must be at least 6 characters.';
+      } else if (msg.toLowerCase().includes('rate limit') || msg.toLowerCase().includes('too many')) {
+        msg = 'Too many attempts. Please wait a few minutes and try again.';
+      }
+      throw new Error(msg);
+    }
 
-    pendingEmail = email;
-    document.getElementById('verify-email-display').textContent = email;
-    showPage('verify');
+    // Supabase may auto-confirm if email confirmation is disabled in project settings
+    if (data.session) {
+      // Email confirmation is OFF — user is logged in immediately
+      currentUser = data.user;
+      loadDashboard(data.user);
+      showPage('dashboard');
+    } else {
+      // Email confirmation is ON — send to verify page
+      pendingEmail = email;
+      document.getElementById('verify-email-display').textContent = email;
+      showPage('verify');
+    }
   } catch (err) {
     showAlert('reg-error', err.message || 'Registration failed. Please try again.', 'error');
   } finally {
@@ -1151,7 +1173,17 @@ async function resendVerification() {
   if (!sb || !pendingEmail) return alert('No email on record. Please register again.');
   try {
     await sb.auth.resend({ type: 'signup', email: pendingEmail });
-    alert('Verification email resent! Check your inbox.');
+    alert('Verification email resent! Check your inbox (and spam folder).');
+  } catch(e) {
+    alert('Could not resend: ' + e.message);
+  }
+}
+
+async function resendLoginVerification() {
+  if (!sb || !pendingEmail) return;
+  try {
+    await sb.auth.resend({ type: 'signup', email: pendingEmail });
+    showAlert('login-success', 'Verification email resent! Check your inbox and spam folder, then come back to log in.', 'success');
   } catch(e) {
     alert('Could not resend: ' + e.message);
   }
@@ -1180,9 +1212,25 @@ async function handleLogin() {
     loadDashboard(data.user);
     showPage('dashboard');
   } catch (err) {
-    let msg = err.message;
-    if (msg.includes('Email not confirmed')) msg = 'Please verify your email before logging in.';
-    if (msg.includes('Invalid login')) msg = 'Incorrect email or password.';
+    let msg = err.message || 'Login failed.';
+    if (msg.includes('Email not confirmed') || msg.includes('email_not_confirmed')) {
+      msg = 'Please verify your email first. Check your inbox (and spam folder) for the confirmation link.';
+      showAlert('login-error', msg, 'error');
+      // Show resend option
+      pendingEmail = email;
+      const errEl = document.getElementById('login-error');
+      if (errEl) {
+        errEl.innerHTML += ' <a onclick="resendLoginVerification()" style="color:inherit;font-weight:700;text-decoration:underline;cursor:pointer">Resend email →</a>';
+      }
+      btn.disabled = false; btn.textContent = 'Log In';
+      return;
+    }
+    if (msg.includes('Invalid login') || msg.includes('invalid_credentials') || msg.includes('Invalid credentials')) {
+      msg = 'Incorrect email or password. Please check and try again.';
+    }
+    if (msg.includes('rate limit') || msg.includes('too many')) {
+      msg = 'Too many login attempts. Please wait a few minutes and try again.';
+    }
     showAlert('login-error', msg, 'error');
   } finally {
     btn.disabled = false; btn.textContent = 'Log In';
@@ -1893,11 +1941,32 @@ const EARN_DAILY_CAP = 500;
 const EARN_TIMER_SECONDS = 15 * 60;
 
 const EARN_DEFAULT_POSTS = [
-  { id: 'p1', tag: 'tech', tagLabel: 'Technology', reward: 150, title: 'How AI is Reshaping Fintech in Nigeria', excerpt: 'From credit scoring to fraud detection, artificial intelligence is rewriting the rules of financial services across Africa.', content: '<p>Nigeria's financial technology sector is experiencing a seismic shift. Artificial intelligence is no longer a buzzword reserved for Silicon Valley boardrooms — it's being deployed right here in Lagos, Abuja, and Port Harcourt to solve uniquely Nigerian problems.</p><h3>Credit Scoring Without a Credit History</h3><p>One of the biggest barriers to financial inclusion in Nigeria has always been the absence of formal credit histories for millions of citizens. Traditional banks demand payslips, utility bills, and years of bank statements. But most Nigerians operate outside this formal system.</p><p>AI changes this equation entirely. By analysing mobile money patterns, airtime purchase behaviours, and even the regularity with which someone charges their phone, modern fintech platforms can build surprisingly accurate creditworthiness models. Companies like Carbon and FairMoney have been quietly pioneering this approach, extending credit to over 3 million Nigerians who would otherwise be invisible to the banking system.</p><h3>Fraud Detection at Scale</h3><p>With transaction volumes on platforms like OPay and Moniepoint reaching hundreds of millions of naira daily, manual fraud detection is simply impossible. Machine learning models trained on historical transaction data can flag suspicious patterns in milliseconds — long before a human analyst would notice anything amiss.</p><p>The technology works by establishing a "normal" baseline for each user's transaction behaviour. When a transaction deviates significantly from that baseline — a sudden large transfer to a new account at 3am, for instance — the system can pause the transaction and send an SMS verification to the account holder instantly.</p><h3>What This Means for Everyday Nigerians</h3><p>The practical implication is simple: access to capital is becoming increasingly democratised. A market woman in Aba who has been consistent with her mobile money transactions for 18 months may qualify for a ₦50,000 loan today — something unimaginable under traditional banking criteria.</p>' },
-  { id: 'p2', tag: 'finance', tagLabel: 'Finance', reward: 100, title: '5 Smart Ways to Grow ₦10,000 in 2026', excerpt: 'Small capital, big dreams. Here's how everyday Nigerians are turning modest savings into meaningful returns.', content: '<p>In an economy where inflation has been running hot, leaving ₦10,000 sitting idle in a low-interest savings account is effectively watching your money shrink. But investing carries risk — and with small capital, losing hurts twice as much. Here are five strategies being used by smart Nigerians right now.</p><h3>1. Money Market Funds</h3><p>Platforms like Cowrywise, Piggyvest, and ARM Investment allow you to invest as little as ₦1,000 into money market funds currently yielding between 18–22% annually. The funds pool your money with thousands of other investors into short-term government securities and commercial paper. Your money is liquid — you can withdraw within 2–3 business days — and the risk is extremely low.</p><h3>2. Treasury Bills via Commercial Banks</h3><p>The Central Bank of Nigeria's Treasury Bills are arguably the safest investment in the country, backed by the federal government. With rates currently hovering around 18–20%, a ₦10,000 investment over 91 days yields roughly ₦450 in pure interest.</p><h3>3. Small Trade Capital</h3><p>For those with business acumen, ₦10,000 in trading capital can yield 20–40% returns monthly if you pick the right product. Phone accessories, bottled water, data reselling — the margins are thin but the turnover is fast.</p><h3>4. Digital Skills & Freelancing</h3><p>A graphics design course, a copywriting certification, or a social media management workshop can equip you with skills that earn ₦50,000–₦200,000 monthly. DigiPal's own course library offers several of these at accessible price points.</p><h3>5. Stablecoin Savings</h3><p>For those comfortable with digital assets, holding savings in USDC or USDT on regulated platforms shields your purchasing power from naira devaluation. Platforms like Yellowcard allow naira-to-stablecoin conversions.</p>' },
-  { id: 'p3', tag: 'business', tagLabel: 'Business', reward: 125, title: 'Building a One-Person Business Empire: The Nigerian Edition', excerpt: 'Skills, systems, and discipline. How solo founders are building six-figure businesses from their phones.', content: '<p>The solo business model is having a moment in Nigeria. Call them solopreneurs, one-person businesses, or micro-enterprises — across Lagos, Enugu, and Kano, individuals are building remarkably profitable operations with nothing but a smartphone, a reliable internet connection, and uncommon discipline.</p><h3>The Anatomy of a Successful Solo Business</h3><p>The most successful one-person businesses in Nigeria share three characteristics: a single high-value skill, a distribution channel that doesn't require them to be present 24/7, and a pricing model that reflects results rather than time.</p><p>Take content writing as an example. A skilled writer charging ₦50,000 per long-form article can earn ₦400,000 monthly from just eight pieces — working perhaps 30 hours per week. The key is specialisation. A writer who positions herself as "the go-to copywriter for Nigerian fintech brands" commands 3–5× the rates of a generalist writer.</p><h3>Distribution: Your Most Underrated Asset</h3><p>The biggest mistake most Nigerian freelancers make is treating every month as a fresh start — spending the first week hunting for clients. The antidote is building distribution assets that bring clients to you: a LinkedIn profile with 5,000+ targeted connections, a weekly newsletter with 2,000 subscribers, or even a focused Twitter/X following in your niche.</p><h3>Systems Over Hustle</h3><p>The final piece is systematising your operations. Client onboarding documents, proposal templates, invoice schedules, and project management workflows — these should be built once and reused forever.</p>' },
-  { id: 'p4', tag: 'lifestyle', tagLabel: 'Lifestyle', reward: 125, title: 'Digital Minimalism: How to Reclaim 3 Hours of Your Day', excerpt: 'The average Nigerian spends over 5 hours on their phone daily. Here's how a growing number are cutting that in half.', content: '<p>The numbers are striking. According to recent data, Nigerians rank among the highest social media users globally by time spent — averaging over 5 hours on their devices daily. For context, that's more than 75 full days every year spent scrolling, tapping, and watching. The digital minimalism movement offers a compelling counter-narrative.</p><h3>What Is Digital Minimalism?</h3><p>Digital minimalism, popularised by author Cal Newport, is the philosophy of using technology deliberately and intentionally rather than reactively. It's not about throwing away your phone — it's about deciding in advance what role digital tools play in your life, rather than letting the apps decide for you.</p><h3>The 30-Day Declutter</h3><p>Newport's recommended approach starts with a 30-day break from all optional digital technologies. This isn't a permanent ban — it's a reset. During those 30 days, you rediscover what activities, hobbies, and social interactions you genuinely value without digital mediation.</p><h3>What Nigerians Are Doing With the Extra Time</h3><p>In interviews and online communities, Nigerian digital minimalists report remarkably consistent themes. They're reading more books. They're starting side businesses they'd been putting off. They're cooking proper meals. One Lagos-based marketing professional reported that cutting her daily phone use from 6 hours to 2.5 hours allowed her to complete a freelance digital marketing certification that doubled her income within four months.</p>' }
+  {
+    id: 'p1', tag: 'tech', tagLabel: 'Technology', reward: 150,
+    title: "How AI is Reshaping Fintech in Nigeria",
+    excerpt: "From credit scoring to fraud detection, artificial intelligence is rewriting the rules of financial services across Africa.",
+    content: `<p>Nigeria's financial technology sector is experiencing a seismic shift. Artificial intelligence is no longer a buzzword reserved for Silicon Valley boardrooms — it's being deployed right here in Lagos, Abuja, and Port Harcourt to solve uniquely Nigerian problems.</p><h3>Credit Scoring Without a Credit History</h3><p>One of the biggest barriers to financial inclusion in Nigeria has always been the absence of formal credit histories for millions of citizens. Traditional banks demand payslips, utility bills, and years of bank statements. But most Nigerians operate outside this formal system.</p><p>AI changes this equation entirely. By analysing mobile money patterns, airtime purchase behaviours, and even the regularity with which someone charges their phone, modern fintech platforms can build surprisingly accurate creditworthiness models. Companies like Carbon and FairMoney have quietly pioneered this approach, extending credit to over 3 million Nigerians who would otherwise be invisible to the banking system.</p><h3>Fraud Detection at Scale</h3><p>With transaction volumes on platforms like OPay and Moniepoint reaching hundreds of millions of naira daily, manual fraud detection is simply impossible. Machine learning models can flag suspicious patterns in milliseconds — long before a human analyst would notice anything amiss.</p><h3>What This Means for Everyday Nigerians</h3><p>The practical implication is simple: access to capital is becoming increasingly democratised. A market woman in Aba who has been consistent with her mobile money transactions for 18 months may qualify for a &#8358;50,000 loan today — something unimaginable under traditional banking criteria.</p>`
+  },
+  {
+    id: 'p2', tag: 'finance', tagLabel: 'Finance', reward: 100,
+    title: "5 Smart Ways to Grow ₦10,000 in 2026",
+    excerpt: "Small capital, big dreams. Here's how everyday Nigerians are turning modest savings into meaningful returns.",
+    content: `<p>In an economy where inflation has been running hot, leaving &#8358;10,000 sitting idle in a low-interest savings account is effectively watching your money shrink. Here are five strategies being used by smart Nigerians right now.</p><h3>1. Money Market Funds</h3><p>Platforms like Cowrywise, Piggyvest, and ARM Investment allow you to invest as little as &#8358;1,000 into money market funds currently yielding between 18-22% annually. Your money is liquid — you can withdraw within 2-3 business days — and the risk is extremely low.</p><h3>2. Treasury Bills</h3><p>The Central Bank of Nigeria's Treasury Bills are arguably the safest investment in the country. With rates hovering around 18-20%, a &#8358;10,000 investment over 91 days yields roughly &#8358;450 in pure interest.</p><h3>3. Small Trade Capital</h3><p>For those with business acumen, &#8358;10,000 in trading capital can yield 20-40% returns monthly. Phone accessories, bottled water, data reselling — the margins are thin but the turnover is fast.</p><h3>4. Digital Skills and Freelancing</h3><p>A graphics design course or copywriting certification can equip you with skills that earn &#8358;50,000-&#8358;200,000 monthly. DigiPal's course library offers several of these at accessible price points.</p><h3>5. Stablecoin Savings</h3><p>Holding savings in USDC or USDT on regulated platforms shields your purchasing power from naira devaluation. Platforms like Yellowcard allow naira-to-stablecoin conversions easily.</p>`
+  },
+  {
+    id: 'p3', tag: 'business', tagLabel: 'Business', reward: 125,
+    title: "Building a One-Person Business Empire: The Nigerian Edition",
+    excerpt: "Skills, systems, and discipline. How solo founders are building six-figure businesses from their phones.",
+    content: `<p>The solo business model is having a moment in Nigeria. Across Lagos, Enugu, and Kano, individuals are building remarkably profitable operations with nothing but a smartphone, a reliable internet connection, and uncommon discipline.</p><h3>The Anatomy of a Successful Solo Business</h3><p>The most successful one-person businesses in Nigeria share three characteristics: a single high-value skill, a distribution channel that doesn't require them to be present 24/7, and a pricing model that reflects results rather than time.</p><p>Take content writing as an example. A skilled writer charging &#8358;50,000 per long-form article can earn &#8358;400,000 monthly from just eight pieces. The key is specialisation — positioning yourself as the go-to expert in a specific niche commands 3-5 times the rates of a generalist.</p><h3>Distribution: Your Most Underrated Asset</h3><p>The biggest mistake most Nigerian freelancers make is treating every month as a fresh start. The antidote is building distribution assets: a LinkedIn profile with 5,000+ targeted connections, a weekly newsletter with 2,000 subscribers, or a focused Twitter/X following in your niche. These take 6-12 months to build but dramatically change your business trajectory.</p><h3>Systems Over Hustle</h3><p>The final piece is systematising your operations. Client onboarding documents, proposal templates, and invoice schedules — built once, reused forever. This is what transforms freelancing into a real business.</p>`
+  },
+  {
+    id: 'p4', tag: 'lifestyle', tagLabel: 'Lifestyle', reward: 125,
+    title: "Digital Minimalism: How to Reclaim 3 Hours of Your Day",
+    excerpt: "The average Nigerian spends over 5 hours on their phone daily. Here's how a growing number are cutting that in half.",
+    content: `<p>The numbers are striking. Nigerians rank among the highest social media users globally by time spent — averaging over 5 hours on their devices daily. That's more than 75 full days every year spent scrolling and watching. The digital minimalism movement offers a compelling counter-narrative.</p><h3>What Is Digital Minimalism?</h3><p>Digital minimalism, popularised by author Cal Newport, is the philosophy of using technology deliberately rather than reactively. It's not about throwing away your phone — it's about deciding in advance what role digital tools play in your life, rather than letting apps decide for you.</p><h3>The 30-Day Declutter</h3><p>Newport's recommended approach starts with a 30-day break from all optional digital technologies. This isn't a permanent ban — it's a reset. During those 30 days, you rediscover what activities and social interactions you genuinely value without digital mediation.</p><h3>What Nigerians Are Doing With the Extra Time</h3><p>Nigerian digital minimalists report consistent themes: reading more books, starting side businesses they'd been putting off, cooking proper meals, and sleeping better. One Lagos-based marketing professional reported that cutting her daily phone use from 6 hours to 2.5 hours allowed her to complete a digital marketing certification that doubled her income within four months.</p>`
+  }
 ];
+
 
 function earnGetState() {
   const today = new Date().toDateString();
