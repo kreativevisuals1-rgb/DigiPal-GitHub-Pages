@@ -2430,9 +2430,15 @@ async function init() {
   const ready = initSupabase();
   if (!ready) return;
 
+  // Track whether we already loaded the dashboard from getSession()
+  // so onAuthStateChange doesn't fire a second loadDashboard() on the
+  // same page load (which races and wipes the transaction list).
+  let dashboardLoaded = false;
+
   const { data: { session } } = await sb.auth.getSession();
   if (session?.user) {
     currentUser = session.user;
+    dashboardLoaded = true;
     loadDashboard(session.user);
     showPage('dashboard');
   }
@@ -2440,12 +2446,19 @@ async function init() {
   sb.auth.onAuthStateChange((event, session) => {
     if (event === 'SIGNED_IN' && session?.user) {
       currentUser = session.user;
-      loadDashboard(session.user);
-      showPage('dashboard');
+      if (!dashboardLoaded) {
+        dashboardLoaded = true;
+        loadDashboard(session.user);
+        showPage('dashboard');
+      }
     }
     if (event === 'SIGNED_OUT') {
       currentUser = null;
+      dashboardLoaded = false;
       showPage('landing');
+    }
+    if (event === 'TOKEN_REFRESHED' && session?.user) {
+      currentUser = session.user;
     }
   });
 }
