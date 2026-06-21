@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>DigiPal Solutions</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://js.paystack.co/v1/inline.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -266,6 +267,44 @@ footer{background:#04342C;color:rgba(255,255,255,.75);padding:3rem 5% 1.5rem}
   .stats-grid{grid-template-columns:1fr}
   .auth-box{padding:1.75rem 1.25rem}
 }
+
+/* ── DVA CARD ── */
+.dva-card{background:#fff;border:1.5px solid var(--border);border-radius:14px;padding:1.25rem;margin-bottom:1rem}
+.dva-card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem}
+.dva-card-header h3{font-size:.95rem;font-weight:700;color:var(--brand)}
+.dva-badge{background:var(--brand-light);color:var(--brand);font-size:.72rem;font-weight:700;padding:.2rem .6rem;border-radius:999px}
+.dva-row{display:flex;align-items:center;justify-content:space-between;padding:.6rem 0;border-bottom:1px solid var(--bg2)}
+.dva-row:last-child{border-bottom:none}
+.dva-field{font-size:.78rem;color:var(--text-muted)}
+.dva-value{font-size:.92rem;font-weight:700;color:var(--text)}
+.dva-copy{background:none;border:1px solid var(--border);border-radius:6px;padding:.25rem .6rem;font-size:.75rem;cursor:pointer;color:var(--brand);font-weight:600;transition:all .2s}
+.dva-copy:hover{background:var(--brand-light)}
+.dva-skeleton{height:1rem;background:linear-gradient(90deg,#f0f0f0 25%,#e0e0e0 50%,#f0f0f0 75%);background-size:200% 100%;animation:shimmer 1.4s infinite;border-radius:4px;width:60%}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+
+/* ── FUND MODAL ── */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center;padding:1rem}
+.modal-overlay.show{display:flex}
+.modal-box{background:#fff;border-radius:16px;padding:2rem;max-width:420px;width:100%;box-shadow:0 8px 40px rgba(0,0,0,.18)}
+.modal-title{font-size:1.15rem;font-weight:800;margin-bottom:.4rem}
+.modal-sub{font-size:.88rem;color:var(--text-muted);margin-bottom:1.5rem}
+.amount-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:.6rem;margin-bottom:1rem}
+.amt-chip{padding:.55rem;border:1.5px solid var(--border);border-radius:8px;text-align:center;font-size:.88rem;font-weight:600;cursor:pointer;transition:all .2s;color:var(--text)}
+.amt-chip:hover,.amt-chip.selected{border-color:var(--brand);background:var(--brand-light);color:var(--brand)}
+.modal-actions{display:flex;gap:.75rem;margin-top:1.25rem}
+
+/* ── TOAST ── */
+.toast{position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%) translateY(20px);background:#1a1a1a;color:#fff;padding:.85rem 1.4rem;border-radius:12px;font-size:.88rem;z-index:9999;opacity:0;transition:all .3s;pointer-events:none;white-space:nowrap;max-width:90vw;text-align:center}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast.success{background:#0F6E56}
+.toast.error{background:#dc2626}
+.toast.info{background:#2563eb}
+
+/* ── PROCESSING OVERLAY ── */
+.pay-processing{display:none;position:fixed;inset:0;background:rgba(255,255,255,.92);z-index:2000;align-items:center;justify-content:center;flex-direction:column;gap:1rem;text-align:center}
+.pay-processing.show{display:flex}
+.spin{width:44px;height:44px;border:4px solid var(--brand-light);border-top-color:var(--brand);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
 </style>
 </head>
 <body>
@@ -556,17 +595,90 @@ footer{background:#04342C;color:rgba(255,255,255,.75);padding:3rem 5% 1.5rem}
     <div class="dash-tab" id="tab-wallet">
       <div class="dash-header"><div><h1>💰 My Wallet</h1><p>Manage your DigiPal wallet balance.</p></div></div>
       <div style="max-width:480px">
+
+        <!-- Balance card -->
         <div class="wallet-card">
           <div class="wallet-label">Available Balance</div>
-          <div class="wallet-amount">₦0.00</div>
+          <div class="wallet-amount" id="wallet-balance-display">₦0.00</div>
           <div class="wallet-actions">
-            <div class="wallet-btn wallet-btn-primary" onclick="alert('Payment gateway integration coming soon!')">+ Fund Wallet</div>
+            <div class="wallet-btn wallet-btn-primary" onclick="openFundModal()">+ Fund Wallet</div>
             <div class="wallet-btn wallet-btn-primary" onclick="alert('Withdrawal coming soon!')">Withdraw</div>
           </div>
         </div>
-        <div class="dash-card"><h3>Transaction History</h3><div style="text-align:center;padding:2rem;color:var(--text-muted);font-size:.9rem">📭 No transactions yet.</div></div>
+
+        <!-- Permanent Funding Account (DVA) -->
+        <div class="dva-card">
+          <div class="dva-card-header">
+            <h3>🏦 Permanent Funding Account</h3>
+            <span class="dva-badge">YOUR ACCOUNT</span>
+          </div>
+          <p style="font-size:.82rem;color:var(--text-muted);margin-bottom:1rem">Transfer any amount to this account at any time — your wallet is credited automatically.</p>
+          <div id="dva-content">
+            <div class="dva-row">
+              <span class="dva-field">Bank Name</span>
+              <div style="display:flex;align-items:center;gap:.5rem">
+                <span class="dva-value" id="dva-bank"><span class="dva-skeleton" style="width:100px"></span></span>
+              </div>
+            </div>
+            <div class="dva-row">
+              <span class="dva-field">Account Number</span>
+              <div style="display:flex;align-items:center;gap:.5rem">
+                <span class="dva-value" id="dva-number"><span class="dva-skeleton" style="width:80px"></span></span>
+                <button class="dva-copy" id="dva-copy-btn" onclick="copyDVA()" style="display:none">Copy</button>
+              </div>
+            </div>
+            <div class="dva-row">
+              <span class="dva-field">Account Name</span>
+              <span class="dva-value" id="dva-name"><span class="dva-skeleton" style="width:120px"></span></span>
+            </div>
+          </div>
+          <p id="dva-error" style="display:none;font-size:.82rem;color:#dc2626;margin-top:.75rem"></p>
+        </div>
+
+        <!-- Transaction History -->
+        <div class="dash-card">
+          <h3>Transaction History</h3>
+          <div id="tx-list" style="text-align:center;padding:2rem;color:var(--text-muted);font-size:.9rem">📭 No transactions yet.</div>
+        </div>
       </div>
     </div>
+
+    <!-- FUND WALLET MODAL -->
+    <div class="modal-overlay" id="fund-modal" onclick="if(event.target===this)closeFundModal()">
+      <div class="modal-box">
+        <div class="modal-title">💳 Fund Your Wallet</div>
+        <div class="modal-sub">Pay securely via card, bank transfer, or USSD</div>
+        <div class="form-group">
+          <label style="font-size:.85rem;font-weight:600">Enter Amount (₦)</label>
+          <input type="number" id="fund-amount-input" placeholder="e.g. 5000" min="100"
+            style="width:100%;padding:.7rem 1rem;border:1.5px solid var(--border);border-radius:8px;font-size:1rem;margin-top:.4rem;outline:none"
+            oninput="syncAmountChips(this.value)"/>
+        </div>
+        <div class="amount-grid">
+          <div class="amt-chip" onclick="selectAmount(500)">₦500</div>
+          <div class="amt-chip" onclick="selectAmount(1000)">₦1,000</div>
+          <div class="amt-chip" onclick="selectAmount(2000)">₦2,000</div>
+          <div class="amt-chip" onclick="selectAmount(5000)">₦5,000</div>
+          <div class="amt-chip" onclick="selectAmount(10000)">₦10,000</div>
+          <div class="amt-chip" onclick="selectAmount(20000)">₦20,000</div>
+        </div>
+        <p id="fund-modal-error" style="display:none;font-size:.83rem;color:#dc2626;margin-top:.25rem"></p>
+        <div class="modal-actions">
+          <button class="btn btn-outline" style="flex:1" onclick="closeFundModal()">Cancel</button>
+          <button class="btn btn-primary" style="flex:2" onclick="startPayment()" id="pay-btn">Pay with Paystack</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- PROCESSING OVERLAY -->
+    <div class="pay-processing" id="pay-processing">
+      <div class="spin"></div>
+      <div style="font-weight:700;font-size:1.05rem" id="processing-title">Verifying payment…</div>
+      <div style="font-size:.88rem;color:var(--text-muted)" id="processing-sub">Please wait, do not close this page</div>
+    </div>
+
+    <!-- TOAST -->
+    <div class="toast" id="toast"></div>
 
     <!-- VTU TAB -->
     <div class="dash-tab" id="tab-vtu">
@@ -700,11 +812,27 @@ footer{background:#04342C;color:rgba(255,255,255,.75);padding:3rem 5% 1.5rem}
 // ══════════════════════════════════════════════
 const SUPABASE_URL = 'https://sskfelkrlmrrgrmbskvj.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNza2ZlbGtybG1ycmdybWJza3ZqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIwMDAwNjYsImV4cCI6MjA5NzU3NjA2Nn0.EzN7rCLIodheSec6hYyRI1zgrxl2C4txbQ98oyP6gbg';
+
+// ══════════════════════════════════════════════
+//  🔧 PAYSTACK CONFIG
+//  Get your public key from: https://dashboard.paystack.com/#/settings/developer
+// ══════════════════════════════════════════════
+const PAYSTACK_PUBLIC_KEY = 'pk_live_490eca6743e76032f283987f31f2de6c5c1f397b';
 // ══════════════════════════════════════════════
 
 let supabase = null;
 let currentUser = null;
 let pendingEmail = '';
+let walletBalance = 0;
+
+// ── TOAST ──
+function showToast(msg, type = 'info', duration = 4000) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show ' + type;
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => { t.className = 'toast'; }, duration);
+}
 
 function initSupabase() {
   if (SUPABASE_URL === 'YOUR_SUPABASE_URL' || SUPABASE_ANON_KEY === 'YOUR_SUPABASE_ANON_KEY') {
@@ -896,6 +1024,11 @@ function loadDashboard(user) {
   document.getElementById('profile-phone-input').value = meta.phone || '';
   document.getElementById('referral-link').value = `https://digipal.ng/ref/${user.id.slice(0,8)}`;
   switchTab('overview');
+
+  // Load wallet data
+  loadWalletBalance();
+  loadDVA();
+  loadTransactions();
 }
 
 // ── COPY REFERRAL ──
@@ -903,6 +1036,299 @@ function copyReferral() {
   const input = document.getElementById('referral-link');
   input.select();
   navigator.clipboard.writeText(input.value).then(() => alert('Referral link copied!')).catch(() => alert('Copied!'));
+}
+
+// ════════════════════════════════════════════════
+//  WALLET BALANCE
+// ════════════════════════════════════════════════
+async function loadWalletBalance() {
+  if (!supabase || !currentUser) return;
+  try {
+    const { data, error } = await supabase
+      .from('wallets')
+      .select('balance')
+      .eq('user_id', currentUser.id)
+      .single();
+
+    if (error && error.code !== 'PGRST116') throw error;
+    walletBalance = data?.balance ?? 0;
+    updateBalanceUI(walletBalance);
+  } catch (err) {
+    console.error('Failed to load balance:', err);
+  }
+}
+
+function updateBalanceUI(amount) {
+  const fmt = '₦' + Number(amount).toLocaleString('en-NG', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+  const el = document.getElementById('wallet-balance-display');
+  if (el) el.textContent = fmt;
+  // Also update overview stat card if present
+  const stat = document.querySelector('.stat-value.green');
+  if (stat) stat.textContent = fmt;
+}
+
+// ════════════════════════════════════════════════
+//  DEDICATED VIRTUAL ACCOUNT (DVA)
+// ════════════════════════════════════════════════
+async function loadDVA() {
+  if (!supabase || !currentUser) return;
+
+  try {
+    // Check if user already has a DVA
+    const { data: profile, error } = await supabase
+      .from('wallets')
+      .select('dva_bank_name, dva_account_number, dva_account_name')
+      .eq('user_id', currentUser.id)
+      .single();
+
+    if (!error && profile?.dva_account_number) {
+      renderDVA(profile);
+      return;
+    }
+
+    // Request a new DVA from edge function
+    const meta = currentUser.user_metadata || {};
+    const firstName = meta.first_name || currentUser.email.split('@')[0];
+    const lastName = meta.last_name || '';
+    const phone = meta.phone || '';
+
+    const res = await supabase.functions.invoke('create-dva', {
+      body: {
+        user_id: currentUser.id,
+        email: currentUser.email,
+        first_name: firstName,
+        last_name: lastName,
+        phone
+      }
+    });
+
+    if (res.error) throw res.error;
+    if (res.data?.account_number) {
+      renderDVA({
+        dva_bank_name: res.data.bank_name,
+        dva_account_number: res.data.account_number,
+        dva_account_name: res.data.account_name
+      });
+    } else {
+      showDVAError('Could not generate account. Please refresh to try again.');
+    }
+  } catch (err) {
+    console.error('DVA error:', err);
+    showDVAError('Account generation failed. Tap to retry.');
+  }
+}
+
+function renderDVA(dva) {
+  document.getElementById('dva-bank').textContent = dva.dva_bank_name || '—';
+  document.getElementById('dva-number').textContent = dva.dva_account_number || '—';
+  document.getElementById('dva-name').textContent = dva.dva_account_name || '—';
+  document.getElementById('dva-copy-btn').style.display = 'inline-block';
+}
+
+function showDVAError(msg) {
+  const errEl = document.getElementById('dva-error');
+  errEl.textContent = msg + ' (Tap here to retry)';
+  errEl.style.display = 'block';
+  errEl.style.cursor = 'pointer';
+  errEl.onclick = () => { errEl.style.display = 'none'; loadDVA(); };
+  // Clear skeletons
+  ['dva-bank','dva-number','dva-name'].forEach(id => {
+    document.getElementById(id).textContent = '—';
+  });
+}
+
+function copyDVA() {
+  const num = document.getElementById('dva-number').textContent;
+  if (!num || num === '—') return;
+  navigator.clipboard.writeText(num).then(() => showToast('Account number copied!', 'success'));
+}
+
+// ════════════════════════════════════════════════
+//  TRANSACTION HISTORY
+// ════════════════════════════════════════════════
+async function loadTransactions() {
+  if (!supabase || !currentUser) return;
+  try {
+    const { data, error } = await supabase
+      .from('transactions')
+      .select('*')
+      .eq('user_id', currentUser.id)
+      .order('created_at', { ascending: false })
+      .limit(20);
+
+    if (error) throw error;
+    renderTransactions(data || []);
+  } catch (err) {
+    console.error('Transactions error:', err);
+  }
+}
+
+function renderTransactions(txs) {
+  const el = document.getElementById('tx-list');
+  if (!txs.length) {
+    el.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--text-muted);font-size:.9rem">📭 No transactions yet.</div>';
+    return;
+  }
+  el.innerHTML = txs.map(tx => {
+    const sign = tx.type === 'credit' ? '+' : '-';
+    const color = tx.type === 'credit' ? '#0F6E56' : '#dc2626';
+    const date = new Date(tx.created_at).toLocaleDateString('en-NG', {day:'numeric',month:'short',year:'numeric'});
+    const amt = '₦' + Number(tx.amount).toLocaleString('en-NG', {minimumFractionDigits:2});
+    return `<div style="display:flex;justify-content:space-between;align-items:center;padding:.75rem 0;border-bottom:1px solid var(--bg2)">
+      <div>
+        <div style="font-size:.9rem;font-weight:600">${tx.description || 'Wallet funding'}</div>
+        <div style="font-size:.78rem;color:var(--text-muted)">${date}</div>
+      </div>
+      <div style="font-weight:700;color:${color}">${sign}${amt}</div>
+    </div>`;
+  }).join('');
+}
+
+// ════════════════════════════════════════════════
+//  FUND WALLET — PAYSTACK
+// ════════════════════════════════════════════════
+function openFundModal() {
+  document.getElementById('fund-modal').classList.add('show');
+  document.getElementById('fund-amount-input').value = '';
+  document.getElementById('fund-modal-error').style.display = 'none';
+  document.querySelectorAll('.amt-chip').forEach(c => c.classList.remove('selected'));
+}
+
+function closeFundModal() {
+  document.getElementById('fund-modal').classList.remove('show');
+}
+
+function selectAmount(n) {
+  document.getElementById('fund-amount-input').value = n;
+  document.querySelectorAll('.amt-chip').forEach(c => c.classList.remove('selected'));
+  event.currentTarget.classList.add('selected');
+}
+
+function syncAmountChips(val) {
+  document.querySelectorAll('.amt-chip').forEach(c => {
+    const chipVal = parseInt(c.textContent.replace(/[₦,]/g, ''));
+    c.classList.toggle('selected', chipVal === parseInt(val));
+  });
+}
+
+function startPayment() {
+  const errEl = document.getElementById('fund-modal-error');
+  errEl.style.display = 'none';
+  const amount = parseInt(document.getElementById('fund-amount-input').value);
+
+  if (!amount || amount < 100) {
+    errEl.textContent = 'Minimum funding amount is ₦100.';
+    errEl.style.display = 'block';
+    return;
+  }
+  if (!currentUser) {
+    errEl.textContent = 'You must be logged in to fund your wallet.';
+    errEl.style.display = 'block';
+    return;
+  }
+  if (PAYSTACK_PUBLIC_KEY.startsWith('pk_live_REPLACE') || PAYSTACK_PUBLIC_KEY.startsWith('pk_test_REPLACE')) {
+    errEl.textContent = 'Paystack public key not configured. Please add it in the script section.';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  closeFundModal();
+
+  const reference = 'DIGI_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8).toUpperCase();
+
+  const handler = PaystackPop.setup({
+    key: PAYSTACK_PUBLIC_KEY,
+    email: currentUser.email,
+    amount: amount * 100, // kobo
+    currency: 'NGN',
+    ref: reference,
+    metadata: {
+      user_id: currentUser.id,
+      custom_fields: [{ display_name: 'User ID', variable_name: 'user_id', value: currentUser.id }]
+    },
+    callback: function(response) {
+      // Payment window closed with success — verify server-side
+      verifyAndCredit(response.reference, amount);
+    },
+    onClose: function() {
+      showToast('Payment window closed. If you completed payment, your wallet will be updated shortly.', 'info', 6000);
+    }
+  });
+
+  handler.openIframe();
+}
+
+// ── VERIFY PAYMENT & CREDIT WALLET ──
+async function verifyAndCredit(reference, expectedAmount) {
+  const proc = document.getElementById('pay-processing');
+  const procTitle = document.getElementById('processing-title');
+  const procSub = document.getElementById('processing-sub');
+
+  proc.classList.add('show');
+  procTitle.textContent = 'Verifying payment…';
+  procSub.textContent = 'Please wait, do not close this page';
+
+  // Poll with retries — handles cases where Paystack approval is slightly delayed
+  const MAX_ATTEMPTS = 6;
+  const DELAY_MS = 3000;
+
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    try {
+      if (attempt > 2) {
+        procTitle.textContent = 'Still verifying…';
+        procSub.textContent = `Checking with Paystack (attempt ${attempt}/${MAX_ATTEMPTS})`;
+      }
+
+      const res = await supabase.functions.invoke('verify-payment', {
+        body: { reference, user_id: currentUser.id, amount: expectedAmount }
+      });
+
+      if (res.error) throw new Error(res.error.message);
+
+      const result = res.data;
+
+      if (result?.status === 'success') {
+        proc.classList.remove('show');
+        walletBalance = result.new_balance ?? walletBalance + expectedAmount;
+        updateBalanceUI(walletBalance);
+        loadTransactions();
+        showToast(`✅ ₦${expectedAmount.toLocaleString()} added to your wallet!`, 'success', 5000);
+        switchTab('wallet');
+        return;
+      }
+
+      if (result?.status === 'already_processed') {
+        proc.classList.remove('show');
+        showToast('This payment was already credited to your wallet.', 'info');
+        return;
+      }
+
+      if (result?.status === 'failed') {
+        proc.classList.remove('show');
+        showToast('❌ Payment was not successful. Please try again.', 'error', 6000);
+        return;
+      }
+
+      // Status is pending/unknown — wait and retry
+      if (attempt < MAX_ATTEMPTS) {
+        await new Promise(r => setTimeout(r, DELAY_MS));
+      }
+
+    } catch (err) {
+      console.error(`Verify attempt ${attempt} failed:`, err);
+      if (attempt < MAX_ATTEMPTS) {
+        await new Promise(r => setTimeout(r, DELAY_MS));
+      }
+    }
+  }
+
+  // Exhausted retries — don't alarm, the webhook will still credit them
+  proc.classList.remove('show');
+  showToast(
+    '⏳ Payment is still being confirmed. Your wallet will be credited automatically — check back in a minute.',
+    'info',
+    8000
+  );
 }
 
 // ── AUTH STATE LISTENER ──
