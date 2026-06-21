@@ -548,6 +548,7 @@ footer{background:#04342C;color:rgba(255,255,255,.75);padding:3rem 5% 1.5rem}
       <div class="nav-item" onclick="switchTab('courses')"><span class="ni">🎓</span> Courses</div>
       <div class="nav-item" onclick="switchTab('marketplace')"><span class="ni">🛍️</span> Marketplace</div>
       <div class="nav-item" onclick="switchTab('profile')"><span class="ni">👤</span> Profile</div>
+      <div class="nav-item" onclick="switchTab('earn')"><span class="ni">📚</span> Read & Earn</div>
     </div>
     <div class="sidebar-footer">
       <div class="user-chip">
@@ -717,6 +718,24 @@ footer{background:#04342C;color:rgba(255,255,255,.75);padding:3rem 5% 1.5rem}
       <div style="font-size:.88rem;color:var(--text-muted)" id="processing-sub">Please wait, do not close this page</div>
     </div>
 
+    <!-- WITHDRAWAL SUCCESS OVERLAY -->
+    <div class="modal-overlay" id="withdrawal-success-overlay" style="display:none;z-index:2000">
+      <div class="modal-box" style="text-align:center;max-width:380px">
+        <div style="font-size:3.5rem;margin-bottom:.75rem">🏦</div>
+        <h2 style="font-size:1.3rem;font-weight:800;margin-bottom:.5rem">Withdrawal Request Received</h2>
+        <p style="color:var(--text-muted);font-size:.9rem;margin-bottom:1.25rem">
+          <strong id="wd-success-amount">₦0</strong> will be sent to <strong id="wd-success-name">your account</strong> within <strong>24 hours</strong>.
+        </p>
+        <div style="background:var(--brand-light);border-radius:10px;padding:1rem;font-size:.85rem;color:var(--brand);margin-bottom:1.25rem;text-align:left">
+          <div style="font-weight:700;margin-bottom:.4rem">What happens next?</div>
+          <div>✅ Your wallet has been debited immediately.</div>
+          <div style="margin-top:.3rem">⏳ Your transaction shows <strong>Pending</strong> until we send the funds.</div>
+          <div style="margin-top:.3rem">🔔 Once sent, it will change to <strong>Successful</strong>.</div>
+        </div>
+        <button class="btn btn-primary" style="width:100%" onclick="closeWithdrawalSuccess()">View Transaction History</button>
+      </div>
+    </div>
+
     <!-- TOAST -->
     <div class="toast" id="toast"></div>
 
@@ -834,6 +853,49 @@ footer{background:#04342C;color:rgba(255,255,255,.75);padding:3rem 5% 1.5rem}
       </div>
     </div>
 
+    <!-- READ & EARN TAB -->
+    <div class="dash-tab" id="tab-earn">
+      <div class="dash-header"><div><h1>📚 Read &amp; Earn</h1><p>Read posts, write comments, earn DigiPal credits daily.</p></div></div>
+
+      <div style="background:linear-gradient(135deg,#00c853,#009624);border-radius:14px;padding:28px 24px;color:white;margin-bottom:24px;text-align:center">
+        <div style="font-size:1.5rem;font-weight:800;margin-bottom:8px">Earn DigiPal Credits Daily</div>
+        <div style="opacity:0.9;margin-bottom:20px;font-size:0.95rem">Read posts · Write comments · Redeem for airtime, data &amp; cable TV</div>
+        <div style="display:flex;justify-content:center;gap:28px;flex-wrap:wrap;margin-bottom:24px">
+          <div style="text-align:center"><div style="font-size:1.5rem;font-weight:800">500</div><div style="font-size:0.78rem;opacity:0.85">Max credits/day</div></div>
+          <div style="text-align:center"><div style="font-size:1.5rem;font-weight:800">1 cr = ₦1</div><div style="font-size:0.78rem;opacity:0.85">On platform</div></div>
+          <div style="text-align:center"><div style="font-size:1.5rem;font-weight:800">₦5,000</div><div style="font-size:0.78rem;opacity:0.85">Monthly prize</div></div>
+        </div>
+        <a href="read-and-earn.html" style="display:inline-block;background:white;color:#009624;font-weight:800;padding:13px 32px;border-radius:10px;text-decoration:none;font-size:1rem">Start Reading &amp; Earning →</a>
+      </div>
+
+      <!-- Earn credits balance card -->
+      <div style="background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:1.5rem;margin-bottom:1.5rem">
+        <div style="font-weight:700;margin-bottom:1rem">⚡ Your Credits Balance</div>
+        <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap">
+          <div>
+            <div style="font-size:.8rem;color:var(--text-muted);margin-bottom:.2rem">Total Credits Earned</div>
+            <div style="font-size:2rem;font-weight:800;color:#009624" id="earn-credits-display">0</div>
+            <div style="font-size:.78rem;color:var(--text-muted)">≈ ₦<span id="earn-credits-naira">0</span></div>
+          </div>
+          <div style="border-left:1px solid var(--border);padding-left:1rem;margin-left:.5rem">
+            <div style="font-size:.8rem;color:var(--text-muted);margin-bottom:.2rem">Earned Today</div>
+            <div style="font-size:1.5rem;font-weight:800" id="earn-today-display">0</div>
+            <div style="font-size:.78rem;color:var(--text-muted)">of 500 daily max</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="background:#fff;border-radius:12px;padding:20px 24px;box-shadow:0 2px 12px rgba(0,0,0,0.06)">
+        <div style="font-weight:700;margin-bottom:14px">How it works</div>
+        <div style="display:grid;gap:12px">
+          <div style="display:flex;gap:12px;align-items:flex-start"><span style="font-size:1.2rem">📰</span><div><strong>Read a post</strong><br><span style="font-size:0.85rem;color:#6b7280">A 15-minute timer ensures you actually read it.</span></div></div>
+          <div style="display:flex;gap:12px;align-items:flex-start"><span style="font-size:1.2rem">💬</span><div><strong>Write a genuine comment</strong><br><span style="font-size:0.85rem;color:#6b7280">At least 500 characters. Our AI checks it's real, not spam.</span></div></div>
+          <div style="display:flex;gap:12px;align-items:flex-start"><span style="font-size:1.2rem">⚡</span><div><strong>Earn credits instantly</strong><br><span style="font-size:0.85rem;color:#6b7280">Up to 500 credits daily. Redeem for airtime, data, or cable TV.</span></div></div>
+          <div style="display:flex;gap:12px;align-items:flex-start"><span style="font-size:1.2rem">🏆</span><div><strong>Win the monthly prize</strong><br><span style="font-size:0.85rem;color:#6b7280">Top commenter each month wins ₦5,000 to their DigiPal wallet.</span></div></div>
+        </div>
+      </div>
+    </div>
+
   </div>
 </div>
 </div>
@@ -919,7 +981,7 @@ function switchTab(name) {
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   document.getElementById('tab-' + name).classList.add('active');
   const items = document.querySelectorAll('.nav-item');
-  const map = {overview:0, wallet:1, vtu:2, courses:3, marketplace:4, profile:5};
+  const map = {overview:0, wallet:1, vtu:2, courses:3, marketplace:4, profile:5, earn:6};
   if (map[name] !== undefined) items[map[name]].classList.add('active');
   closeSidebar();
 }
@@ -1068,6 +1130,20 @@ function loadDashboard(user) {
   // Load wallet data
   loadWalletBalance();
   loadTransactions();
+  loadEarnCredits();
+}
+
+function loadEarnCredits() {
+  const today = new Date().toDateString();
+  const raw = localStorage.getItem('digipal_earn_' + today);
+  const todayState = raw ? JSON.parse(raw) : { earned: 0 };
+  const total = parseInt(localStorage.getItem('digipal_total_credits') || '0');
+  const earnEl = document.getElementById('earn-credits-display');
+  const nairaEl = document.getElementById('earn-credits-naira');
+  const todayEl = document.getElementById('earn-today-display');
+  if (earnEl) earnEl.textContent = total.toLocaleString();
+  if (nairaEl) nairaEl.textContent = total.toLocaleString();
+  if (todayEl) todayEl.textContent = todayState.earned || 0;
 }
 
 // ── COPY REFERRAL ──
@@ -1148,12 +1224,27 @@ function renderTransactions(txs) {
     const color = tx.type === 'credit' ? '#0F6E56' : '#dc2626';
     const date = new Date(tx.created_at).toLocaleDateString('en-NG', {day:'numeric',month:'short',year:'numeric'});
     const amt = '₦' + Number(tx.amount).toLocaleString('en-NG', {minimumFractionDigits:2});
+    // Status badge for withdrawal transactions
+    let statusBadge = '';
+    if (tx.category === 'withdrawal') {
+      if (tx.status === 'pending') {
+        statusBadge = '<span style="font-size:.7rem;font-weight:700;background:#fef9c3;color:#92400e;padding:.2rem .6rem;border-radius:999px;margin-left:.5rem">⏳ Pending</span>';
+      } else if (tx.status === 'processed') {
+        statusBadge = '<span style="font-size:.7rem;font-weight:700;background:#dcfce7;color:#15803d;padding:.2rem .6rem;border-radius:999px;margin-left:.5rem">✅ Successful</span>';
+      } else if (tx.status === 'failed') {
+        statusBadge = '<span style="font-size:.7rem;font-weight:700;background:#fee2e2;color:#991b1b;padding:.2rem .6rem;border-radius:999px;margin-left:.5rem">❌ Failed</span>';
+      }
+    }
+    const icon = tx.category === 'withdrawal' ? '🏦' : tx.category === 'funding' ? '💳' : tx.category === 'earn' ? '⚡' : '🔄';
     return `<div style="display:flex;justify-content:space-between;align-items:center;padding:.75rem 0;border-bottom:1px solid var(--bg2)">
-      <div>
-        <div style="font-size:.9rem;font-weight:600">${tx.description || 'Wallet funding'}</div>
-        <div style="font-size:.78rem;color:var(--text-muted)">${date}</div>
+      <div style="display:flex;align-items:center;gap:.65rem;min-width:0">
+        <div style="width:36px;height:36px;border-radius:50%;background:var(--brand-light);display:flex;align-items:center;justify-content:center;font-size:.9rem;flex-shrink:0">${icon}</div>
+        <div style="min-width:0">
+          <div style="font-size:.9rem;font-weight:600">${tx.description || 'Wallet funding'}${statusBadge}</div>
+          <div style="font-size:.75rem;color:var(--text-muted)">${date}${tx.bank_name ? ' · ' + tx.bank_name : ''}</div>
+        </div>
       </div>
-      <div style="font-weight:700;color:${color}">${sign}${amt}</div>
+      <div style="font-weight:700;color:${color};flex-shrink:0;margin-left:.75rem">${sign}${amt}</div>
     </div>`;
   }).join('');
 }
@@ -1567,11 +1658,10 @@ async function submitWithdrawal() {
     return;
   }
   if (withdrawResolvedAccount.verified === false) {
-    // unverified (network issue) — warn once more but allow
-    const confirm = window.confirm(
-      'Account verification was unavailable. Are you sure the account number and bank are correct? Funds sent to a wrong account cannot be recovered.'
+    const ok = window.confirm(
+      'Account verification was unavailable. Are you sure the details are correct? Funds sent to a wrong account cannot be recovered.'
     );
-    if (!confirm) return;
+    if (!ok) return;
   }
   if (!amount || amount < 100) {
     errEl.textContent = 'Minimum withdrawal amount is ₦100.';
@@ -1594,28 +1684,67 @@ async function submitWithdrawal() {
   btn.textContent = 'Processing…';
 
   try {
-    const res = await sb.functions.invoke('withdraw', {
-      body: {
-        user_id: currentUser.id,
-        amount,
-        bank_code: withdrawResolvedAccount.bank_code,
-        bank_name: withdrawResolvedAccount.bank_name,
-        account_number: withdrawResolvedAccount.account_number,
-        account_name: withdrawResolvedAccount.account_name
-      }
-    });
+    const txRef = 'WD_' + Date.now() + '_' + Math.random().toString(36).slice(2,7).toUpperCase();
+    const meta = currentUser.user_metadata || {};
+    const userName = ((meta.first_name || '') + ' ' + (meta.last_name || '')).trim() || currentUser.email;
 
-    if (res.error) throw res.error;
-    const result = res.data;
-    if (result?.status !== 'success') {
-      throw new Error(result?.error || 'Withdrawal failed. Please try again.');
-    }
+    // 1. Debit the wallet immediately
+    const { data: walletData, error: walletErr } = await sb
+      .from('wallets')
+      .select('balance')
+      .eq('user_id', currentUser.id)
+      .single();
+    if (walletErr) throw walletErr;
+    const currentBalance = walletData.balance;
+    if (amount > currentBalance) throw new Error('Insufficient balance. Please refresh and try again.');
 
+    const newBalance = currentBalance - amount;
+    const { error: updateErr } = await sb
+      .from('wallets')
+      .update({ balance: newBalance })
+      .eq('user_id', currentUser.id);
+    if (updateErr) throw updateErr;
+
+    // 2. Create a pending withdrawal transaction record
+    const txPayload = {
+      user_id: currentUser.id,
+      type: 'debit',
+      category: 'withdrawal',
+      status: 'pending',
+      amount,
+      description: 'Withdrawal to ' + withdrawResolvedAccount.bank_name,
+      bank_name: withdrawResolvedAccount.bank_name,
+      bank_code: withdrawResolvedAccount.bank_code,
+      account_number: withdrawResolvedAccount.account_number,
+      account_name: withdrawResolvedAccount.account_name,
+      reference: txRef,
+      user_name: userName,
+      user_email: currentUser.email
+    };
+    const { error: txErr } = await sb.from('transactions').insert([txPayload]);
+    if (txErr) throw txErr;
+
+    // 3. Notify admin via withdrawal_requests table
+    const { error: reqErr } = await sb.from('withdrawal_requests').insert([{
+      user_id: currentUser.id,
+      user_name: userName,
+      user_email: currentUser.email,
+      amount,
+      bank_name: withdrawResolvedAccount.bank_name,
+      bank_code: withdrawResolvedAccount.bank_code,
+      account_number: withdrawResolvedAccount.account_number,
+      account_name: withdrawResolvedAccount.account_name,
+      reference: txRef,
+      status: 'pending'
+    }]);
+    if (reqErr) console.warn('Could not write withdrawal_request:', reqErr.message);
+
+    // 4. Update UI
     closeWithdrawModal();
-    walletBalance = result.new_balance ?? (walletBalance - amount);
+    walletBalance = newBalance;
     updateBalanceUI(walletBalance);
     loadTransactions();
-    showToast(`✅ ₦${amount.toLocaleString()} is on its way to ${withdrawResolvedAccount.account_name}.`, 'success', 6000);
+    showWithdrawalSuccess(amount, withdrawResolvedAccount.account_name);
 
   } catch (err) {
     console.error('Withdrawal error:', err);
@@ -1625,6 +1754,17 @@ async function submitWithdrawal() {
     btn.disabled = false;
     btn.textContent = 'Withdraw';
   }
+}
+
+function showWithdrawalSuccess(amount, accountName) {
+  const overlay = document.getElementById('withdrawal-success-overlay');
+  document.getElementById('wd-success-amount').textContent = '₦' + amount.toLocaleString();
+  document.getElementById('wd-success-name').textContent = accountName;
+  overlay.classList.add('show');
+}
+function closeWithdrawalSuccess() {
+  const _wdov2 = document.getElementById('withdrawal-success-overlay'); _wdov2.style.display='none'; _wdov2.classList.remove('show');
+  switchTab('wallet');
 }
 
 
