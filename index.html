@@ -857,31 +857,53 @@
   </div><!-- /dash-main -->
 </div><!-- /page-dashboard -->
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 /* ============================================================
-   DIGIPAL — LOCAL AUTH ENGINE
-   No Supabase required. Uses localStorage to store users.
+   DIGIPAL — SUPABASE AUTH ENGINE
    ============================================================ */
 
-const DB_KEY = 'digipal_users';
-const SESSION_KEY = 'digipal_session';
+const SUPABASE_URL  = 'https://sskfelkrlmrrgrmbskvj.supabase.co';
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNza2ZlbGtybG1ycmdybWJza3ZqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIwMDAwNjYsImV4cCI6MjA5NzU3NjA2Nn0.EzN7rCLIodheSec6hYyRI1zgrxl2C4txbQ98oyP6gbg';
 
-function getUsers() {
-  try { return JSON.parse(localStorage.getItem(DB_KEY) || '{}'); } catch { return {}; }
-}
-function saveUsers(u) { localStorage.setItem(DB_KEY, JSON.stringify(u)); }
-function getSession() {
-  try { return JSON.parse(localStorage.getItem(SESSION_KEY) || 'null'); } catch { return null; }
-}
-function saveSession(u) { localStorage.setItem(SESSION_KEY, JSON.stringify(u)); }
-function clearSession() { localStorage.removeItem(SESSION_KEY); }
+const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 
-/* ---- BOOT ---- */
-window.addEventListener('DOMContentLoaded', () => {
-  const session = getSession();
+/* ---- BOOT: check existing session ---- */
+window.addEventListener('DOMContentLoaded', async () => {
+  const { data: { session } } = await _supabase.auth.getSession();
   if (session) {
-    showDashboard(session);
+    const meta = session.user.user_metadata || {};
+    showDashboard({
+      fname: meta.fname || 'User',
+      lname: meta.lname || '',
+      email: session.user.email,
+      phone: meta.phone || '',
+    });
   }
+
+  // Listen for auth state changes (e.g. email verification redirect)
+  _supabase.auth.onAuthStateChange((_event, session) => {
+    if (_event === 'SIGNED_IN' && session) {
+      const meta = session.user.user_metadata || {};
+      const pending = sessionStorage.getItem('digipal_pending_email');
+      if (pending) {
+        sessionStorage.removeItem('digipal_pending_email');
+        closeModal('verify');
+        showDashboard({
+          fname: meta.fname || 'User',
+          lname: meta.lname || '',
+          email: session.user.email,
+          phone: meta.phone || '',
+        });
+        showToast('Welcome to DigiPal! 🎉', 'success');
+      }
+    }
+    if (_event === 'SIGNED_OUT') {
+      document.getElementById('page-dashboard').classList.add('hidden');
+      document.getElementById('page-landing').classList.remove('hidden');
+      window.scrollTo(0, 0);
+    }
+  });
 });
 
 /* ============================================================
@@ -916,7 +938,7 @@ function setAlert(name, msg, type) {
 /* ============================================================
    SIGN UP
    ============================================================ */
-function doSignup() {
+async function doSignup() {
   const fname    = document.getElementById('sig-fname').value.trim();
   const lname    = document.getElementById('sig-lname').value.trim();
   const email    = document.getElementById('sig-email').value.trim().toLowerCase();
@@ -929,59 +951,76 @@ function doSignup() {
   if (!phone || phone.length < 7) { setAlert('signup', 'Please enter a valid phone number.', 'error'); return; }
   if (!password || password.length < 6) { setAlert('signup', 'Password must be at least 6 characters.', 'error'); return; }
 
-  const users = getUsers();
-  if (users[email]) { setAlert('signup', 'An account with this email already exists. Please log in.', 'error'); return; }
+  const btn = document.getElementById('btn-signup');
+  btn.disabled = true; btn.textContent = 'Creating account…';
 
-  // Register user
-  users[email] = { fname, lname, email, phone, password, ref, createdAt: Date.now(), verified: false };
-  saveUsers(users);
+  const { error } = await _supabase.auth.signUp({
+    email, password,
+    options: { data: { fname, lname, phone, ref } }
+  });
 
-  // Show verify screen
+  btn.disabled = false; btn.textContent = 'Create Account — Free';
+
+  if (error) {
+    setAlert('signup', error.message, 'error');
+    return;
+  }
+
   document.getElementById('verify-email-display').textContent = email;
-  // Store pending session email
   sessionStorage.setItem('digipal_pending_email', email);
   closeModal('signup');
   openModal('verify');
 }
 
 /* ============================================================
-   AUTO VERIFY (demo — skip email click)
+   AUTO VERIFY — user clicks button after verifying email
    ============================================================ */
-function autoVerify() {
-  const email = sessionStorage.getItem('digipal_pending_email');
-  if (!email) { showToast('Session expired. Please sign up again.', 'error'); closeModal('verify'); return; }
-  const users = getUsers();
-  if (users[email]) {
-    users[email].verified = true;
-    saveUsers(users);
-    saveSession(users[email]);
+async function autoVerify() {
+  // Re-check session in case they verified in another tab
+  const { data: { session } } = await _supabase.auth.getSession();
+  if (session) {
+    const meta = session.user.user_metadata || {};
     sessionStorage.removeItem('digipal_pending_email');
     closeModal('verify');
-    showDashboard(users[email]);
+    showDashboard({ fname: meta.fname || 'User', lname: meta.lname || '', email: session.user.email, phone: meta.phone || '' });
     showToast('Welcome to DigiPal! 🎉', 'success');
+  } else {
+    showToast('Email not verified yet. Please check your inbox and click the link first.', 'error');
   }
 }
 
 /* ============================================================
    LOGIN
    ============================================================ */
-function doLogin() {
+async function doLogin() {
   const email    = document.getElementById('log-email').value.trim().toLowerCase();
   const password = document.getElementById('log-password').value;
 
   if (!email) { setAlert('login', 'Please enter your email.', 'error'); return; }
   if (!password) { setAlert('login', 'Please enter your password.', 'error'); return; }
 
-  const users = getUsers();
-  const user  = users[email];
+  const btn = document.getElementById('btn-login');
+  btn.disabled = true; btn.textContent = 'Logging in…';
 
-  if (!user) { setAlert('login', 'No account found with this email. Please sign up.', 'error'); return; }
-  if (user.password !== password) { setAlert('login', 'Incorrect password. Please try again.', 'error'); return; }
+  const { data, error } = await _supabase.auth.signInWithPassword({ email, password });
 
-  saveSession(user);
+  btn.disabled = false; btn.textContent = 'Log In';
+
+  if (error) {
+    if (error.message.toLowerCase().includes('email not confirmed')) {
+      setAlert('login', 'Please verify your email first. Check your inbox for the confirmation link.', 'error');
+    } else if (error.message.toLowerCase().includes('invalid')) {
+      setAlert('login', 'Incorrect email or password. Please try again.', 'error');
+    } else {
+      setAlert('login', error.message, 'error');
+    }
+    return;
+  }
+
+  const meta = data.user.user_metadata || {};
   closeModal('login');
-  showDashboard(user);
-  showToast('Welcome back, ' + user.fname + '! 👋', 'success');
+  showDashboard({ fname: meta.fname || 'User', lname: meta.lname || '', email: data.user.email, phone: meta.phone || '' });
+  showToast('Welcome back, ' + (meta.fname || 'there') + '! 👋', 'success');
 }
 
 /* ============================================================
@@ -1042,31 +1081,26 @@ function showDashSection(name, linkEl, subTarget) {
   return false;
 }
 
-function doLogout() {
-  clearSession();
-  document.getElementById('page-dashboard').classList.add('hidden');
-  document.getElementById('page-landing').classList.remove('hidden');
-  window.scrollTo(0, 0);
+async function doLogout() {
+  await _supabase.auth.signOut();
   showToast('You have been logged out.', 'info');
 }
 
 /* ============================================================
    PROFILE SAVE
    ============================================================ */
-function saveProfile() {
-  const session = getSession();
-  if (!session) return;
+async function saveProfile() {
   const fname = document.getElementById('prof-fname').value.trim();
   const lname = document.getElementById('prof-lname').value.trim();
   const phone = document.getElementById('prof-phone').value.trim();
 
   if (!fname || !lname) { showToast('First and last name are required.', 'error'); return; }
 
-  const users = getUsers();
-  users[session.email] = { ...users[session.email], fname, lname, phone };
-  saveUsers(users);
-  saveSession(users[session.email]);
-  showDashboard(users[session.email]);
+  const { data, error } = await _supabase.auth.updateUser({ data: { fname, lname, phone } });
+  if (error) { showToast('Failed to save: ' + error.message, 'error'); return; }
+
+  const meta = data.user.user_metadata || {};
+  showDashboard({ fname: meta.fname, lname: meta.lname, email: data.user.email, phone: meta.phone || '' });
   showToast('Profile updated successfully!', 'success');
 }
 
