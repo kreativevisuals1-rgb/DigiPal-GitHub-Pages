@@ -754,59 +754,67 @@ footer{background:#04342C;color:rgba(255,255,255,.75);padding:3rem 5% 1.5rem}
 
     <!-- VTU TAB -->
     <div class="dash-tab" id="tab-vtu">
-      <div class="dash-header"><div><h1>⚡ VTU Services</h1><p>Instant airtime, data, and bill payments.</p></div></div>
+      <div class="dash-header"><div><h1>⚡ VTU Services</h1><p>Instant airtime, data, and bill payments — paid from your wallet balance.</p></div></div>
+      <div id="vtu-balance-note" style="background:#e8f5e9;border:1px solid #a7f3d0;border-radius:10px;padding:10px 16px;margin-bottom:16px;font-size:.88rem;color:#009624;font-weight:600">
+        Wallet balance: ₦<span id="vtu-balance-display">0.00</span>
+      </div>
       <div class="dash-grid">
         <div class="dash-card">
           <h3>📞 Buy Airtime</h3>
           <div class="form-group"><label>Network</label>
-            <select style="width:100%;padding:.65rem .9rem;border:1.5px solid var(--border);border-radius:8px;font-size:.9rem;outline:none;color:var(--text)">
-              <option>MTN</option><option>Airtel</option><option>Glo</option><option>9mobile</option>
+            <select id="vtu-air-network" style="width:100%;padding:.65rem .9rem;border:1.5px solid var(--border);border-radius:8px;font-size:.9rem;outline:none;color:var(--text)">
+              <option value="mtn">MTN</option><option value="airtel">Airtel</option><option value="glo">Glo</option><option value="etisalat">9mobile</option>
             </select>
           </div>
-          <div class="form-group"><label>Phone Number</label><input type="tel" placeholder="08012345678"/></div>
-          <div class="form-group"><label>Amount (₦)</label><input type="number" placeholder="100"/></div>
-          <button class="btn btn-primary" style="width:100%" onclick="showToast('Please fund your wallet first to use this service.', 'info', 4000)">Buy Airtime</button>
+          <div class="form-group"><label>Phone Number</label><input type="tel" id="vtu-air-phone" placeholder="08012345678"/></div>
+          <div class="form-group"><label>Amount (₦)</label><input type="number" id="vtu-air-amount" placeholder="100" min="50"/></div>
+          <button class="btn btn-primary" style="width:100%" id="vtu-air-btn" onclick="vtuBuyAirtime()">Buy Airtime</button>
         </div>
         <div class="dash-card">
           <h3>📶 Buy Data</h3>
           <div class="form-group"><label>Network</label>
-            <select style="width:100%;padding:.65rem .9rem;border:1.5px solid var(--border);border-radius:8px;font-size:.9rem;outline:none;color:var(--text)">
-              <option>MTN</option><option>Airtel</option><option>Glo</option><option>9mobile</option>
+            <select id="vtu-data-network" onchange="vtuLoadVariations('data')" style="width:100%;padding:.65rem .9rem;border:1.5px solid var(--border);border-radius:8px;font-size:.9rem;outline:none;color:var(--text)">
+              <option value="mtn-data">MTN</option><option value="airtel-data">Airtel</option><option value="glo-data">Glo</option><option value="etisalat-data">9mobile</option>
             </select>
           </div>
-          <div class="form-group"><label>Phone Number</label><input type="tel" placeholder="08012345678"/></div>
+          <div class="form-group"><label>Phone Number</label><input type="tel" id="vtu-data-phone" placeholder="08012345678"/></div>
           <div class="form-group"><label>Data Plan</label>
-            <select style="width:100%;padding:.65rem .9rem;border:1.5px solid var(--border);border-radius:8px;font-size:.9rem;outline:none;color:var(--text)">
-              <option>500MB — ₦150</option><option>1GB — ₦265</option><option>2GB — ₦460</option><option>5GB — ₦1,200</option><option>10GB — ₦2,000</option>
+            <select id="vtu-data-plan" style="width:100%;padding:.65rem .9rem;border:1.5px solid var(--border);border-radius:8px;font-size:.9rem;outline:none;color:var(--text)">
+              <option value="">Loading plans…</option>
             </select>
           </div>
-          <button class="btn btn-primary" style="width:100%" onclick="showToast('Please fund your wallet first to use this service.', 'info', 4000)">Buy Data</button>
+          <button class="btn btn-primary" style="width:100%" id="vtu-data-btn" onclick="vtuBuyData()">Buy Data</button>
         </div>
         <div class="dash-card">
           <h3>📺 Cable TV</h3>
           <div class="form-group"><label>Provider</label>
-            <select style="width:100%;padding:.65rem .9rem;border:1.5px solid var(--border);border-radius:8px;font-size:.9rem;outline:none;color:var(--text)">
-              <option>DStv</option><option>GOtv</option><option>StarTimes</option>
+            <select id="vtu-cable-provider" onchange="vtuLoadVariations('cable')" style="width:100%;padding:.65rem .9rem;border:1.5px solid var(--border);border-radius:8px;font-size:.9rem;outline:none;color:var(--text)">
+              <option value="dstv">DStv</option><option value="gotv">GOtv</option><option value="startimes">StarTimes</option>
             </select>
           </div>
-          <div class="form-group"><label>Smart Card Number</label><input type="text" placeholder="Enter smart card number"/></div>
+          <div class="form-group"><label>Smart Card Number</label><input type="text" id="vtu-cable-card" placeholder="Enter smart card number"/></div>
           <div class="form-group"><label>Package</label>
-            <select style="width:100%;padding:.65rem .9rem;border:1.5px solid var(--border);border-radius:8px;font-size:.9rem;outline:none;color:var(--text)">
-              <option>Padi — ₦2,565</option><option>Yanga — ₦3,090</option><option>Confam — ₦5,140</option><option>Compact — ₦9,800</option><option>Premium — ₦29,500</option>
+            <select id="vtu-cable-plan" style="width:100%;padding:.65rem .9rem;border:1.5px solid var(--border);border-radius:8px;font-size:.9rem;outline:none;color:var(--text)">
+              <option value="">Loading packages…</option>
             </select>
           </div>
-          <button class="btn btn-primary" style="width:100%" onclick="showToast('Please fund your wallet first to use this service.', 'info', 4000)">Pay Now</button>
+          <button class="btn btn-primary" style="width:100%" id="vtu-cable-btn" onclick="vtuPayCable()">Pay Now</button>
         </div>
         <div class="dash-card">
           <h3>💡 Electricity Bill</h3>
           <div class="form-group"><label>Disco</label>
-            <select style="width:100%;padding:.65rem .9rem;border:1.5px solid var(--border);border-radius:8px;font-size:.9rem;outline:none;color:var(--text)">
-              <option>EKEDC (Eko)</option><option>IKEDC (Ikeja)</option><option>AEDC (Abuja)</option><option>PHEDC (Port Harcourt)</option>
+            <select id="vtu-elec-disco" style="width:100%;padding:.65rem .9rem;border:1.5px solid var(--border);border-radius:8px;font-size:.9rem;outline:none;color:var(--text)">
+              <option value="eko-electric">EKEDC (Eko)</option><option value="ikeja-electric">IKEDC (Ikeja)</option><option value="abuja-electric">AEDC (Abuja)</option><option value="portharcourt-electric">PHEDC (Port Harcourt)</option>
             </select>
           </div>
-          <div class="form-group"><label>Meter Number</label><input type="text" placeholder="Enter meter number"/></div>
-          <div class="form-group"><label>Amount (₦)</label><input type="number" placeholder="1000"/></div>
-          <button class="btn btn-primary" style="width:100%" onclick="showToast('Please fund your wallet first to use this service.', 'info', 4000)">Pay Bill</button>
+          <div class="form-group"><label>Meter Type</label>
+            <select id="vtu-elec-type" style="width:100%;padding:.65rem .9rem;border:1.5px solid var(--border);border-radius:8px;font-size:.9rem;outline:none;color:var(--text)">
+              <option value="prepaid">Prepaid</option><option value="postpaid">Postpaid</option>
+            </select>
+          </div>
+          <div class="form-group"><label>Meter Number</label><input type="text" id="vtu-elec-meter" placeholder="Enter meter number"/></div>
+          <div class="form-group"><label>Amount (₦)</label><input type="number" id="vtu-elec-amount" placeholder="1000" min="500"/></div>
+          <button class="btn btn-primary" style="width:100%" id="vtu-elec-btn" onclick="vtuPayElectricity()">Pay Bill</button>
         </div>
       </div>
     </div>
@@ -1019,7 +1027,17 @@ const PAYSTACK_PUBLIC_KEY = 'pk_live_490eca6743e76032f283987f31f2de6c5c1f397b';
 //  Replace with your deployed Worker URL, e.g.
 //  https://digipal-ai-proxy.kreativevisuals1.workers.dev
 // ══════════════════════════════════════════════
-const WORKER_URL = 'https://digipal-ai-proxy.kreativevisuals1.workers.dev';
+const WORKER_URL = 'https://digipal-ai-proxy.kreativevisuals1.workers.dev/';
+// ══════════════════════════════════════════════
+
+// ══════════════════════════════════════════════
+//  🔧 VTU PURCHASE WORKER CONFIG
+//  This is a SEPARATE Worker from the AI proxy above — it never
+//  touches Read & Earn. See digipal-vtu-proxy-worker.js for setup.
+//  Replace with your deployed Worker URL, e.g.
+//  https://digipal-vtu-proxy.kreativevisuals1.workers.dev
+// ══════════════════════════════════════════════
+const VTU_WORKER_URL = 'digipal-vtu-proxy.kreativevisuals1.workers.dev';
 // ══════════════════════════════════════════════
 
 let sb = null;
@@ -1085,6 +1103,7 @@ function switchTab(name) {
   if (map[name] !== undefined) items[map[name]].classList.add('active');
   closeSidebar();
   if (name === 'earn') { initEarnTab(); loadEarnCredits(); }
+  if (name === 'vtu') { vtuInitTab(); }
 }
 
 // ── FAQ ──
@@ -1329,6 +1348,224 @@ function updateBalanceUI(amount) {
   // Also update overview stat card if present
   const stat = document.querySelector('.stat-value.green');
   if (stat) stat.textContent = fmt;
+  // Also update the VTU tab's balance note
+  const vtuBal = document.getElementById('vtu-balance-display');
+  if (vtuBal) vtuBal.textContent = Number(amount).toLocaleString('en-NG', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+}
+
+// ════════════════════════════════════════════════
+//  VTU SERVICES (Airtime / Data / Cable / Electricity)
+//  Fully separate module from Read & Earn — purchases are
+//  paid for out of the real wallet balance via VTU_WORKER_URL.
+// ════════════════════════════════════════════════
+
+async function vtuGetAccessToken() {
+  if (!sb) return null;
+  const { data: { session } } = await sb.auth.getSession();
+  return session?.access_token || null;
+}
+
+function vtuCheckConfigured() {
+  if (VTU_WORKER_URL.includes('YOUR-SUBDOMAIN')) {
+    showToast('VTU is not configured yet. Set VTU_WORKER_URL in index.html.', 'red', 5000);
+    return false;
+  }
+  return true;
+}
+
+// Populate a <select> with live plans/packages from VTpass via the Worker,
+// instead of guessing variation codes (which would otherwise fail at checkout).
+async function vtuLoadVariations(kind) {
+  if (!vtuCheckConfigured()) return;
+  const isData = kind === 'data';
+  const networkSel = document.getElementById(isData ? 'vtu-data-network' : 'vtu-cable-provider');
+  const planSel = document.getElementById(isData ? 'vtu-data-plan' : 'vtu-cable-plan');
+  if (!networkSel || !planSel) return;
+  planSel.innerHTML = '<option value="">Loading…</option>';
+  try {
+    const resp = await fetch(`${VTU_WORKER_URL}/variations?serviceID=${encodeURIComponent(networkSel.value)}`);
+    const data = await resp.json();
+    const variations = data?.content?.varations || data?.content?.variations || [];
+    if (!variations.length) {
+      planSel.innerHTML = '<option value="">No plans found</option>';
+      return;
+    }
+    planSel.innerHTML = variations.map(v =>
+      `<option value="${v.variation_code}">${v.name} — ₦${Number(v.variation_amount).toLocaleString()}</option>`
+    ).join('');
+  } catch (err) {
+    console.error('vtuLoadVariations error:', err);
+    planSel.innerHTML = '<option value="">Could not load plans</option>';
+  }
+}
+
+// Shared purchase call used by all four VTU forms below.
+// Debits the REAL Supabase wallet balance — completely separate from
+// Read & Earn, which only ever touches localStorage credits.
+async function vtuPurchase({ service, serviceID, billersCode, variation_code, amount, phone, btnId, btnLabel }) {
+  if (!vtuCheckConfigured()) return;
+  if (!currentUser) { showToast('Please log in first.', 'red'); return; }
+  if (!sb) { showToast('Service is not available right now.', 'red'); return; }
+
+  const numericAmount = Number(amount);
+  if (!numericAmount || numericAmount <= 0) { showToast('Enter a valid amount.', 'red'); return; }
+  if (!phone && !billersCode) { showToast('Enter the required number.', 'red'); return; }
+
+  const btn = btnId ? document.getElementById(btnId) : null;
+  const originalLabel = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = 'Processing…'; }
+
+  const txRef = 'VTU_' + Date.now() + '_' + Math.random().toString(36).slice(2,7).toUpperCase();
+  const meta = currentUser.user_metadata || {};
+  const userName = ((meta.first_name || '') + ' ' + (meta.last_name || '')).trim() || currentUser.email;
+  let debited = false;
+  let newBalance = walletBalance;
+
+  try {
+    // 1. Re-check the live balance and debit it BEFORE calling the VTU worker,
+    //    so the user can never spend more than they actually have.
+    const { data: walletData, error: walletErr } = await sb
+      .from('wallets')
+      .select('balance')
+      .eq('user_id', currentUser.id)
+      .maybeSingle();
+    if (walletErr) throw walletErr;
+
+    const currentBalance = walletData?.balance ?? 0;
+    if (numericAmount > currentBalance) {
+      throw new Error('Insufficient wallet balance. Please fund your wallet and try again.');
+    }
+
+    newBalance = currentBalance - numericAmount;
+    const { error: updateErr } = await sb
+      .from('wallets')
+      .update({ balance: newBalance })
+      .eq('user_id', currentUser.id);
+    if (updateErr) throw updateErr;
+    debited = true;
+
+    // Reflect the debit immediately in the UI while the purchase is in flight.
+    walletBalance = newBalance;
+    updateBalanceUI(walletBalance);
+
+    // 2. Call the VTU worker to actually deliver the airtime/data/cable/bill.
+    const accessToken = await vtuGetAccessToken();
+    const resp = await fetch(`${VTU_WORKER_URL}/purchase`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ accessToken, service, serviceID, billersCode, variation_code, amount: numericAmount, phone })
+    });
+    const result = await resp.json();
+    if (!resp.ok) throw new Error(result.error || 'Purchase failed.');
+
+    // 3. Record a successful debit transaction.
+    await sb.from('transactions').insert([{
+      user_id: currentUser.id,
+      type: 'debit',
+      category: 'vtu',
+      status: 'success',
+      amount: numericAmount,
+      description: `${service}${phone ? ' — ' + phone : ''}`,
+      reference: txRef,
+      user_name: userName,
+      user_email: currentUser.email
+    }]);
+
+    showToast(`✅ ${btnLabel || service} successful!`, 'success', 5000);
+    loadWalletBalance();
+    loadTransactions();
+    return true;
+
+  } catch (err) {
+    console.error('vtuPurchase error:', err);
+
+    // If we already debited the wallet but the VTU purchase itself failed,
+    // refund the user immediately so they never lose money on a failed order.
+    if (debited) {
+      try {
+        const { data: refreshed } = await sb
+          .from('wallets')
+          .select('balance')
+          .eq('user_id', currentUser.id)
+          .maybeSingle();
+        const balanceNow = refreshed?.balance ?? newBalance;
+        const refundedBalance = balanceNow + numericAmount;
+        await sb.from('wallets').update({ balance: refundedBalance }).eq('user_id', currentUser.id);
+
+        await sb.from('transactions').insert([{
+          user_id: currentUser.id,
+          type: 'credit',
+          category: 'vtu_refund',
+          status: 'success',
+          amount: numericAmount,
+          description: `Refund — failed ${service} purchase`,
+          reference: txRef,
+          user_name: userName,
+          user_email: currentUser.email
+        }]);
+
+        walletBalance = refundedBalance;
+        updateBalanceUI(walletBalance);
+        loadTransactions();
+        showToast('❌ ' + err.message + ' Your wallet has been refunded.', 'red', 7000);
+      } catch (refundErr) {
+        console.error('vtuPurchase refund error:', refundErr);
+        showToast('❌ Purchase failed and the refund could not be completed automatically. Please contact support with reference ' + txRef, 'red', 9000);
+      }
+    } else {
+      showToast('❌ ' + err.message, 'red', 6000);
+    }
+    return false;
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = originalLabel; }
+  }
+}
+
+async function vtuBuyAirtime() {
+  const network = document.getElementById('vtu-air-network').value;
+  const phone = document.getElementById('vtu-air-phone').value.trim();
+  const amount = document.getElementById('vtu-air-amount').value;
+  await vtuPurchase({ service: 'Airtime', serviceID: network, amount, phone, btnId: 'vtu-air-btn', btnLabel: 'Airtime purchase' });
+}
+
+async function vtuBuyData() {
+  const network = document.getElementById('vtu-data-network').value;
+  const phone = document.getElementById('vtu-data-phone').value.trim();
+  const planSel = document.getElementById('vtu-data-plan');
+  const variation_code = planSel.value;
+  if (!variation_code) { showToast('Choose a data plan.', 'red'); return; }
+  // Amount is determined by the plan on VTpass's side; pass the displayed price along.
+  const amount = (planSel.selectedOptions[0]?.textContent.match(/₦([\d,]+)/) || [])[1]?.replace(/,/g, '') || 0;
+  await vtuPurchase({ service: 'Data', serviceID: network, variation_code, amount, phone, btnId: 'vtu-data-btn', btnLabel: 'Data purchase' });
+}
+
+async function vtuPayCable() {
+  const provider = document.getElementById('vtu-cable-provider').value;
+  const card = document.getElementById('vtu-cable-card').value.trim();
+  const planSel = document.getElementById('vtu-cable-plan');
+  const variation_code = planSel.value;
+  if (!variation_code) { showToast('Choose a package.', 'red'); return; }
+  if (!card) { showToast('Enter your smart card number.', 'red'); return; }
+  const amount = (planSel.selectedOptions[0]?.textContent.match(/₦([\d,]+)/) || [])[1]?.replace(/,/g, '') || 0;
+  await vtuPurchase({ service: 'Cable TV', serviceID: provider, billersCode: card, variation_code, amount, phone: card, btnId: 'vtu-cable-btn', btnLabel: 'Cable TV payment' });
+}
+
+async function vtuPayElectricity() {
+  const disco = document.getElementById('vtu-elec-disco').value;
+  const meterType = document.getElementById('vtu-elec-type').value;
+  const meter = document.getElementById('vtu-elec-meter').value.trim();
+  const amount = document.getElementById('vtu-elec-amount').value;
+  if (!meter) { showToast('Enter your meter number.', 'red'); return; }
+  await vtuPurchase({ service: 'Electricity', serviceID: `${disco}-${meterType}`, billersCode: meter, amount, phone: meter, btnId: 'vtu-elec-btn', btnLabel: 'Electricity payment' });
+}
+
+// Load live data/cable plans the first time the VTU tab is opened.
+let vtuVariationsLoaded = false;
+function vtuInitTab() {
+  if (vtuVariationsLoaded) return;
+  vtuVariationsLoaded = true;
+  vtuLoadVariations('data');
+  vtuLoadVariations('cable');
 }
 
 // ════════════════════════════════════════════════
