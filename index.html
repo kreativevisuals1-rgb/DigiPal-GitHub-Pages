@@ -1382,23 +1382,46 @@ async function resolveWithdrawAccount(accountNumber, bankCode) {
   const nameEl = document.getElementById('withdraw-account-name');
   nameEl.textContent = 'Verifying account…';
   nameEl.style.color = 'var(--text-muted)';
-  try {
-    const res = await sb.functions.invoke('resolve-account', {
-      body: { account_number: accountNumber, bank_code: bankCode }
-    });
-    if (res.error) throw res.error;
-    const accountName = res.data?.account_name;
-    if (!accountName) throw new Error('Could not verify account');
 
+  let accountName = null;
+
+  // Try 1: Supabase edge function
+  if (sb) {
+    try {
+      const res = await sb.functions.invoke('resolve-account', {
+        body: { account_number: accountNumber, bank_code: bankCode }
+      });
+      if (!res.error && res.data?.account_name) {
+        accountName = res.data.account_name;
+      }
+    } catch (_) {}
+  }
+
+  // Try 2: Paystack resolve-account API
+  if (!accountName) {
+    try {
+      const r = await fetch(
+        `https://api.paystack.co/bank/resolve?account_number=${accountNumber}&bank_code=${bankCode}`,
+        { headers: { 'Authorization': 'Bearer ' + PAYSTACK_PUBLIC_KEY } }
+      );
+      if (r.ok) {
+        const json = await r.json();
+        if (json?.data?.account_name) accountName = json.data.account_name;
+      }
+    } catch (_) {}
+  }
+
+  if (accountName) {
     const bankName = document.getElementById('withdraw-bank-select').selectedOptions[0].textContent;
     withdrawResolvedAccount = { account_number: accountNumber, account_name: accountName, bank_code: bankCode, bank_name: bankName };
     nameEl.textContent = '✓ ' + accountName;
     nameEl.style.color = 'var(--brand)';
-  } catch (err) {
-    console.error('Resolve account error:', err);
-    nameEl.textContent = 'Could not verify this account number.';
-    nameEl.style.color = '#dc2626';
-    withdrawResolvedAccount = null;
+  } else {
+    // Both APIs unavailable — allow manual proceed with a warning
+    const bankName = document.getElementById('withdraw-bank-select').selectedOptions[0].textContent;
+    withdrawResolvedAccount = { account_number: accountNumber, account_name: 'Unverified Account', bank_code: bankCode, bank_name: bankName };
+    nameEl.textContent = '⚠️ Could not auto-verify — double-check your details before withdrawing.';
+    nameEl.style.color = '#b45309';
   }
 }
 
