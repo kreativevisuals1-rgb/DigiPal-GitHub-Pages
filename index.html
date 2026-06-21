@@ -293,6 +293,12 @@ footer{background:#04342C;color:rgba(255,255,255,.75);padding:3rem 5% 1.5rem}
 .amt-chip:hover,.amt-chip.selected{border-color:var(--brand);background:var(--brand-light);color:var(--brand)}
 .modal-actions{display:flex;gap:.75rem;margin-top:1.25rem}
 
+/* ── BANK PICKER ── */
+.bank-option{padding:.6rem 1rem;font-size:.9rem;cursor:pointer;color:var(--text);transition:background .12s;border-bottom:1px solid #f5f5f5}
+.bank-option:last-child{border-bottom:none}
+.bank-option:hover{background:var(--brand-light);color:var(--brand)}
+#bank-display:hover{border-color:var(--brand)}
+
 /* ── TOAST ── */
 .toast{position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%) translateY(20px);background:#1a1a1a;color:#fff;padding:.85rem 1.4rem;border-radius:12px;font-size:.88rem;z-index:9999;opacity:0;transition:all .3s;pointer-events:none;white-space:nowrap;max-width:90vw;text-align:center}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
@@ -656,12 +662,29 @@ footer{background:#04342C;color:rgba(255,255,255,.75);padding:3rem 5% 1.5rem}
         <div class="modal-title">💸 Withdraw to Bank</div>
         <div class="modal-sub">Funds are sent directly to your bank account</div>
 
-        <div class="form-group">
+        <div class="form-group" style="position:relative">
           <label style="font-size:.85rem;font-weight:600">Bank</label>
-          <select id="withdraw-bank-select"
-            style="width:100%;padding:.65rem .9rem;border:1.5px solid var(--border);border-radius:8px;font-size:.9rem;outline:none;color:var(--text);margin-top:.4rem">
-            <option value="">Loading banks…</option>
-          </select>
+          <!-- hidden real select keeps bank code -->
+          <select id="withdraw-bank-select" style="display:none"></select>
+          <!-- custom searchable bank picker -->
+          <div id="bank-picker" style="position:relative;margin-top:.4rem">
+            <div id="bank-display"
+              onclick="toggleBankDropdown()"
+              style="width:100%;padding:.65rem .9rem;border:1.5px solid var(--border);border-radius:8px;font-size:.9rem;color:var(--text-muted);cursor:pointer;display:flex;justify-content:space-between;align-items:center;background:#fff;user-select:none">
+              <span id="bank-display-text">Select your bank</span>
+              <span id="bank-chevron" style="font-size:.75rem;transition:transform .2s">▼</span>
+            </div>
+            <div id="bank-dropdown"
+              style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;background:#fff;border:1.5px solid var(--border);border-radius:10px;z-index:500;box-shadow:0 8px 24px rgba(0,0,0,.12);max-height:260px;overflow:hidden;flex-direction:column">
+              <div style="padding:.5rem .6rem;border-bottom:1px solid var(--border)">
+                <input id="bank-search-input" type="text" placeholder="🔍  Search bank name…"
+                  oninput="filterBanks(this.value)"
+                  style="width:100%;padding:.5rem .75rem;border:1.5px solid var(--border);border-radius:7px;font-size:.88rem;outline:none;color:var(--text)"
+                  onclick="event.stopPropagation()"/>
+              </div>
+              <div id="bank-list" style="overflow-y:auto;max-height:200px"></div>
+            </div>
+          </div>
         </div>
 
         <div class="form-group">
@@ -1306,65 +1329,120 @@ function closeWithdrawModal() {
 
 async function loadWithdrawBanks() {
   const select = document.getElementById('withdraw-bank-select');
-  select.innerHTML = '<option value="">Loading banks…</option>';
-  select.onclick = null;
+  const listEl = document.getElementById('bank-list');
+  listEl.innerHTML = '<div style="padding:.75rem 1rem;font-size:.85rem;color:var(--text-muted)">Loading banks…</div>';
+
+  let banks = [];
 
   // Try 1: Supabase edge function
   if (sb) {
     try {
       const res = await sb.functions.invoke('get-banks', { body: {} });
       if (!res.error) {
-        const banks = res.data?.banks || res.data || [];
-        if (Array.isArray(banks) && banks.length) {
-          select.innerHTML = '<option value="">Select your bank</option>' +
-            banks.map(b => `<option value="${b.code}">${b.name}</option>`).join('');
-          withdrawBanksLoaded = true;
-          return;
-        }
+        const b = res.data?.banks || res.data || [];
+        if (Array.isArray(b) && b.length) banks = b;
       }
     } catch (_) {}
   }
 
-  // Try 2: Paystack public banks API (CORS-friendly via a proxy-free approach)
-  try {
-    const r = await fetch('https://api.paystack.co/bank?currency=NGN&perPage=100', {
-      headers: { 'Authorization': 'Bearer ' + (window.PAYSTACK_PUBLIC_KEY || '') }
-    });
-    if (r.ok) {
-      const json = await r.json();
-      const banks = json?.data || [];
-      if (Array.isArray(banks) && banks.length) {
-        select.innerHTML = '<option value="">Select your bank</option>' +
-          banks.map(b => `<option value="${b.code}">${b.name}</option>`).join('');
-        withdrawBanksLoaded = true;
-        return;
+  // Try 2: Paystack public banks API
+  if (!banks.length) {
+    try {
+      const r = await fetch('https://api.paystack.co/bank?currency=NGN&perPage=100', {
+        headers: { 'Authorization': 'Bearer ' + PAYSTACK_PUBLIC_KEY }
+      });
+      if (r.ok) {
+        const json = await r.json();
+        if (Array.isArray(json?.data) && json.data.length) banks = json.data;
       }
-    }
-  } catch (_) {}
+    } catch (_) {}
+  }
 
-  // Fallback: hardcoded list of major Nigerian banks
-  const fallbackBanks = [
-    {code:'044',name:'Access Bank'},{code:'023',name:'Citibank Nigeria'},
-    {code:'050',name:'Ecobank Nigeria'},{code:'070',name:'Fidelity Bank'},
-    {code:'011',name:'First Bank of Nigeria'},{code:'214',name:'First City Monument Bank (FCMB)'},
-    {code:'058',name:'Guaranty Trust Bank (GTB)'},{code:'030',name:'Heritage Bank'},
-    {code:'301',name:'Jaiz Bank'},{code:'082',name:'Keystone Bank'},
-    {code:'526',name:'Moniepoint MFB'},{code:'076',name:'Polaris Bank'},
-    {code:'101',name:'ProvidusBank'},{code:'221',name:'Stanbic IBTC Bank'},
-    {code:'068',name:'Standard Chartered Bank'},{code:'232',name:'Sterling Bank'},
-    {code:'100',name:'Suntrust Bank'},{code:'032',name:'Union Bank of Nigeria'},
-    {code:'033',name:'United Bank for Africa (UBA)'},{code:'215',name:'Unity Bank'},
-    {code:'035',name:'Wema Bank'},{code:'057',name:'Zenith Bank'},
-    {code:'120001',name:'9PSB (9 Payment Service Bank)'},{code:'090115',name:'Airtel Smartcash PSB'},
-    {code:'100004',name:'Opay'},{code:'100033',name:'PalmPay'},
-    {code:'627',name:'Kuda MFB'},{code:'090267',name:'Kuda Bank'},
-    {code:'565',name:'Carbon (One Finance)'},{code:'090405',name:'Palmpay'},
-  ];
+  // Fallback: hardcoded major Nigerian banks
+  if (!banks.length) {
+    banks = [
+      {code:'044',name:'Access Bank'},{code:'023',name:'Citibank Nigeria'},
+      {code:'050',name:'Ecobank Nigeria'},{code:'070',name:'Fidelity Bank'},
+      {code:'011',name:'First Bank of Nigeria'},{code:'214',name:'First City Monument Bank (FCMB)'},
+      {code:'058',name:'Guaranty Trust Bank (GTB)'},{code:'030',name:'Heritage Bank'},
+      {code:'301',name:'Jaiz Bank'},{code:'082',name:'Keystone Bank'},
+      {code:'526',name:'Moniepoint MFB'},{code:'076',name:'Polaris Bank'},
+      {code:'101',name:'ProvidusBank'},{code:'221',name:'Stanbic IBTC Bank'},
+      {code:'068',name:'Standard Chartered Bank'},{code:'232',name:'Sterling Bank'},
+      {code:'032',name:'Union Bank of Nigeria'},{code:'033',name:'United Bank for Africa (UBA)'},
+      {code:'215',name:'Unity Bank'},{code:'035',name:'Wema Bank'},{code:'057',name:'Zenith Bank'},
+      {code:'120001',name:'9PSB (9 Payment Service Bank)'},{code:'090115',name:'Airtel Smartcash PSB'},
+      {code:'100004',name:'Opay'},{code:'100033',name:'PalmPay'},
+      {code:'627',name:'Kuda MFB'},{code:'565',name:'Carbon (One Finance)'},
+    ];
+  }
+
+  // Sort alphabetically
+  banks.sort((a, b) => a.name.localeCompare(b.name));
+  window._allBanks = banks;
+
+  // Populate hidden real select
   select.innerHTML = '<option value="">Select your bank</option>' +
-    fallbackBanks.map(b => `<option value="${b.code}">${b.name}</option>`).join('');
+    banks.map(b => `<option value="${b.code}">${b.name}</option>`).join('');
+
   withdrawBanksLoaded = true;
-  console.warn('Using fallback bank list — live API was unreachable.');
+  renderBankList(banks);
 }
+
+function renderBankList(banks) {
+  const listEl = document.getElementById('bank-list');
+  if (!banks.length) {
+    listEl.innerHTML = '<div style="padding:.75rem 1rem;font-size:.85rem;color:var(--text-muted)">No banks found</div>';
+    return;
+  }
+  listEl.innerHTML = banks.map(b => `
+    <div class="bank-option" data-code="${b.code}" data-name="${b.name}"
+      onclick="selectBank('${b.code}', '${b.name.replace(/'/g,"\'")}')">
+      ${b.name}
+    </div>`).join('');
+}
+
+function filterBanks(query) {
+  const q = query.trim().toLowerCase();
+  const filtered = (window._allBanks || []).filter(b => b.name.toLowerCase().includes(q));
+  renderBankList(filtered);
+}
+
+function toggleBankDropdown() {
+  const dd = document.getElementById('bank-dropdown');
+  const chevron = document.getElementById('bank-chevron');
+  const isOpen = dd.style.display === 'flex';
+  if (isOpen) {
+    dd.style.display = 'none';
+    chevron.style.transform = 'rotate(0deg)';
+  } else {
+    dd.style.display = 'flex';
+    chevron.style.transform = 'rotate(180deg)';
+    setTimeout(() => document.getElementById('bank-search-input').focus(), 50);
+  }
+}
+
+function selectBank(code, name) {
+  document.getElementById('withdraw-bank-select').value = code;
+  document.getElementById('bank-display-text').textContent = name;
+  document.getElementById('bank-display-text').style.color = 'var(--text)';
+  document.getElementById('bank-dropdown').style.display = 'none';
+  document.getElementById('bank-chevron').style.transform = 'rotate(0deg)';
+  document.getElementById('bank-search-input').value = '';
+  renderBankList(window._allBanks || []);
+  // Trigger account resolution if account number already entered
+  onWithdrawAccountInput();
+}
+
+// Close dropdown when clicking outside
+document.addEventListener('click', function(e) {
+  const picker = document.getElementById('bank-picker');
+  if (picker && !picker.contains(e.target)) {
+    const dd = document.getElementById('bank-dropdown');
+    if (dd) { dd.style.display = 'none'; document.getElementById('bank-chevron').style.transform = 'rotate(0deg)'; }
+  }
+});
+
 
 let withdrawResolveTimer = null;
 function onWithdrawAccountInput() {
@@ -1391,13 +1469,26 @@ async function resolveWithdrawAccount(accountNumber, bankCode) {
       const res = await sb.functions.invoke('resolve-account', {
         body: { account_number: accountNumber, bank_code: bankCode }
       });
-      if (!res.error && res.data?.account_name) {
-        accountName = res.data.account_name;
+      if (!res.error && res.data?.account_name) accountName = res.data.account_name;
+    } catch (_) {}
+  }
+
+  // Try 2: Paystack via allorigins CORS proxy (avoids CORS restriction on secret key)
+  if (!accountName) {
+    try {
+      const target = encodeURIComponent(
+        `https://api.paystack.co/bank/resolve?account_number=${accountNumber}&bank_code=${bankCode}`
+      );
+      const r = await fetch(`https://api.allorigins.win/get?url=${target}`);
+      if (r.ok) {
+        const wrapper = await r.json();
+        const json = JSON.parse(wrapper.contents);
+        if (json?.data?.account_name) accountName = json.data.account_name;
       }
     } catch (_) {}
   }
 
-  // Try 2: Paystack resolve-account API
+  // Try 3: direct Paystack call (works if user opened the tab from Paystack origin or CORS allows)
   if (!accountName) {
     try {
       const r = await fetch(
@@ -1412,18 +1503,19 @@ async function resolveWithdrawAccount(accountNumber, bankCode) {
   }
 
   if (accountName) {
-    const bankName = document.getElementById('withdraw-bank-select').selectedOptions[0].textContent;
+    const bankName = document.getElementById('bank-display-text').textContent;
     withdrawResolvedAccount = { account_number: accountNumber, account_name: accountName, bank_code: bankCode, bank_name: bankName };
     nameEl.textContent = '✓ ' + accountName;
     nameEl.style.color = 'var(--brand)';
   } else {
-    // Both APIs unavailable — allow manual proceed with a warning
-    const bankName = document.getElementById('withdraw-bank-select').selectedOptions[0].textContent;
-    withdrawResolvedAccount = { account_number: accountNumber, account_name: 'Unverified Account', bank_code: bankCode, bank_name: bankName };
-    nameEl.textContent = '⚠️ Could not auto-verify — double-check your details before withdrawing.';
+    // Graceful fallback — let user proceed with manual entry, amber warning
+    const bankName = document.getElementById('bank-display-text').textContent;
+    withdrawResolvedAccount = { account_number: accountNumber, account_name: 'Unverified', bank_code: bankCode, bank_name: bankName };
+    nameEl.textContent = '⚠️ Could not auto-verify — please double-check details before withdrawing.';
     nameEl.style.color = '#b45309';
   }
 }
+
 
 async function submitWithdrawal() {
   const errEl = document.getElementById('withdraw-modal-error');
