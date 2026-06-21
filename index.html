@@ -606,33 +606,28 @@ footer{background:#04342C;color:rgba(255,255,255,.75);padding:3rem 5% 1.5rem}
           </div>
         </div>
 
-        <!-- Permanent Funding Account (DVA) -->
-        <div class="dva-card">
+        <!-- Permanent Funding Account (DVA) — Coming Soon -->
+        <div class="dva-card" id="dva-card" onclick="handleDVAClick()" style="cursor:pointer">
           <div class="dva-card-header">
             <h3>🏦 Permanent Funding Account</h3>
-            <span class="dva-badge">YOUR ACCOUNT</span>
+            <span class="dva-badge" style="background:#fef3c7;color:#92400e">COMING SOON</span>
           </div>
-          <p style="font-size:.82rem;color:var(--text-muted);margin-bottom:1rem">Transfer any amount to this account at any time — your wallet is credited automatically.</p>
+          <p style="font-size:.82rem;color:var(--text-muted);margin-bottom:1rem">Get a personal bank account number you can transfer to anytime — your wallet credits automatically. We're finishing setup with our banking partner.</p>
           <div id="dva-content">
             <div class="dva-row">
               <span class="dva-field">Bank Name</span>
-              <div style="display:flex;align-items:center;gap:.5rem">
-                <span class="dva-value" id="dva-bank"><span class="dva-skeleton" style="width:100px"></span></span>
-              </div>
+              <span class="dva-value" style="color:var(--text-muted)">—</span>
             </div>
             <div class="dva-row">
               <span class="dva-field">Account Number</span>
-              <div style="display:flex;align-items:center;gap:.5rem">
-                <span class="dva-value" id="dva-number"><span class="dva-skeleton" style="width:80px"></span></span>
-                <button class="dva-copy" id="dva-copy-btn" onclick="copyDVA()" style="display:none">Copy</button>
-              </div>
+              <span class="dva-value" style="color:var(--text-muted)">—</span>
             </div>
             <div class="dva-row">
               <span class="dva-field">Account Name</span>
-              <span class="dva-value" id="dva-name"><span class="dva-skeleton" style="width:120px"></span></span>
+              <span class="dva-value" style="color:var(--text-muted)">—</span>
             </div>
           </div>
-          <p id="dva-error" style="display:none;font-size:.82rem;color:#dc2626;margin-top:.75rem"></p>
+          <p style="font-size:.82rem;color:var(--brand);margin-top:.75rem;font-weight:600">Tap to get notified when this is ready →</p>
         </div>
 
         <!-- Transaction History -->
@@ -1027,7 +1022,6 @@ function loadDashboard(user) {
 
   // Load wallet data
   loadWalletBalance();
-  loadDVA();
   loadTransactions();
 }
 
@@ -1068,80 +1062,15 @@ function updateBalanceUI(amount) {
 }
 
 // ════════════════════════════════════════════════
-//  DEDICATED VIRTUAL ACCOUNT (DVA)
+//  DEDICATED VIRTUAL ACCOUNT (DVA) — Coming Soon
+//  This feature is pending approval from our banking
+//  partner. Once active, swap handleDVAClick() below
+//  for the real loadDVA()/create-dva call.
 // ════════════════════════════════════════════════
-async function loadDVA() {
-  if (!sb || !currentUser) return;
-
-  try {
-    // Check if user already has a DVA
-    const { data: profile, error } = await sb
-      .from('wallets')
-      .select('dva_bank_name, dva_account_number, dva_account_name')
-      .eq('user_id', currentUser.id)
-      .single();
-
-    if (!error && profile?.dva_account_number) {
-      renderDVA(profile);
-      return;
-    }
-
-    // Request a new DVA from edge function
-    const meta = currentUser.user_metadata || {};
-    const firstName = meta.first_name || currentUser.email.split('@')[0];
-    const lastName = meta.last_name || '';
-    const phone = meta.phone || '';
-
-    const res = await sb.functions.invoke('create-dva', {
-      body: {
-        user_id: currentUser.id,
-        email: currentUser.email,
-        first_name: firstName,
-        last_name: lastName,
-        phone
-      }
-    });
-
-    if (res.error) throw res.error;
-    if (res.data?.account_number) {
-      renderDVA({
-        dva_bank_name: res.data.bank_name,
-        dva_account_number: res.data.account_number,
-        dva_account_name: res.data.account_name
-      });
-    } else {
-      showDVAError('Could not generate account. Please refresh to try again.');
-    }
-  } catch (err) {
-    console.error('DVA error:', err);
-    showDVAError('Account generation failed. Tap to retry.');
-  }
+function handleDVAClick() {
+  showToast("🏦 Personal funding accounts are launching soon — we'll let you know!", 'info', 5000);
 }
 
-function renderDVA(dva) {
-  document.getElementById('dva-bank').textContent = dva.dva_bank_name || '—';
-  document.getElementById('dva-number').textContent = dva.dva_account_number || '—';
-  document.getElementById('dva-name').textContent = dva.dva_account_name || '—';
-  document.getElementById('dva-copy-btn').style.display = 'inline-block';
-}
-
-function showDVAError(msg) {
-  const errEl = document.getElementById('dva-error');
-  errEl.textContent = msg + ' (Tap here to retry)';
-  errEl.style.display = 'block';
-  errEl.style.cursor = 'pointer';
-  errEl.onclick = () => { errEl.style.display = 'none'; loadDVA(); };
-  // Clear skeletons
-  ['dva-bank','dva-number','dva-name'].forEach(id => {
-    document.getElementById(id).textContent = '—';
-  });
-}
-
-function copyDVA() {
-  const num = document.getElementById('dva-number').textContent;
-  if (!num || num === '—') return;
-  navigator.clipboard.writeText(num).then(() => showToast('Account number copied!', 'success'));
-}
 
 // ════════════════════════════════════════════════
 //  TRANSACTION HISTORY
