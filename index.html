@@ -947,7 +947,7 @@ footer{background:#04342C;color:rgba(255,255,255,.75);padding:3rem 5% 1.5rem}
           <div style="background:#e8f5e9;border:1px solid #a7f3d0;border-radius:10px;padding:12px 16px;margin-bottom:20px;display:flex;align-items:center;gap:12px">
             <div style="font-size:1.3rem">⏱️</div>
             <div style="flex:1">
-              <div style="font-size:0.78rem;color:#6b7280">Read for 15 minutes to unlock the comment box</div>
+              <div style="font-size:0.78rem;color:#6b7280">Read for 2 minutes to unlock the comment box</div>
               <div style="font-size:1.2rem;font-weight:800;color:#009624" id="earn-timer-display">15:00</div>
               <div style="background:#a7f3d0;border-radius:99px;height:5px;margin-top:5px">
                 <div id="earn-timer-fill" style="background:#00c853;height:5px;border-radius:99px;width:0%;transition:width 1s linear"></div>
@@ -1947,7 +1947,7 @@ init();
 //  READ & EARN — EMBEDDED LOGIC
 // ══════════════════════════════════════════════
 const EARN_DAILY_CAP = 500;
-const EARN_TIMER_SECONDS = 15 * 60;
+const EARN_TIMER_SECONDS = 2 * 60;
 
 const EARN_DEFAULT_POSTS = [
   {
@@ -2011,7 +2011,7 @@ function earnRenderPosts() {
     const tagColors = { tech:'background:#dbeafe;color:#1d4ed8', finance:'background:#fef9c3;color:#92400e', business:'background:#f3e8ff;color:#7c3aed', lifestyle:'background:#fce7f3;color:#be185d' };
     const card = document.createElement('div');
     card.className = 'earn-post-card' + (done?' completed':'') + (locked?' locked':'');
-    card.innerHTML = `<div style="padding:16px 20px 12px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><span style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;padding:3px 10px;border-radius:20px;${tagColors[post.tag]||''}">${post.tagLabel}</span><span style="font-size:0.8rem;font-weight:700;color:${done?'#6b7280':'#009624'}">${done?'✅ +'+post.reward+' earned':'⚡ Up to +'+post.reward+' credits'}</span></div><div style="font-size:1rem;font-weight:700;line-height:1.4;margin-bottom:6px">${post.title}</div><div style="font-size:0.85rem;color:#6b7280;line-height:1.5">${post.excerpt}</div></div><div style="padding:10px 20px;background:#f4f6f8;border-top:1px solid #e5e7eb;font-size:0.8rem;color:#6b7280;display:flex;align-items:center;justify-content:space-between;gap:10px"><span style="${done?'color:#00c853;font-weight:700':''}">${done?'✅ Completed':locked?'🔒 Daily cap reached':'⏱️ 15 min read + comment required'}</span>${!done&&!locked?`<button onclick="earnOpenPost('${post.id}')" style="background:#00c853;color:white;border:none;padding:6px 16px;border-radius:8px;font-size:0.8rem;font-weight:600;cursor:pointer">Read & Earn →</button>`:''}</div>`;
+    card.innerHTML = `<div style="padding:16px 20px 12px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><span style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;padding:3px 10px;border-radius:20px;${tagColors[post.tag]||''}">${post.tagLabel}</span><span style="font-size:0.8rem;font-weight:700;color:${done?'#6b7280':'#009624'}">${done?'✅ +'+post.reward+' earned':'⚡ Up to +'+post.reward+' credits'}</span></div><div style="font-size:1rem;font-weight:700;line-height:1.4;margin-bottom:6px">${post.title}</div><div style="font-size:0.85rem;color:#6b7280;line-height:1.5">${post.excerpt}</div></div><div style="padding:10px 20px;background:#f4f6f8;border-top:1px solid #e5e7eb;font-size:0.8rem;color:#6b7280;display:flex;align-items:center;justify-content:space-between;gap:10px"><span style="${done?'color:#00c853;font-weight:700':''}">${done?'✅ Completed':locked?'🔒 Daily cap reached':'⏱️ 2 min read + comment required'}</span>${!done&&!locked?`<button onclick="earnOpenPost('${post.id}')" style="background:#00c853;color:white;border:none;padding:6px 16px;border-radius:8px;font-size:0.8rem;font-weight:600;cursor:pointer">Read & Earn →</button>`:''}</div>`;
     grid.appendChild(card);
   });
   const pct = Math.min(100,(state.earned/EARN_DAILY_CAP)*100);
