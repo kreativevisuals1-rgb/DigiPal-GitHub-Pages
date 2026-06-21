@@ -728,7 +728,7 @@
         <div class="wallet-amount">₦0.00</div>
         <div class="wallet-actions">
           <button class="btn btn-primary btn-sm" onclick="openFundModal()">+ Fund Wallet</button>
-          <button class="btn btn-ghost btn-sm" onclick="showToast('Withdrawal coming soon!','info')">Withdraw</button>
+          <button class="btn btn-ghost btn-sm" onclick="openWithdrawModal()">Withdraw</button>
         </div>
       </div>
       <div class="dash-card">
@@ -1179,6 +1179,7 @@ document.addEventListener('keydown', e => {
       if (m && !m.classList.contains('hidden')) closeModal(n);
     });
     closeFundModal();
+    closeWithdrawModal();
   }
 });
 
@@ -1456,6 +1457,398 @@ function showFundingSuccess(amount, newBalance) {
     to   { transform: translateY(0);    opacity: 1; }
   }
 </style>
+
+<!-- ==================== WITHDRAW MODAL ==================== -->
+<div id="withdrawOverlay" style="
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,0.55); z-index: 99999;
+  align-items: center; justify-content: center;
+  padding: 16px; backdrop-filter: blur(4px);
+" onclick="if(event.target===this) closeWithdrawModal()">
+  <div style="
+    background: #fff; border-radius: 20px; padding: 36px 32px 28px;
+    width: 100%; max-width: 460px;
+    box-shadow: 0 24px 80px rgba(0,0,0,0.25);
+    position: relative; animation: slideUp 0.25s ease;
+    max-height: 90vh; overflow-y: auto;
+  ">
+    <button onclick="closeWithdrawModal()" style="
+      position: absolute; top: 16px; right: 16px;
+      background: #f0f0f0; border: none; border-radius: 50%;
+      width: 32px; height: 32px; font-size: 16px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; color: #555;
+    ">✕</button>
+
+    <!-- Header -->
+    <div style="margin-bottom: 24px;">
+      <div style="font-size: 2rem; margin-bottom: 6px;">🏦</div>
+      <h2 style="margin: 0 0 4px; font-size: 1.25rem; font-weight: 700; color: #1a1a2e;">Withdraw Funds</h2>
+      <p style="margin: 0; color: #888; font-size: 0.875rem;">Transfer to your Nigerian bank account</p>
+    </div>
+
+    <!-- Balance display -->
+    <div style="
+      background: linear-gradient(135deg, #0d2b1a 0%, #006633 100%);
+      border-radius: 12px; padding: 16px 20px; margin-bottom: 24px; color: #fff;
+    ">
+      <div style="font-size: 0.75rem; opacity: 0.85; margin-bottom: 4px; letter-spacing: 0.05em; text-transform: uppercase;">Available Balance</div>
+      <div id="withdrawModalBalance" style="font-size: 1.5rem; font-weight: 700;">₦0.00</div>
+    </div>
+
+    <!-- STEP INDICATOR -->
+    <div id="withdrawStepIndicator" style="display:flex; gap:8px; margin-bottom:24px; align-items:center;">
+      <div id="wstep1dot" style="width:28px;height:28px;border-radius:50%;background:#00b359;color:#fff;font-size:.8rem;font-weight:700;display:flex;align-items:center;justify-content:center;">1</div>
+      <div style="flex:1;height:2px;background:#e5e7eb;" id="wstepline"></div>
+      <div id="wstep2dot" style="width:28px;height:28px;border-radius:50%;background:#e5e7eb;color:#6b7280;font-size:.8rem;font-weight:700;display:flex;align-items:center;justify-content:center;">2</div>
+      <span id="wstep1label" style="font-size:.78rem;color:#00b359;font-weight:600;position:absolute;margin-top:44px;margin-left:0;">Bank Details</span>
+      <span id="wstep2label" style="font-size:.78rem;color:#6b7280;font-weight:600;"></span>
+    </div>
+
+    <!-- STEP 1: Bank Details -->
+    <div id="withdrawStep1">
+      <div style="margin-bottom:14px;">
+        <label style="font-size:.8rem;font-weight:600;color:#444;display:block;margin-bottom:6px;">Bank Name</label>
+        <select id="wBankName" style="
+          width:100%;padding:12px 16px;border:2px solid #e8e8e8;border-radius:12px;
+          font-size:.95rem;outline:none;transition:border-color .2s;background:#fff;color:#1a1a2e;
+        " onfocus="this.style.borderColor='#00b359'" onblur="this.style.borderColor='#e8e8e8'">
+          <option value="">— Select your bank —</option>
+          <option>Access Bank</option><option>Fidelity Bank</option><option>First Bank</option>
+          <option>First City Monument Bank (FCMB)</option><option>Guaranty Trust Bank (GTBank)</option>
+          <option>Heritage Bank</option><option>Keystone Bank</option><option>Opay</option>
+          <option>Palmpay</option><option>Polaris Bank</option><option>Providus Bank</option>
+          <option>Stanbic IBTC Bank</option><option>Sterling Bank</option><option>UBA</option>
+          <option>Union Bank</option><option>Unity Bank</option><option>Wema Bank</option>
+          <option>Zenith Bank</option><option>Kuda Bank</option><option>Moniepoint</option>
+        </select>
+      </div>
+
+      <div style="margin-bottom:14px;">
+        <label style="font-size:.8rem;font-weight:600;color:#444;display:block;margin-bottom:6px;">Account Number</label>
+        <input id="wAccountNumber" type="text" maxlength="10" placeholder="10-digit account number"
+          style="
+            width:100%;padding:12px 16px;border:2px solid #e8e8e8;border-radius:12px;
+            font-size:.95rem;outline:none;transition:border-color .2s;box-sizing:border-box;color:#1a1a2e;
+          "
+          onfocus="this.style.borderColor='#00b359'" onblur="this.style.borderColor='#e8e8e8'"
+          oninput="this.value=this.value.replace(/\D/g,'')"
+        />
+      </div>
+
+      <div style="margin-bottom:24px;">
+        <label style="font-size:.8rem;font-weight:600;color:#444;display:block;margin-bottom:6px;">Account Name</label>
+        <input id="wAccountName" type="text" placeholder="Full name on account"
+          style="
+            width:100%;padding:12px 16px;border:2px solid #e8e8e8;border-radius:12px;
+            font-size:.95rem;outline:none;transition:border-color .2s;box-sizing:border-box;color:#1a1a2e;
+          "
+          onfocus="this.style.borderColor='#00b359'" onblur="this.style.borderColor='#e8e8e8'"
+        />
+      </div>
+
+      <!-- Save account checkbox -->
+      <label style="display:flex;align-items:center;gap:10px;margin-bottom:24px;cursor:pointer;font-size:.875rem;color:#444;font-weight:500;">
+        <input type="checkbox" id="wSaveAccount" checked style="width:16px;height:16px;accent-color:#00b359;" />
+        Save this bank account for future withdrawals
+      </label>
+
+      <button onclick="withdrawGoToStep2()" style="
+        width:100%;padding:14px;background:linear-gradient(135deg,#00b359,#006633);
+        color:#fff;border:none;border-radius:12px;font-size:1rem;font-weight:700;
+        cursor:pointer;transition:opacity .2s;
+      "
+      onmouseover="this.style.opacity='.9'" onmouseout="this.style.opacity='1'">
+        Continue →
+      </button>
+      <button onclick="closeWithdrawModal()" style="
+        width:100%;padding:12px;background:transparent;border:none;
+        color:#999;font-size:.9rem;cursor:pointer;border-radius:10px;margin-top:6px;
+        transition:background .2s;
+      "
+      onmouseover="this.style.background='#f5f5f5'" onmouseout="this.style.background='transparent'">Cancel</button>
+    </div>
+
+    <!-- STEP 2: Amount & Confirm -->
+    <div id="withdrawStep2" style="display:none;">
+      <!-- Summary card -->
+      <div id="wBankSummary" style="
+        background:#f9fafb;border:1.5px solid #e5e7eb;border-radius:12px;
+        padding:16px 20px;margin-bottom:20px;
+      ">
+        <div style="font-size:.75rem;color:#6b7280;font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;">Sending To</div>
+        <div style="font-weight:700;color:#1a1a2e;" id="wSummaryName">—</div>
+        <div style="font-size:.875rem;color:#6b7280;margin-top:2px;" id="wSummaryAccount">—</div>
+      </div>
+
+      <label style="font-size:.8rem;font-weight:600;color:#444;display:block;margin-bottom:6px;">Withdrawal Amount (₦)</label>
+      <div style="position:relative;margin-bottom:8px;">
+        <span style="position:absolute;left:14px;top:50%;transform:translateY(-50%);font-weight:700;color:#00b359;font-size:1.1rem;">₦</span>
+        <input id="wAmount" type="number" min="1" placeholder="0.00" style="
+          width:100%;padding:13px 16px 13px 32px;
+          border:2px solid #e8e8e8;border-radius:12px;
+          font-size:1.1rem;font-weight:600;box-sizing:border-box;
+          outline:none;transition:border-color .2s;color:#1a1a2e;
+        "
+        onfocus="this.style.borderColor='#00b359'" onblur="this.style.borderColor='#e8e8e8'" />
+      </div>
+      <div id="wAmountError" style="font-size:.8rem;color:#ef4444;margin-bottom:16px;display:none;"></div>
+
+      <!-- Quick amount chips -->
+      <div style="display:flex;gap:8px;margin-bottom:24px;flex-wrap:wrap;">
+        <button onclick="setWithdrawAmount(1000)"  class="fund-chip">₦1,000</button>
+        <button onclick="setWithdrawAmount(2000)"  class="fund-chip">₦2,000</button>
+        <button onclick="setWithdrawAmount(5000)"  class="fund-chip">₦5,000</button>
+        <button onclick="setWithdrawAmount(10000)" class="fund-chip">₦10,000</button>
+      </div>
+
+      <div style="display:flex;gap:10px;">
+        <button onclick="withdrawGoToStep1()" style="
+          flex:1;padding:14px;background:#f0f0f0;color:#444;
+          border:none;border-radius:12px;font-size:.95rem;font-weight:600;cursor:pointer;
+          transition:background .2s;
+        "
+        onmouseover="this.style.background='#e5e7eb'" onmouseout="this.style.background='#f0f0f0'">
+          ← Back
+        </button>
+        <button id="withdrawSubmitBtn" onclick="submitWithdrawal()" style="
+          flex:2;padding:14px;background:linear-gradient(135deg,#00b359,#006633);
+          color:#fff;border:none;border-radius:12px;font-size:1rem;font-weight:700;
+          cursor:pointer;transition:opacity .2s;
+        "
+        onmouseover="this.style.opacity='.9'" onmouseout="this.style.opacity='1'">
+          🏦 Confirm Withdrawal
+        </button>
+      </div>
+      <button onclick="closeWithdrawModal()" style="
+        width:100%;padding:12px;background:transparent;border:none;
+        color:#999;font-size:.9rem;cursor:pointer;border-radius:10px;margin-top:6px;
+        transition:background .2s;
+      "
+      onmouseover="this.style.background='#f5f5f5'" onmouseout="this.style.background='transparent'">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   WITHDRAWAL FLOW
+   ============================================================ */
+
+async function openWithdrawModal() {
+  const { data: { user } } = await _supabase.auth.getUser();
+  if (!user) { showToast('Please log in first.', 'error'); return; }
+
+  // Load balance
+  try {
+    const { data: wallet } = await _supabase
+      .from('wallets').select('balance').eq('user_id', user.id).single();
+    const bal = wallet ? parseFloat(wallet.balance) : 0;
+    document.getElementById('withdrawModalBalance').textContent =
+      '₦' + bal.toLocaleString('en-NG', { minimumFractionDigits: 2 });
+  } catch(e) {
+    document.getElementById('withdrawModalBalance').textContent = '₦0.00';
+  }
+
+  // Try to pre-fill saved bank account
+  try {
+    const { data: saved } = await _supabase
+      .from('bank_accounts')
+      .select('bank_name, account_number, account_name')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (saved) {
+      const sel = document.getElementById('wBankName');
+      for (let i = 0; i < sel.options.length; i++) {
+        if (sel.options[i].text === saved.bank_name) { sel.selectedIndex = i; break; }
+      }
+      document.getElementById('wAccountNumber').value = saved.account_number;
+      document.getElementById('wAccountName').value   = saved.account_name;
+    }
+  } catch(e) { /* no saved account, that's fine */ }
+
+  // Reset to step 1
+  withdrawGoToStep1();
+  document.getElementById('wAmount').value = '';
+  document.getElementById('wAmountError').style.display = 'none';
+  document.getElementById('withdrawOverlay').style.display = 'flex';
+}
+
+function closeWithdrawModal() {
+  const el = document.getElementById('withdrawOverlay');
+  if (el) el.style.display = 'none';
+}
+
+function withdrawGoToStep1() {
+  document.getElementById('withdrawStep1').style.display = 'block';
+  document.getElementById('withdrawStep2').style.display = 'none';
+  // Step indicator
+  document.getElementById('wstep1dot').style.background = '#00b359';
+  document.getElementById('wstep1dot').style.color = '#fff';
+  document.getElementById('wstep2dot').style.background = '#e5e7eb';
+  document.getElementById('wstep2dot').style.color = '#6b7280';
+}
+
+function withdrawGoToStep2() {
+  const bank    = document.getElementById('wBankName').value.trim();
+  const accNum  = document.getElementById('wAccountNumber').value.trim();
+  const accName = document.getElementById('wAccountName').value.trim();
+
+  if (!bank)    { showToast('Please select your bank.', 'error'); return; }
+  if (accNum.length !== 10) { showToast('Account number must be exactly 10 digits.', 'error'); return; }
+  if (!accName) { showToast('Please enter the account name.', 'error'); return; }
+
+  // Populate summary
+  document.getElementById('wSummaryName').textContent    = accName;
+  document.getElementById('wSummaryAccount').textContent = bank + ' · ' + accNum;
+
+  document.getElementById('withdrawStep1').style.display = 'none';
+  document.getElementById('withdrawStep2').style.display = 'block';
+
+  // Step indicator
+  document.getElementById('wstep1dot').style.background = '#00b359';
+  document.getElementById('wstep2dot').style.background = '#00b359';
+  document.getElementById('wstep2dot').style.color = '#fff';
+}
+
+function setWithdrawAmount(val) {
+  document.getElementById('wAmount').value = val;
+  document.getElementById('wAmount').focus();
+  document.getElementById('wAmountError').style.display = 'none';
+}
+
+async function submitWithdrawal() {
+  const amount  = parseFloat(document.getElementById('wAmount').value);
+  const bank    = document.getElementById('wBankName').value.trim();
+  const accNum  = document.getElementById('wAccountNumber').value.trim();
+  const accName = document.getElementById('wAccountName').value.trim();
+  const save    = document.getElementById('wSaveAccount').checked;
+
+  const errEl = document.getElementById('wAmountError');
+
+  if (!amount || amount <= 0) {
+    errEl.textContent = 'Please enter a valid amount.';
+    errEl.style.display = 'block'; return;
+  }
+
+  const { data: { user } } = await _supabase.auth.getUser();
+  if (!user) { showToast('Session expired. Please log in again.', 'error'); return; }
+
+  // Fetch live balance
+  const { data: wallet, error: walletErr } = await _supabase
+    .from('wallets').select('balance').eq('user_id', user.id).single();
+
+  if (walletErr || !wallet) { showToast('Could not fetch wallet balance.', 'error'); return; }
+
+  const currentBalance = parseFloat(wallet.balance) || 0;
+
+  if (amount > currentBalance) {
+    errEl.textContent = 'Insufficient balance. Available: ₦' +
+      currentBalance.toLocaleString('en-NG', { minimumFractionDigits: 2 });
+    errEl.style.display = 'block'; return;
+  }
+
+  errEl.style.display = 'none';
+  const btn = document.getElementById('withdrawSubmitBtn');
+  btn.textContent = 'Processing…'; btn.disabled = true;
+
+  try {
+    const newBalance = currentBalance - amount;
+    const ref = 'WDRAW-' + Date.now() + '-' + Math.random().toString(36).substr(2,6).toUpperCase();
+
+    // 1. Debit wallet
+    const { error: debitErr } = await _supabase
+      .from('wallets')
+      .update({ balance: newBalance, updated_at: new Date().toISOString() })
+      .eq('user_id', user.id);
+    if (debitErr) throw debitErr;
+
+    // 2. Log transaction
+    const { error: txErr } = await _supabase
+      .from('transactions')
+      .insert({
+        user_id: user.id,
+        type: 'debit',
+        amount: amount,
+        description: `Withdrawal to ${bank} · ${accNum} (${accName})`,
+        reference: ref,
+        status: 'pending'
+      });
+    if (txErr) throw txErr;
+
+    // 3. Log withdrawal request
+    const { error: wdErr } = await _supabase
+      .from('withdrawals')
+      .insert({
+        user_id: user.id,
+        amount: amount,
+        bank_name: bank,
+        account_number: accNum,
+        account_name: accName,
+        reference: ref,
+        status: 'pending'
+      });
+    if (wdErr) throw wdErr;
+
+    // 4. Save bank account if ticked
+    if (save) {
+      await _supabase.from('bank_accounts').upsert({
+        user_id: user.id,
+        bank_name: bank,
+        account_number: accNum,
+        account_name: accName,
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'user_id,account_number' });
+    }
+
+    closeWithdrawModal();
+    showWithdrawalSuccess(amount, newBalance, bank, accNum);
+
+    if (typeof loadDashboardData === 'function') loadDashboardData();
+    if (typeof loadWalletData    === 'function') loadWalletData();
+
+  } catch(err) {
+    console.error('Withdrawal error:', err);
+    btn.textContent = '🏦 Confirm Withdrawal'; btn.disabled = false;
+    showToast('Withdrawal failed: ' + err.message, 'error');
+  }
+}
+
+function showWithdrawalSuccess(amount, newBalance, bank, accNum) {
+  const toast = document.createElement('div');
+  toast.innerHTML = `
+    <div style="display:flex;align-items:center;gap:12px;">
+      <div style="font-size:2rem;">✅</div>
+      <div>
+        <div style="font-weight:700;font-size:.95rem;">Withdrawal Requested!</div>
+        <div style="font-size:.82rem;opacity:.9;">
+          ₦${amount.toLocaleString('en-NG')} → ${bank} ···${accNum.slice(-4)}<br>
+          New balance: ₦${parseFloat(newBalance).toLocaleString('en-NG',{minimumFractionDigits:2})}
+        </div>
+      </div>
+    </div>
+  `;
+  toast.style.cssText = `
+    position:fixed;bottom:24px;left:50%;
+    transform:translateX(-50%) translateY(80px);
+    background:linear-gradient(135deg,#1a1a2e,#16213e);
+    color:#fff;padding:16px 24px;border-radius:14px;
+    box-shadow:0 8px 30px rgba(0,0,0,.35);
+    z-index:999999;font-family:inherit;min-width:290px;
+    transition:transform .4s cubic-bezier(.34,1.56,.64,1);cursor:pointer;
+    border-left:4px solid #00b359;
+  `;
+  document.body.appendChild(toast);
+  requestAnimationFrame(() => { toast.style.transform = 'translateX(-50%) translateY(0)'; });
+  setTimeout(() => {
+    toast.style.transform = 'translateX(-50%) translateY(80px)';
+    setTimeout(() => toast.remove(), 400);
+  }, 6000);
+  toast.onclick = () => toast.remove();
+}
+</script>
 
 </body>
 </html>
