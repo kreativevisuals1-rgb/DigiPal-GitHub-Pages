@@ -2685,10 +2685,28 @@ async function earnMarkPostCompleted(postId) {
     console.error('earnMarkPostCompleted error:', e);
   }
 }
-function earnGetLeaderboard() {
-  const raw = localStorage.getItem('digipal_leaderboard');
-  if (raw) return JSON.parse(raw);
-  return [{ name:'Amaka O.',credits:12400},{ name:'Tunde B.',credits:10900},{ name:'Chioma N.',credits:9750},{ name:'Emeka S.',credits:8200},{ name:'Fatima A.',credits:7600}];
+// Real leaderboard, ranked by how many posts each user has actually
+// completed this month. Pulled live from the `leaderboard` Supabase view
+// (see SQL provided separately) — no more localStorage fake data.
+async function earnGetLeaderboard() {
+  if (!sb) return [];
+  try {
+    const { data, error } = await sb
+      .from('leaderboard')
+      .select('user_id, display_name, posts_completed, credits_earned')
+      .order('posts_completed', { ascending: false })
+      .limit(10);
+    if (error) throw error;
+    return (data || []).map(row => ({
+      name: row.display_name || 'DigiPal User',
+      posts: row.posts_completed || 0,
+      credits: row.credits_earned || 0,
+      isYou: currentUser && row.user_id === currentUser.id,
+    }));
+  } catch (e) {
+    console.error('earnGetLeaderboard error:', e);
+    return [];
+  }
 }
 
 async function earnRenderPosts() {
@@ -2729,13 +2747,20 @@ async function earnRenderPosts() {
   if (noteEl) noteEl.textContent = state.earned >= EARN_DAILY_CAP ? '🎉 Daily cap reached! Come back tomorrow.' : Object.keys(state.completed).length+' of '+posts.length+' posts completed. '+(EARN_DAILY_CAP-state.earned)+' credits remaining.';
 }
 
-function earnRenderLeaderboard() {
-  const lb = earnGetLeaderboard();
+async function earnRenderLeaderboard() {
+  const lb = await earnGetLeaderboard();
   const container = document.getElementById('earn-leaderboard-rows');
   if (!container) return;
+
+  if (!lb.length) {
+    container.innerHTML = '<div style="color:#6b7280;font-size:0.85rem;padding:8px 0">No one has completed a post yet this month — be the first!</div>';
+    return;
+  }
+
   const medals = ['🥇','🥈','🥉'];
   const rankBg = ['background:#fef3c7;color:#92400e','background:#f1f5f9;color:#475569','background:#fff7ed;color:#c2410c','background:#f4f6f8;color:#6b7280'];
-  container.innerHTML = lb.map((row,i) => `<div class="earn-lb-row"><div style="width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.8rem;font-weight:800;flex-shrink:0;${rankBg[i]||rankBg[3]}">${medals[i]||i+1}</div><div style="flex:1;font-weight:600;font-size:0.9rem">${row.name}</div>${i===0?'<span style="font-size:0.7rem;font-weight:700;padding:2px 8px;border-radius:20px;background:#fef3c7;color:#92400e">Top Commenter</span>':''}<div style="font-size:0.85rem;color:#009624;font-weight:700">${row.credits.toLocaleString()} credits</div></div>`).join('');
+  container.innerHTML = lb.map((row,i) => `<div class="earn-lb-row" style="${row.isYou?'background:#f0fdf4;border-radius:8px':''}"><div style="width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.8rem;font-weight:800;flex-shrink:0;${rankBg[i]||rankBg[3]}">${medals[i]||i+1}</div><div style="flex:1;font-weight:600;font-size:0.9rem">${row.name}${row.isYou?' <span style="font-size:0.7rem;color:#009624">(You)</span>':''}</div>${i===0?'<span style="font-size:0.7rem;font-weight:700;padding:2px 8px;border-radius:20px;background:#fef3c7;color:#92400e">Top Commenter</span>':''}<div style="font-size:0.85rem;color:#009624;font-weight:700">${row.posts} post${row.posts===1?'':'s'} read</div></div>`).join('');
+
   const paidNotice = localStorage.getItem('digipal_winner_notice');
   if (paidNotice) {
     try {
@@ -2873,7 +2898,9 @@ async function earnSubmitComment() {
 
       earnAddCredits(award);
       await earnCreditWallet(award);
-      earnUpdateLeaderboard(award);
+      // Leaderboard is now derived live from completed posts in Supabase,
+      // so just re-fetch/re-render it to reflect this completion.
+      earnRenderLeaderboard();
       if (banner) { banner.style.display='block'; banner.style.background='#e8f5e9'; banner.style.color='#009624'; banner.style.border='1px solid #a7f3d0'; banner.style.borderRadius='10px'; banner.style.padding='14px 16px'; banner.innerHTML=`✅ Comment verified! <strong>+${award} credits</strong> added to your account.`; }
       setTimeout(() => { earnCloseReader(); earnShowReward(award); earnRenderPosts(); loadEarnCredits(); }, 1500);
     } else {
@@ -2887,16 +2914,6 @@ async function earnSubmitComment() {
     if (banner) { banner.style.display='block'; banner.style.background='#fef2f2'; banner.style.color='#991b1b'; banner.style.border='1px solid #fca5a5'; banner.style.borderRadius='10px'; banner.style.padding='14px 16px'; banner.innerHTML='⚠️ Could not verify comment: ' + err.message; }
     document.getElementById('earn-submit-btn').disabled = false;
   }
-}
-
-function earnUpdateLeaderboard(creditsEarned) {
-  const lb = earnGetLeaderboard();
-  const userName = localStorage.getItem('digipal_username') || 'You';
-  const existing = lb.find(r=>r.name===userName);
-  if (existing) { existing.credits += creditsEarned; } else { lb.push({name:userName,credits:creditsEarned}); }
-  lb.sort((a,b)=>b.credits-a.credits);
-  localStorage.setItem('digipal_leaderboard', JSON.stringify(lb.slice(0,10)));
-  earnRenderLeaderboard();
 }
 
 function earnShowReward(n) {
@@ -2917,7 +2934,7 @@ document.addEventListener('click', function(e) {
 
 async function initEarnTab() {
   await earnRenderPosts();
-  earnRenderLeaderboard();
+  await earnRenderLeaderboard();
 }
 
 </script>
