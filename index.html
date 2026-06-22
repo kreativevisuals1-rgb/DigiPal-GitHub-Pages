@@ -1516,13 +1516,19 @@ function loadEarnCredits() {
   const total = parseInt(localStorage.getItem('digipal_total_credits') || '0');
   const earnEl = document.getElementById('earn-credits-display');
   const nairaEl = document.getElementById('earn-credits-naira');
-  const todayEl = document.getElementById('earn-today-display');
   if (earnEl) earnEl.textContent = total.toLocaleString();
   // The real, spendable credits balance lives in Supabase (creditsBalance) —
   // refreshed by loadWalletBalance()/loadCreditsBalance(). Fall back to the
   // localStorage total only if the user isn't logged in yet.
   if (nairaEl) nairaEl.textContent = (currentUser ? creditsBalance : total).toLocaleString('en-NG', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-  if (todayEl) todayEl.textContent = todayState.earned || 0;
+  // ✅ FIX: "Earned Today" is now owned exclusively by earnRenderPosts(),
+  // which derives it from the real Supabase data (state.earned). Writing
+  // the old localStorage-based todayState here caused it to flicker back
+  // to a stale/wrong value whenever this function ran after that one.
+  if (!currentUser) {
+    const todayEl = document.getElementById('earn-today-display');
+    if (todayEl) todayEl.textContent = todayState.earned || 0;
+  }
 }
 
 // ── COPY REFERRAL ──
@@ -2677,16 +2683,24 @@ async function earnGetPosts() {
 
 // Mark a post completed in Supabase (cross-device source of truth).
 async function earnMarkPostCompleted(postId) {
-  if (!sb || !currentUser) return;
+  if (!sb || !currentUser) return false;
   try {
-    const { error } = await sb
+    const { data, error } = await sb
       .from('posts')
       .update({ completed: true, completed_at: new Date().toISOString() })
       .eq('id', postId)
-      .eq('user_id', currentUser.id);
+      .eq('user_id', currentUser.id)
+      .select('id'); // ✅ FIX: without selecting the row back, a 0-row
+                      // update (e.g. blocked by RLS) looks identical to a
+                      // successful one — both return no error.
     if (error) throw error;
+    if (!data || data.length === 0) {
+      throw new Error('Post completion did not save (0 rows updated) — check RLS UPDATE policy on posts table.');
+    }
+    return true;
   } catch (e) {
     console.error('earnMarkPostCompleted error:', e);
+    return false;
   }
 }
 // Real leaderboard, ranked by how many posts each user has actually
@@ -2730,6 +2744,8 @@ async function earnRenderPosts() {
     if (earnedEl) earnedEl.textContent = '0 credits earned';
     const noteEl = document.getElementById('earn-daily-note');
     if (noteEl) noteEl.textContent = "Today's posts aren't ready yet.";
+    const todayEl0 = document.getElementById('earn-today-display');
+    if (todayEl0) todayEl0.textContent = '0';
     return;
   }
 
@@ -2749,6 +2765,12 @@ async function earnRenderPosts() {
   if (earnedEl) earnedEl.textContent = state.earned+' credits earned';
   const noteEl = document.getElementById('earn-daily-note');
   if (noteEl) noteEl.textContent = state.earned >= EARN_DAILY_CAP ? '🎉 Daily cap reached! Come back tomorrow.' : Object.keys(state.completed).length+' of '+posts.length+' posts completed. '+(EARN_DAILY_CAP-state.earned)+' credits remaining.';
+  // ✅ FIX: "Earned Today" was only ever updated by the old localStorage-based
+  // loadEarnCredits(), so it never reflected the real, Supabase-derived
+  // daily total used everywhere else on this page (the progress bar/note
+  // above). Keep it in sync with the same source of truth.
+  const todayEl = document.getElementById('earn-today-display');
+  if (todayEl) todayEl.textContent = state.earned;
 }
 
 async function earnRenderLeaderboard() {
@@ -2887,7 +2909,13 @@ async function earnSubmitComment() {
       const award = Math.min(earnActivePost.reward, remaining);
 
       // Supabase is the source of truth for "completed" now (cross-device).
-      await earnMarkPostCompleted(earnActivePost.id);
+      const saved = await earnMarkPostCompleted(earnActivePost.id);
+      if (!saved) {
+        document.getElementById('earn-ai-checking').style.display = 'none';
+        if (banner) { banner.style.display='block'; banner.style.background='#fef2f2'; banner.style.color='#991b1b'; banner.style.border='1px solid #fca5a5'; banner.style.borderRadius='10px'; banner.style.padding='14px 16px'; banner.innerHTML='⚠️ Comment was verified, but we couldn\'t save your completion. Please try again — no credits were awarded.'; }
+        document.getElementById('earn-submit-btn').disabled = false;
+        return;
+      }
       // Reflect it immediately in the local cache so earnGetState() picks it
       // up without needing a fresh round-trip to Supabase.
       if (earnPostsCache) {
