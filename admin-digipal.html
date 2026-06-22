@@ -2,8 +2,8 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<link rel="icon" type="image/x-icon" href="favicon-admin.ico">
-<link rel="shortcut icon" type="image/x-icon" href="favicon-admin.ico">
+  <link rel="icon" type="image/x-icon" href="favicon-admin.ico">
+  <link rel="shortcut icon" type="image/x-icon" href="favicon-admin.ico">
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Admin — DigiPal Read & Earn</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -365,11 +365,12 @@
         <div class="card">
           <h3>📋 How It Works (Feature Rules)</h3>
           <ul style="padding-left:18px; line-height:2; font-size:0.88rem; color:#374151">
-            <li>Users read each post for <strong>15 minutes</strong> (timer enforced)</li>
+            <li>Every user gets <strong>5 unique, AI-generated posts</strong> every day — no two users see the same content</li>
+            <li>Users read each post for <strong>2 minutes</strong> (timer enforced)</li>
             <li>They write a <strong>500+ character comment</strong> after reading</li>
-            <li>Claude AI verifies the comment is genuine before awarding credits</li>
-            <li>Each post rewards between <strong>50–200 credits</strong> (you set the amount)</li>
-            <li>Max <strong>500 credits per user per day</strong> (= ₦500 equivalent)</li>
+            <li>AI verifies the comment is genuine before awarding credits</li>
+            <li>Each post rewards a flat <strong>100 credits</strong> (= ₦100 equivalent)</li>
+            <li>Max <strong>500 credits per user per day</strong> (5 posts × 100 credits = ₦500 equivalent)</li>
             <li>Credits redeemable for airtime, data, and cable TV only — <strong>no cash withdrawal</strong></li>
             <li>Monthly top commenter wins <strong>₦5,000</strong> paid to their DigiPal wallet</li>
           </ul>
@@ -379,13 +380,48 @@
       <!-- MANAGE POSTS -->
       <div class="page" id="page-posts">
         <div class="page-title">📰 Manage Posts</div>
-        <div class="page-sub">Publish up to 4 posts daily. Write manually or generate with AI.</div>
+        <div class="page-sub">5 unique AI-generated posts go out to every user, every day, automatically.</div>
 
-        <!-- AI Generator -->
+        <!-- AUTO-GENERATION STATUS -->
+        <div class="card" id="autogenCard">
+          <h3>⚙️ Daily Auto-Generation</h3>
+          <div class="ai-strip" id="autogenStrip">
+            <div>Loading today's generation status…</div>
+          </div>
+          <div class="stats-row" style="margin-bottom:16px">
+            <div class="stat-card">
+              <div class="s-label">Users Targeted Today</div>
+              <div class="s-value" id="ag-targeted">—</div>
+            </div>
+            <div class="stat-card">
+              <div class="s-label">Succeeded</div>
+              <div class="s-value green" id="ag-succeeded">—</div>
+            </div>
+            <div class="stat-card">
+              <div class="s-label">Failed</div>
+              <div class="s-value" id="ag-failed" style="color:var(--red)">—</div>
+            </div>
+          </div>
+          <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+            <button class="btn btn-green" id="ag-run-btn" onclick="runAutoGeneration(false)">
+              ✨ Generate Today's Posts (Missing Users Only)
+            </button>
+            <button class="btn btn-amber" id="ag-force-btn" onclick="confirmForceRegenerate()">
+              🔁 Force Regenerate Everyone
+            </button>
+            <button class="btn btn-outline" onclick="loadGenerationStatus()">🔄 Refresh Status</button>
+          </div>
+          <div id="ag-status-msg" style="font-size:0.82rem; color:var(--muted); margin-top:12px; display:none;"></div>
+          <div style="font-size:0.78rem; color:var(--muted); margin-top:10px;">
+            Runs automatically at midnight via Supabase cron. Use the buttons above to trigger it manually or fill in gaps if a scheduled run failed.
+          </div>
+        </div>
+
+        <!-- Manual single-post AI Generator (legacy / one-off use) -->
         <div class="card">
-          <h3>🤖 AI Post Generator</h3>
+          <h3>🤖 Manual One-Off Post Generator</h3>
           <div class="ai-strip">
-            <div>Generate a full article with <strong>AI</strong> — just describe the topic and select a category.</div>
+            <div>Need to write a single extra post outside the daily auto-batch? Generate one here.</div>
           </div>
           <div class="row-2">
             <div class="form-row">
@@ -444,11 +480,21 @@
           </div>
         </div>
 
-        <!-- Active Posts List -->
+        <!-- Manually Published Extra Posts (legacy localStorage list) -->
         <div class="card">
-          <h3>📋 Today's Published Posts <span id="postCount" style="color:var(--muted); font-weight:400; font-size:0.85rem"></span></h3>
+          <h3>📋 Manually Published Extra Posts <span id="postCount" style="color:var(--muted); font-weight:400; font-size:0.85rem"></span></h3>
+          <div style="font-size:0.78rem; color:var(--muted); margin-bottom:10px;">These are separate from the daily AI batch below — only used if you publish something manually.</div>
           <div id="postListContainer">
             <div style="color:var(--muted); font-size:0.88rem;">No posts published yet today.</div>
+          </div>
+        </div>
+
+        <!-- Today's AI-Generated Posts, per user, from Supabase -->
+        <div class="card">
+          <h3>📰 Today's Auto-Generated Posts <span id="sbPostCount" style="color:var(--muted); font-weight:400; font-size:0.85rem"></span></h3>
+          <div style="font-size:0.78rem; color:var(--muted); margin-bottom:10px;">Live from Supabase — what each user actually sees in their Read &amp; Earn tab today.</div>
+          <div id="sbPostListContainer">
+            <div style="color:var(--muted); font-size:0.88rem;">Loading…</div>
           </div>
         </div>
       </div>
@@ -626,7 +672,7 @@ function showPage(id) {
   });
   if (id === 'leaderboard') renderAdminLB();
   if (id === 'winner') renderWinnerPage();
-  if (id === 'posts') renderPostList();
+  if (id === 'posts') { renderPostList(); loadGenerationStatus(); loadTodaysSupabasePosts(); }
   if (id === 'withdrawals') loadWithdrawals();
 }
 
@@ -677,7 +723,7 @@ async function generatePost() {
 
   // ⚠️ IMPORTANT: replace this with YOUR Cloudflare Worker URL after deploying
   // digipal-ai-proxy-worker.js (see setup instructions in that file).
-  const WORKER_URL = 'https://digipal-ai-proxy.kreativevisuals1.workers.dev';
+  const WORKER_URL = 'https://digipal-ai-proxy.YOUR-SUBDOMAIN.workers.dev';
 
   try {
     if (WORKER_URL.includes('YOUR-SUBDOMAIN')) {
@@ -909,6 +955,164 @@ let sbAdmin = null;
 try {
   sbAdmin = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 } catch(e) { console.warn('Supabase not init in admin:', e); }
+
+// ═══════════════════════════════════════════════
+// AUTO-GENERATION (daily AI posts per user)
+// ═══════════════════════════════════════════════
+// This calls your Supabase Edge Function, which loops through every user
+// and generates 5 unique posts each via your Cloudflare Worker → Groq.
+// Replace YOUR-PROJECT-REF once you deploy the function (see
+// DEPLOY_INSTRUCTIONS.md). It defaults to your known project ref.
+const GENERATE_POSTS_FUNCTION_URL = SUPABASE_URL + '/functions/v1/generate-daily-posts';
+
+async function loadGenerationStatus() {
+  const strip = document.getElementById('autogenStrip');
+  if (!sbAdmin) {
+    if (strip) strip.innerHTML = '<div style="color:var(--red)">Supabase not configured.</div>';
+    return;
+  }
+  const today = new Date().toISOString().split('T')[0];
+  try {
+    const { data, error } = await sbAdmin
+      .from('post_generation_log')
+      .select('*')
+      .eq('run_date', today)
+      .order('started_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error) throw error;
+
+    const targetedEl = document.getElementById('ag-targeted');
+    const succeededEl = document.getElementById('ag-succeeded');
+    const failedEl = document.getElementById('ag-failed');
+
+    if (!data) {
+      if (strip) strip.innerHTML = '<div>⏳ No generation run yet today. Click "Generate Today\'s Posts" below, or wait for the midnight cron.</div>';
+      if (targetedEl) targetedEl.textContent = '—';
+      if (succeededEl) succeededEl.textContent = '—';
+      if (failedEl) failedEl.textContent = '—';
+      return;
+    }
+
+    if (targetedEl) targetedEl.textContent = data.users_targeted ?? '—';
+    if (succeededEl) succeededEl.textContent = data.users_succeeded ?? '—';
+    if (failedEl) failedEl.textContent = data.users_failed ?? '0';
+
+    if (strip) {
+      if (data.status === 'running') {
+        strip.innerHTML = '<div>⏳ <strong>Generation in progress…</strong> Refresh in a moment.</div>';
+      } else if (data.status === 'completed') {
+        strip.innerHTML = `<div>✅ <strong>Today's posts are ready.</strong> Generated for ${data.users_succeeded} user(s) at ${new Date(data.finished_at).toLocaleTimeString('en-NG')}.</div>`;
+      } else if (data.status === 'completed_with_errors') {
+        strip.innerHTML = `<div style="color:#92400e">⚠️ <strong>Completed with errors.</strong> ${data.users_failed} user(s) failed — click "Generate" again to retry just the missing ones.</div>`;
+      } else {
+        strip.innerHTML = `<div style="color:var(--red)">❌ <strong>Run failed:</strong> ${escHtml(data.error_detail || 'Unknown error')}</div>`;
+      }
+    }
+  } catch (err) {
+    if (strip) strip.innerHTML = `<div style="color:var(--red)">Error loading status: ${escHtml(err.message)}</div>`;
+  }
+}
+
+async function runAutoGeneration(force) {
+  const runBtn = document.getElementById('ag-run-btn');
+  const forceBtn = document.getElementById('ag-force-btn');
+  const msg = document.getElementById('ag-status-msg');
+  if (GENERATE_POSTS_FUNCTION_URL.includes('YOUR-PROJECT-REF')) {
+    showToast('Edge Function not deployed yet — see DEPLOY_INSTRUCTIONS.md', 'red');
+    return;
+  }
+  runBtn.disabled = true; forceBtn.disabled = true;
+  runBtn.innerHTML = '<span class="spinner"></span> Generating…';
+  msg.style.display = 'block';
+  msg.textContent = 'Calling the generator — this can take a minute for many users…';
+
+  try {
+    const { data: sessionData } = await sbAdmin.auth.getSession();
+    const authToken = sessionData?.session?.access_token || SUPABASE_ANON_KEY;
+
+    const resp = await fetch(GENERATE_POSTS_FUNCTION_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + authToken,
+      },
+      body: JSON.stringify({ force: !!force })
+    });
+    const result = await resp.json();
+    if (!resp.ok || result.ok === false) throw new Error(result.error || 'Generation failed.');
+
+    msg.textContent = `✅ Done. ${result.succeeded} succeeded, ${result.failed} failed, out of ${result.users_targeted} users.`;
+    showToast('Post generation complete!', 'green');
+    loadGenerationStatus();
+    loadTodaysSupabasePosts();
+  } catch (err) {
+    msg.textContent = '❌ ' + err.message;
+    showToast('Generation failed: ' + err.message, 'red');
+  } finally {
+    runBtn.disabled = false; forceBtn.disabled = false;
+    runBtn.innerHTML = "✨ Generate Today's Posts (Missing Users Only)";
+  }
+}
+
+function confirmForceRegenerate() {
+  if (confirm("This deletes and REPLACES today's posts for EVERY user, even ones who already completed some. Anyone mid-post may lose progress on uncompleted posts. Continue?")) {
+    runAutoGeneration(true);
+  }
+}
+
+async function loadTodaysSupabasePosts() {
+  const container = document.getElementById('sbPostListContainer');
+  const countEl = document.getElementById('sbPostCount');
+  if (!container) return;
+  if (!sbAdmin) { container.innerHTML = '<div style="color:var(--red)">Supabase not configured.</div>'; return; }
+
+  const today = new Date().toISOString().split('T')[0];
+  try {
+    const { data, error } = await sbAdmin
+      .from('posts')
+      .select('id, user_id, title, category, reward, completed, slot')
+      .eq('date', today)
+      .order('user_id', { ascending: true })
+      .order('slot', { ascending: true });
+    if (error) throw error;
+
+    if (!data || !data.length) {
+      container.innerHTML = '<div style="color:var(--muted); font-size:0.88rem;">No auto-generated posts for today yet.</div>';
+      if (countEl) countEl.textContent = '';
+      return;
+    }
+
+    // Group by user_id
+    const byUser = {};
+    data.forEach(p => { (byUser[p.user_id] = byUser[p.user_id] || []).push(p); });
+    const userIds = Object.keys(byUser);
+    if (countEl) countEl.textContent = `(${userIds.length} users · ${data.length} posts)`;
+
+    const tagClassMap = { tech:'tag-tech', finance:'tag-finance', business:'tag-business', lifestyle:'tag-lifestyle' };
+    container.innerHTML = userIds.map(uid => {
+      const posts = byUser[uid];
+      const doneCount = posts.filter(p => p.completed).length;
+      const rows = posts.map(p => `
+        <div class="post-list-item">
+          <span class="pli-tag ${tagClassMap[p.category] || 'tag-tech'}">${escHtml(p.category || 'general')}</span>
+          <div class="pli-title">${escHtml(p.title)}${p.completed ? ' ✅' : ''}</div>
+          <div class="pli-reward">+${p.reward} cr</div>
+        </div>
+      `).join('');
+      return `
+        <div style="margin-bottom:16px; border:1px solid var(--border); border-radius:10px; padding:12px 16px;">
+          <div style="font-size:0.8rem; color:var(--muted); margin-bottom:6px;">
+            <strong>User:</strong> ${escHtml(uid.slice(0,8))}… &nbsp; ${doneCount}/${posts.length} completed
+          </div>
+          ${rows}
+        </div>
+      `;
+    }).join('');
+  } catch (err) {
+    container.innerHTML = `<div style="color:var(--red)">Error: ${escHtml(err.message)}</div>`;
+  }
+}
 
 // ═══════════════════════════════════════════════
 // INIT ON LOAD
