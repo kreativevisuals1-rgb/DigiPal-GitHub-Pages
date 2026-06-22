@@ -502,7 +502,7 @@
       <!-- LEADERBOARD -->
       <div class="page" id="page-leaderboard">
         <div class="page-title">🏆 Monthly Leaderboard</div>
-        <div class="page-sub">Top commenters ranked by credits earned this month.</div>
+        <div class="page-sub">Top commenters ranked by number of posts successfully read &amp; commented on this month.</div>
         <div class="card">
           <div style="overflow-x:auto">
             <table class="lb-table" id="lbTable">
@@ -510,8 +510,8 @@
                 <tr>
                   <th>Rank</th>
                   <th>Name</th>
-                  <th>Credits</th>
-                  <th>₦ Value</th>
+                  <th>Posts Read</th>
+                  <th>Credits Earned</th>
                 </tr>
               </thead>
               <tbody id="lbBody"></tbody>
@@ -857,11 +857,11 @@ function renderPostList() {
 // ═══════════════════════════════════════════════
 // OVERVIEW STATS
 // ═══════════════════════════════════════════════
-function renderOverviewStats() {
+async function renderOverviewStats() {
   const posts = getAdminPosts();
   document.getElementById('statPosts').textContent = posts.length;
 
-  const lb = getLeaderboard();
+  const lb = await getLeaderboard();
   const todayKey = new Date().toDateString();
   const todayState = (() => {
     try { return JSON.parse(localStorage.getItem('digipal_earn_' + todayKey) || '{}'); } catch(e) { return {}; }
@@ -873,27 +873,39 @@ function renderOverviewStats() {
 // ═══════════════════════════════════════════════
 // LEADERBOARD
 // ═══════════════════════════════════════════════
-function getLeaderboard() {
-  const raw = localStorage.getItem('digipal_leaderboard');
-  if (raw) return JSON.parse(raw);
-  return [
-    { name: 'Amaka O.', credits: 12400 },
-    { name: 'Tunde B.', credits: 10900 },
-    { name: 'Chioma N.', credits: 9750 },
-    { name: 'Emeka S.', credits: 8200 },
-    { name: 'Fatima A.', credits: 7600 },
-  ];
+async function getLeaderboard() {
+  if (!sbAdmin) return [];
+  try {
+    const { data, error } = await sbAdmin
+      .from('leaderboard')
+      .select('user_id, display_name, posts_completed, credits_earned')
+      .order('posts_completed', { ascending: false })
+      .limit(10);
+    if (error) throw error;
+    return (data || []).map(row => ({
+      name: row.display_name || 'DigiPal User',
+      posts: row.posts_completed || 0,
+      credits: row.credits_earned || 0,
+    }));
+  } catch (e) {
+    console.error('getLeaderboard error:', e);
+    return [];
+  }
 }
 
-function renderAdminLB() {
-  const lb = getLeaderboard();
+async function renderAdminLB() {
+  const lb = await getLeaderboard();
   const medals = ['gold','silver','bronze'];
   const body = document.getElementById('lbBody');
+  if (!lb.length) {
+    body.innerHTML = '<tr><td colspan="4" class="loading-row">No successful comments yet this month.</td></tr>';
+    return;
+  }
   body.innerHTML = lb.map((row, i) => `
     <tr class="${i === 0 ? 'winner-row' : ''}">
       <td><span class="rank-badge ${medals[i] || 'other'}">${i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : i+1}</span></td>
       <td><strong>${row.name}</strong>${i === 0 ? ' <span style="font-size:0.7rem;background:#fef3c7;color:#92400e;padding:2px 8px;border-radius:20px;font-weight:700">WINNER</span>' : ''}</td>
-      <td><strong>${row.credits.toLocaleString()}</strong></td>
+      <td><strong>${row.posts}</strong> post${row.posts===1?'':'s'} read</td>
       <td>₦${row.credits.toLocaleString()}</td>
     </tr>
   `).join('');
@@ -902,14 +914,14 @@ function renderAdminLB() {
 // ═══════════════════════════════════════════════
 // PAY WINNER
 // ═══════════════════════════════════════════════
-function renderWinnerPage() {
-  const lb = getLeaderboard();
+async function renderWinnerPage() {
+  const lb = await getLeaderboard();
   const top = lb[0];
   const info = document.getElementById('winnerInfo');
   if (top) {
     info.innerHTML = `
       <strong>🥇 ${top.name}</strong><br>
-      Total Credits: <strong>${top.credits.toLocaleString()}</strong> (₦${top.credits.toLocaleString()} value)<br>
+      Posts Successfully Read: <strong>${top.posts}</strong> (₦${top.credits.toLocaleString()} earned in credits)<br>
       Prize: <strong style="color:var(--green)">₦5,000</strong> — to be credited to their DigiPal wallet
     `;
     document.getElementById('winnerNameInput').value = top.name;
