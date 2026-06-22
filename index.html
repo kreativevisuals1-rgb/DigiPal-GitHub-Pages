@@ -179,20 +179,11 @@ footer{background:#04342C;color:rgba(255,255,255,.75);padding:3rem 5% 1.5rem}
 .dash-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:2rem;flex-wrap:wrap;gap:1rem}
 .dash-header h1{font-size:1.5rem;font-weight:800}
 .dash-header p{color:var(--text-muted);font-size:.9rem;margin-top:.15rem}
-.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem;margin-bottom:2rem}
-.stat-card{background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem 1.5rem}
-.stat-label{font-size:.8rem;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:.4rem}
 .stat-value{font-size:1.8rem;font-weight:800;color:var(--text)}
 .stat-value.green{color:var(--brand)}
-.stat-sub{font-size:.78rem;color:var(--text-muted);margin-top:.2rem}
 .dash-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-bottom:1.5rem}
 .dash-card{background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:1.5rem}
 .dash-card h3{font-size:1rem;font-weight:700;margin-bottom:1.25rem;display:flex;align-items:center;gap:.5rem}
-.service-grid{display:grid;grid-template-columns:1fr 1fr;gap:.75rem}
-.service-btn{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:1rem;text-align:center;cursor:pointer;transition:all .2s;display:flex;flex-direction:column;align-items:center;gap:.4rem}
-.service-btn:hover{border-color:var(--brand);background:var(--brand-light)}
-.service-btn .sico{font-size:1.5rem}
-.service-btn span{font-size:.8rem;font-weight:600;color:var(--text)}
 .tx-list{display:flex;flex-direction:column;gap:.6rem}
 .tx-item{display:flex;align-items:center;justify-content:space-between;padding:.6rem 0;border-bottom:1px solid var(--border)}
 .tx-item:last-child{border-bottom:none}
@@ -207,9 +198,6 @@ footer{background:#04342C;color:rgba(255,255,255,.75);padding:3rem 5% 1.5rem}
 .wallet-label{font-size:.8rem;color:rgba(255,255,255,.7);margin-bottom:.3rem}
 .wallet-amount{font-size:2rem;font-weight:800}
 .wallet-actions{display:flex;gap:.75rem;margin-top:1rem}
-.wallet-btn{flex:1;padding:.6rem;border-radius:8px;font-size:.85rem;font-weight:600;cursor:pointer;text-align:center;transition:all .2s}
-.wallet-btn-primary{background:rgba(255,255,255,.2);color:#fff;border:1px solid rgba(255,255,255,.3)}
-.wallet-btn-primary:hover{background:rgba(255,255,255,.3)}
 .profile-section{background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:1.75rem;margin-bottom:1.5rem}
 .profile-section h3{font-size:1rem;font-weight:700;margin-bottom:1.25rem;padding-bottom:.75rem;border-bottom:1px solid var(--border)}
 .profile-avatar-row{display:flex;align-items:center;gap:1.25rem;margin-bottom:1.5rem}
@@ -263,8 +251,6 @@ html,body{overflow-x:hidden;max-width:100vw}
   .footer-bottom{flex-direction:column;text-align:center}
   .form-row{grid-template-columns:1fr}
   .profile-grid{grid-template-columns:1fr}
-  .stats-grid{grid-template-columns:1fr 1fr}
-  .service-grid{grid-template-columns:1fr 1fr}
   .dash-main{padding:1.25rem;width:100%;box-sizing:border-box}
 }
 @media(max-width:480px){
@@ -272,8 +258,6 @@ html,body{overflow-x:hidden;max-width:100vw}
   .sidebar{width:min(260px,82vw)}
   .dash-main{margin-left:0!important;padding:1rem;width:100%;box-sizing:border-box}
   .dash-header{flex-direction:column;align-items:flex-start}
-  .stats-grid{grid-template-columns:1fr;gap:.85rem}
-  .service-grid{grid-template-columns:1fr 1fr;gap:.6rem}
   .dash-card{padding:1.1rem}
   .profile-avatar-row{flex-wrap:wrap}
   #vtu-credits-note,#vtu-balance-note{min-width:0!important;width:100%}
@@ -283,10 +267,43 @@ html,body{overflow-x:hidden;max-width:100vw}
   .steps{grid-template-columns:1fr}
   .hero-stats{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
   .hero-stat{background:rgba(255,255,255,.08);border-radius:10px;padding:.75rem}
-  .stats-grid{grid-template-columns:1fr}
   .auth-box{padding:1.75rem 1.25rem}
-  .service-grid{grid-template-columns:1fr}
   .wallet-actions{flex-direction:column}
+}
+
+/* ── OPAY-STYLE DASHBOARD (hero balance, icon grid, tablet layout) ── */
+.hero-balance-card{background:linear-gradient(135deg,#04342C,#0F6E56);color:#fff;border-radius:16px;padding:1.4rem 1.6rem;margin-bottom:1.25rem}
+.hero-balance-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem}
+.hero-balance-label{font-size:.82rem;color:rgba(255,255,255,.75)}
+.hero-balance-amount{font-size:2.1rem;font-weight:800;margin-bottom:1rem}
+.hero-balance-card .stat-value.green{color:#fff}
+.hero-balance-actions{display:flex;gap:.65rem}
+.hero-balance-btn{flex:1;padding:.6rem;border-radius:9px;font-size:.85rem;font-weight:600;text-align:center;cursor:pointer;transition:all .2s;border:none}
+.hero-balance-btn.primary{background:#fff;color:var(--brand)}
+.hero-balance-btn.primary:hover{background:#f0f0f0}
+.hero-balance-btn.outline{background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.35)}
+.hero-balance-btn.outline:hover{background:rgba(255,255,255,.2)}
+
+.icon-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:.6rem;text-align:center}
+.icon-grid-item{display:flex;flex-direction:column;align-items:center;gap:.4rem;cursor:pointer;padding:.4rem 0;border-radius:10px;transition:background .15s}
+.icon-grid-item:hover{background:var(--bg2)}
+.icon-grid-circle{width:44px;height:44px;border-radius:50%;background:var(--bg2);display:flex;align-items:center;justify-content:center;font-size:1.25rem}
+.icon-grid-item span:last-child{font-size:.75rem;font-weight:600;color:var(--text-muted)}
+
+.mini-stats-row{display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:1.25rem}
+.mini-stat{background:#fff;border:1px solid var(--border);border-radius:10px;padding:.85rem 1rem}
+.mini-stat-label{font-size:.75rem;color:var(--text-muted);margin-bottom:.25rem}
+.mini-stat-value{font-size:1.15rem;font-weight:700}
+
+.overview-grid{display:grid;grid-template-columns:1.3fr 1fr;gap:1.25rem}
+
+@media(max-width:900px){
+  .overview-grid{grid-template-columns:1fr}
+}
+@media(max-width:480px){
+  .hero-balance-amount{font-size:1.7rem}
+  .icon-grid-circle{width:40px;height:40px;font-size:1.1rem}
+  .mini-stats-row{grid-template-columns:1fr 1fr}
 }
 
 /* ── DVA CARD ── */
@@ -604,29 +621,46 @@ html,body{overflow-x:hidden;max-width:100vw}
       <div class="dash-header">
         <div><h1>👋 Welcome back, <span id="dash-firstname">there</span>!</h1><p>Here's what's happening on your account today.</p></div>
       </div>
-      <div class="stats-grid">
-        <div class="stat-card"><div class="stat-label">Wallet Balance</div><div class="stat-value green">₦0.00</div><div class="stat-sub">Fund your wallet to get started</div></div>
-        <div class="stat-card"><div class="stat-label">Credits Balance</div><div class="stat-value" id="credits-balance-display" style="color:#8a6d00">₦0.00</div><div class="stat-sub">Earned via Read &amp; Earn</div></div>
-        <div class="stat-card"><div class="stat-label">Transactions</div><div class="stat-value">0</div><div class="stat-sub">No transactions yet</div></div>
-        <div class="stat-card"><div class="stat-label">Referrals</div><div class="stat-value">0</div><div class="stat-sub">Invite friends to earn</div></div>
-        <div class="stat-card"><div class="stat-label">Courses Enrolled</div><div class="stat-value">0</div><div class="stat-sub">Start learning today</div></div>
-      </div>
-      <div class="dash-grid">
-        <div class="dash-card">
-          <h3>⚡ Quick Services</h3>
-          <div class="service-grid">
-            <div class="service-btn" onclick="switchTab('vtu')"><span class="sico">📞</span><span>Buy Airtime</span></div>
-            <div class="service-btn" onclick="switchTab('vtu')"><span class="sico">📶</span><span>Buy Data</span></div>
-            <div class="service-btn" onclick="switchTab('vtu')"><span class="sico">📺</span><span>Cable TV</span></div>
-            <div class="service-btn" onclick="switchTab('wallet')"><span class="sico">💳</span><span>Fund Wallet</span></div>
+
+      <div class="overview-grid">
+        <div>
+          <div class="hero-balance-card">
+            <div class="hero-balance-top">
+              <span class="hero-balance-label">Wallet Balance</span>
+            </div>
+            <div class="hero-balance-amount stat-value green" id="overview-wallet-balance">₦0.00</div>
+            <div class="hero-balance-actions">
+              <div class="hero-balance-btn primary" onclick="switchTab('wallet')">+ Fund Wallet</div>
+              <div class="hero-balance-btn outline" onclick="switchTab('wallet')">Withdraw</div>
+            </div>
+          </div>
+
+          <div class="dash-card">
+            <h3>⚡ Quick Services</h3>
+            <div class="icon-grid">
+              <div class="icon-grid-item" onclick="switchTab('vtu')"><span class="icon-grid-circle">📞</span><span>Airtime</span></div>
+              <div class="icon-grid-item" onclick="switchTab('vtu')"><span class="icon-grid-circle">📶</span><span>Data</span></div>
+              <div class="icon-grid-item" onclick="switchTab('vtu')"><span class="icon-grid-circle">📺</span><span>Cable TV</span></div>
+              <div class="icon-grid-item" onclick="switchTab('wallet')"><span class="icon-grid-circle">💳</span><span>Fund</span></div>
+            </div>
           </div>
         </div>
-        <div class="dash-card">
-          <h3>📋 Recent Transactions</h3>
-          <div id="tx-list-overview" class="tx-list">
-            <div style="text-align:center;padding:2rem 0;color:var(--text-muted);font-size:.9rem">
-              <div style="font-size:2rem;margin-bottom:.5rem">📭</div>
-              No transactions yet.<br>Fund your wallet to get started.
+
+        <div>
+          <div class="mini-stats-row">
+            <div class="mini-stat"><div class="mini-stat-label">Credits Balance</div><div class="mini-stat-value" id="credits-balance-display" style="color:#8a6d00">₦0.00</div></div>
+            <div class="mini-stat"><div class="mini-stat-label">Transactions</div><div class="mini-stat-value">0</div></div>
+            <div class="mini-stat"><div class="mini-stat-label">Referrals</div><div class="mini-stat-value">0</div></div>
+            <div class="mini-stat"><div class="mini-stat-label">Courses Enrolled</div><div class="mini-stat-value">0</div></div>
+          </div>
+
+          <div class="dash-card">
+            <h3>📋 Recent Transactions</h3>
+            <div id="tx-list-overview" class="tx-list">
+              <div style="text-align:center;padding:2rem 0;color:var(--text-muted);font-size:.9rem">
+                <div style="font-size:2rem;margin-bottom:.5rem">📭</div>
+                No transactions yet.<br>Fund your wallet to get started.
+              </div>
             </div>
           </div>
         </div>
@@ -643,8 +677,8 @@ html,body{overflow-x:hidden;max-width:100vw}
           <div class="wallet-label">Available Balance</div>
           <div class="wallet-amount" id="wallet-balance-display">₦0.00</div>
           <div class="wallet-actions">
-            <div class="wallet-btn wallet-btn-primary" onclick="openFundModal()">+ Fund Wallet</div>
-            <div class="wallet-btn wallet-btn-primary" onclick="openWithdrawModal()">Withdraw</div>
+            <div class="hero-balance-btn primary" onclick="openFundModal()">+ Fund Wallet</div>
+            <div class="hero-balance-btn outline" onclick="openWithdrawModal()">Withdraw</div>
           </div>
         </div>
 
