@@ -2476,10 +2476,21 @@ async function init() {
         dashboardLoaded = true;
         loadDashboard(session.user);
         showPage('dashboard');
+      } else {
+        // FIX: if dashboard was already showing earn tab before auth resolved,
+        // clear the empty cache and re-fetch now that currentUser is set.
+        const activeTab = localStorage.getItem('digipal_active_tab');
+        if (activeTab === 'earn') {
+          earnPostsCache = null;
+          earnPostsCacheUserId = null;
+          earnRenderPosts();
+        }
       }
     }
     if (event === 'SIGNED_OUT') {
       currentUser = null;
+      earnPostsCache = null;
+      earnPostsCacheUserId = null;
       dashboardLoaded = false;
       showPage('landing');
     }
@@ -2602,13 +2613,20 @@ async function earnCreditWallet(award) {
 // (card rendering, opening a post) doesn't need to await Supabase every time.
 // earnRenderPosts() refreshes this cache; everything else reads from it.
 let earnPostsCache = null;
+let earnPostsCacheUserId = null; // ✅ FIX: track which user the cache belongs to
 
 async function earnGetPosts() {
-  // Logged-out / Supabase unavailable: fall back to the local sample posts
-  // so the page doesn't break for someone just browsing without an account.
+  // Not logged in yet — return empty (shows "preparing") and do NOT cache,
+  // so the next call after auth resolves will fetch real posts from Supabase.
   if (!sb || !currentUser) {
-    earnPostsCache = EARN_DEFAULT_POSTS;
-    return EARN_DEFAULT_POSTS;
+    return [];
+  }
+
+  // ✅ FIX: If cache belongs to a different user or was filled before login,
+  // discard it so we always fetch fresh posts for the current authenticated user.
+  if (earnPostsCacheUserId !== currentUser.id) {
+    earnPostsCache = null;
+    earnPostsCacheUserId = null;
   }
 
   const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD, matches `date` column
@@ -2643,10 +2661,12 @@ async function earnGetPosts() {
       completed: !!p.completed, // Supabase is the source of truth for completion now
     }));
     earnPostsCache = mapped;
+    earnPostsCacheUserId = currentUser.id; // ✅ FIX: tag the cache with this user's ID
     return mapped;
   } catch (e) {
     console.error('earnGetPosts error:', e);
     earnPostsCache = [];
+    earnPostsCacheUserId = null; // ✅ FIX: don't keep a bad cache
     return [];
   }
 }
