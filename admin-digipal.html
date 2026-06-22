@@ -629,28 +629,11 @@ const ADMIN_PASS_HASH = btoa('DigiPalAdmin2026!'); // base64 — change in produ
 
 let isLoggedIn = false;
 
-async function doLogin() {
+function doLogin() {
   const email = document.getElementById('loginEmail').value.trim().toLowerCase();
   const pass = document.getElementById('loginPass').value;
   const err = document.getElementById('loginError');
-
   if (email === ADMIN_EMAIL && btoa(pass) === ADMIN_PASS_HASH) {
-
-    // ✅ FIX: Sign into Supabase so the Edge Function receives a real
-    // auth token instead of just the anon key. Without this, the Edge
-    // Function cannot verify the caller is admin and may skip or fail.
-    if (sbAdmin) {
-      const { error: authErr } = await sbAdmin.auth.signInWithPassword({
-        email: email,
-        password: pass
-      });
-      if (authErr) {
-        // Non-blocking — custom password check already passed.
-        // Log the warning but don't stop the admin from getting in.
-        console.warn('Supabase sign-in warning (non-fatal):', authErr.message);
-      }
-    }
-
     isLoggedIn = true;
     sessionStorage.setItem('digipal_admin_auth', '1');
     document.getElementById('loginGate').style.display = 'none';
@@ -663,18 +646,12 @@ async function doLogin() {
   }
 }
 
-async function doLogout() {
-  // ✅ FIX: Also sign out of Supabase to clear the auth session properly
-  if (sbAdmin) {
-    await sbAdmin.auth.signOut();
-  }
+function doLogout() {
   sessionStorage.removeItem('digipal_admin_auth');
   location.reload();
 }
 
-// Auto-login if session active (page reload / tab restore).
-// Supabase persists its own auth in localStorage automatically,
-// so the next runAutoGeneration() call will pick up the live token.
+// Auto-login if session active
 if (sessionStorage.getItem('digipal_admin_auth') === '1') {
   document.getElementById('loginGate').style.display = 'none';
   document.getElementById('adminShell').style.display = 'block';
@@ -1051,8 +1028,20 @@ async function runAutoGeneration(force) {
   msg.textContent = 'Calling the generator — this can take a minute for many users…';
 
   try {
-    const { data: sessionData } = await sbAdmin.auth.getSession();
-    const authToken = sessionData?.session?.access_token || SUPABASE_ANON_KEY;
+    // Sign into Supabase so the Edge Function gets a real user token.
+    // We do this here (not at login) so the custom admin login stays untouched.
+    let authToken = SUPABASE_ANON_KEY;
+    const signInResult = await sbAdmin.auth.signInWithPassword({
+      email: ADMIN_EMAIL,
+      password: document.getElementById('loginPass') ? document.getElementById('loginPass').value : ''
+    });
+    if (signInResult?.data?.session?.access_token) {
+      authToken = signInResult.data.session.access_token;
+    } else {
+      // Fall back to whatever session already exists (e.g. from a prior sign-in)
+      const { data: sessionData } = await sbAdmin.auth.getSession();
+      if (sessionData?.session?.access_token) authToken = sessionData.session.access_token;
+    }
 
     const resp = await fetch(GENERATE_POSTS_FUNCTION_URL, {
       method: 'POST',
