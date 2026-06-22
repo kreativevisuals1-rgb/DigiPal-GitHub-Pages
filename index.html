@@ -1140,6 +1140,8 @@ function switchTab(name) {
   if (name === 'earn') { initEarnTab(); loadEarnCredits(); }
   if (name === 'vtu') { vtuInitTab(); loadWalletBalance(); }
   if (name === 'wallet') { loadTransactions(); loadWalletBalance(); }
+  // Remember which tab the user was on so a refresh restores it
+  localStorage.setItem('digipal_active_tab', name);
 }
 
 // ── FAQ ──
@@ -1305,6 +1307,7 @@ async function handleLogin() {
 async function handleLogout() {
   if (sb) await sb.auth.signOut();
   currentUser = null;
+  localStorage.removeItem('digipal_active_tab');
   showPage('landing');
 }
 
@@ -1329,7 +1332,9 @@ function loadDashboard(user) {
   document.getElementById('profile-email-input').value = email;
   document.getElementById('profile-phone-input').value = meta.phone || '';
   document.getElementById('referral-link').value = `https://digipal.ng/ref/${user.id.slice(0,8)}`;
-  switchTab('overview');
+  // Restore the tab the user was on before the refresh, default to overview
+  const savedTab = localStorage.getItem('digipal_active_tab') || 'overview';
+  switchTab(savedTab);
 
   // Load wallet data
   loadWalletBalance();
