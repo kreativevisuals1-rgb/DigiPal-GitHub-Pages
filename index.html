@@ -992,7 +992,7 @@ html,body{overflow-x:hidden;max-width:100vw}
             <div style="font-size:1.3rem">⏱️</div>
             <div style="flex:1">
               <div style="font-size:0.78rem;color:#6b7280">Read for 2 minutes to unlock the comment box</div>
-              <div style="font-size:1.2rem;font-weight:800;color:#009624" id="earn-timer-display">15:00</div>
+              <div style="font-size:1.2rem;font-weight:800;color:#009624" id="earn-timer-display">02:00</div>
               <div style="background:#a7f3d0;border-radius:99px;height:5px;margin-top:5px">
                 <div id="earn-timer-fill" style="background:#00c853;height:5px;border-radius:99px;width:0%;transition:width 1s linear"></div>
               </div>
@@ -2526,6 +2526,17 @@ const EARN_DEFAULT_POSTS = [
 
 
 function earnGetState() {
+  // If we have today's Supabase posts loaded, derive state from THAT —
+  // it's the cross-device source of truth. Falls back to the old
+  // per-device localStorage tally only when logged out / offline.
+  if (earnPostsCache && earnPostsCache.length && currentUser) {
+    const completed = {};
+    let earned = 0;
+    earnPostsCache.forEach(p => {
+      if (p.completed) { completed[p.id] = true; earned += p.reward; }
+    });
+    return { earned, completed };
+  }
   const today = new Date().toDateString();
   const raw = localStorage.getItem('digipal_earn_' + today);
   return raw ? JSON.parse(raw) : { earned: 0, completed: {} };
@@ -2587,10 +2598,72 @@ async function earnCreditWallet(award) {
     showToast('Credits saved, but balance sync failed — contact support if your balance looks wrong.', 'red');
   }
 }
-function earnGetPosts() {
-  const adminPosts = localStorage.getItem('digipal_admin_posts');
-  if (adminPosts) { try { return JSON.parse(adminPosts); } catch(e){} }
-  return EARN_DEFAULT_POSTS;
+// Cache of today's posts for the logged-in user, so synchronous UI code
+// (card rendering, opening a post) doesn't need to await Supabase every time.
+// earnRenderPosts() refreshes this cache; everything else reads from it.
+let earnPostsCache = null;
+
+async function earnGetPosts() {
+  // Logged-out / Supabase unavailable: fall back to the local sample posts
+  // so the page doesn't break for someone just browsing without an account.
+  if (!sb || !currentUser) {
+    earnPostsCache = EARN_DEFAULT_POSTS;
+    return EARN_DEFAULT_POSTS;
+  }
+
+  const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD, matches `date` column
+  try {
+    const { data, error } = await sb
+      .from('posts')
+      .select('id, title, excerpt, content, category, reward, completed, slot')
+      .eq('user_id', currentUser.id)
+      .eq('date', today)
+      .order('slot', { ascending: true });
+    if (error) throw error;
+
+    if (!data || data.length === 0) {
+      // Today's batch hasn't been generated yet (cron hasn't run, or this
+      // is a brand-new user). Don't show yesterday's or fake posts —
+      // show an honest "preparing" state instead.
+      earnPostsCache = [];
+      return [];
+    }
+
+    // Map Supabase columns onto the shape the rest of the earn UI expects
+    // (tag/tagLabel instead of category, since the cards were built around that).
+    const tagLabelMap = { tech:'Technology', finance:'Finance', business:'Business', lifestyle:'Lifestyle', health:'Health', education:'Education', general:'General' };
+    const mapped = data.map(p => ({
+      id: p.id,
+      tag: p.category || 'general',
+      tagLabel: tagLabelMap[p.category] || 'General',
+      reward: p.reward || 100,
+      title: p.title,
+      excerpt: p.excerpt || '',
+      content: p.content,
+      completed: !!p.completed, // Supabase is the source of truth for completion now
+    }));
+    earnPostsCache = mapped;
+    return mapped;
+  } catch (e) {
+    console.error('earnGetPosts error:', e);
+    earnPostsCache = [];
+    return [];
+  }
+}
+
+// Mark a post completed in Supabase (cross-device source of truth).
+async function earnMarkPostCompleted(postId) {
+  if (!sb || !currentUser) return;
+  try {
+    const { error } = await sb
+      .from('posts')
+      .update({ completed: true, completed_at: new Date().toISOString() })
+      .eq('id', postId)
+      .eq('user_id', currentUser.id);
+    if (error) throw error;
+  } catch (e) {
+    console.error('earnMarkPostCompleted error:', e);
+  }
 }
 function earnGetLeaderboard() {
   const raw = localStorage.getItem('digipal_leaderboard');
@@ -2598,16 +2671,30 @@ function earnGetLeaderboard() {
   return [{ name:'Amaka O.',credits:12400},{ name:'Tunde B.',credits:10900},{ name:'Chioma N.',credits:9750},{ name:'Emeka S.',credits:8200},{ name:'Fatima A.',credits:7600}];
 }
 
-function earnRenderPosts() {
+async function earnRenderPosts() {
+  const posts = await earnGetPosts();
   const state = earnGetState();
-  const posts = earnGetPosts();
   const grid = document.getElementById('earn-posts-grid');
   if (!grid) return;
   grid.innerHTML = '';
+
+  if (!posts || posts.length === 0) {
+    grid.innerHTML = `<div style="padding:32px 20px;text-align:center;color:#6b7280;font-size:0.9rem;grid-column:1/-1">
+      ⏳ <strong>Today's posts are being prepared.</strong><br>Check back shortly — 5 fresh posts are generated for you every day.
+    </div>`;
+    const bar = document.getElementById('earn-daily-bar');
+    if (bar) bar.style.width = '0%';
+    const earnedEl = document.getElementById('earn-daily-earned');
+    if (earnedEl) earnedEl.textContent = '0 credits earned';
+    const noteEl = document.getElementById('earn-daily-note');
+    if (noteEl) noteEl.textContent = "Today's posts aren't ready yet.";
+    return;
+  }
+
   posts.forEach((post, idx) => {
     const done = !!state.completed[post.id];
     const locked = !done && state.earned >= EARN_DAILY_CAP;
-    const tagColors = { tech:'background:#dbeafe;color:#1d4ed8', finance:'background:#fef9c3;color:#92400e', business:'background:#f3e8ff;color:#7c3aed', lifestyle:'background:#fce7f3;color:#be185d' };
+    const tagColors = { tech:'background:#dbeafe;color:#1d4ed8', finance:'background:#fef9c3;color:#92400e', business:'background:#f3e8ff;color:#7c3aed', lifestyle:'background:#fce7f3;color:#be185d', health:'background:#dcfce7;color:#15803d', education:'background:#e0e7ff;color:#4338ca', general:'background:#f1f5f9;color:#475569' };
     const card = document.createElement('div');
     card.className = 'earn-post-card' + (done?' completed':'') + (locked?' locked':'');
     card.innerHTML = `<div style="padding:16px 20px 12px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><span style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;padding:3px 10px;border-radius:20px;${tagColors[post.tag]||''}">${post.tagLabel}</span><span style="font-size:0.8rem;font-weight:700;color:${done?'#6b7280':'#009624'}">${done?'✅ +'+post.reward+' earned':'⚡ Up to +'+post.reward+' credits'}</span></div><div style="font-size:1rem;font-weight:700;line-height:1.4;margin-bottom:6px">${post.title}</div><div style="font-size:0.85rem;color:#6b7280;line-height:1.5">${post.excerpt}</div></div><div style="padding:10px 20px;background:#f4f6f8;border-top:1px solid #e5e7eb;font-size:0.8rem;color:#6b7280;display:flex;align-items:center;justify-content:space-between;gap:10px"><span style="${done?'color:#00c853;font-weight:700':''}">${done?'✅ Completed':locked?'🔒 Daily cap reached':'⏱️ 2 min read + comment required'}</span>${!done&&!locked?`<button onclick="earnOpenPost('${post.id}')" style="background:#00c853;color:white;border:none;padding:6px 16px;border-radius:8px;font-size:0.8rem;font-weight:600;cursor:pointer">Read & Earn →</button>`:''}</div>`;
@@ -2644,7 +2731,7 @@ let earnActivePost = null, earnTimerInterval = null, earnSecondsLeft = EARN_TIME
 function earnOpenPost(postId) {
   const state = earnGetState();
   if (state.completed[postId] || state.earned >= EARN_DAILY_CAP) return;
-  const posts = earnGetPosts();
+  const posts = earnPostsCache || [];
   earnActivePost = posts.find(p => p.id === postId);
   if (!earnActivePost) return;
   document.getElementById('earn-modal-title').textContent = earnActivePost.title;
@@ -2749,9 +2836,21 @@ async function earnSubmitComment() {
       const state = earnGetState();
       const remaining = EARN_DAILY_CAP - state.earned;
       const award = Math.min(earnActivePost.reward, remaining);
-      state.completed[earnActivePost.id] = true;
-      state.earned += award;
-      earnSaveState(state);
+
+      // Supabase is the source of truth for "completed" now (cross-device).
+      await earnMarkPostCompleted(earnActivePost.id);
+      // Reflect it immediately in the local cache so earnGetState() picks it
+      // up without needing a fresh round-trip to Supabase.
+      if (earnPostsCache) {
+        const cached = earnPostsCache.find(p => p.id === earnActivePost.id);
+        if (cached) cached.completed = true;
+      } else {
+        // Logged-out / fallback path — keep the old localStorage tally working.
+        state.completed[earnActivePost.id] = true;
+        state.earned += award;
+        earnSaveState(state);
+      }
+
       earnAddCredits(award);
       await earnCreditWallet(award);
       earnUpdateLeaderboard(award);
@@ -2796,8 +2895,8 @@ document.addEventListener('click', function(e) {
   if (rewardOverlay && e.target === rewardOverlay) earnCloseReward();
 });
 
-function initEarnTab() {
-  earnRenderPosts();
+async function initEarnTab() {
+  await earnRenderPosts();
   earnRenderLeaderboard();
 }
 
