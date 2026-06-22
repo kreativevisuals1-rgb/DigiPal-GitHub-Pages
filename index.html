@@ -912,7 +912,7 @@ html,body{overflow-x:hidden;max-width:100vw}
       <!-- HERO BANNER -->
       <div style="background:linear-gradient(135deg,#00c853,#009624);border-radius:14px;padding:28px 24px;color:white;margin-bottom:24px;text-align:center">
         <div style="font-size:1.5rem;font-weight:800;margin-bottom:8px">Earn DigiPal Credits Daily</div>
-        <div style="opacity:0.9;margin-bottom:20px;font-size:0.95rem">Read posts · Write comments · Redeem for airtime, data &amp; cable TV</div>
+        <div style="opacity:0.9;margin-bottom:20px;font-size:0.95rem">Read posts · Write comments · Redeem</div>
         <div style="display:flex;justify-content:center;gap:28px;flex-wrap:wrap">
           <div style="text-align:center"><div style="font-size:1.5rem;font-weight:800">500</div><div style="font-size:0.78rem;opacity:0.85">Max credits/day</div></div>
           <div style="text-align:center"><div style="font-size:1.5rem;font-weight:800">1 cr = ₦1</div><div style="font-size:0.78rem;opacity:0.85">On platform</div></div>
@@ -925,9 +925,7 @@ html,body{overflow-x:hidden;max-width:100vw}
         <div style="font-weight:700;margin-bottom:1rem">⚡ Your Credits Balance</div>
         <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap">
           <div>
-            <div style="font-size:.8rem;color:var(--text-muted);margin-bottom:.2rem">Spendable Now</div>
             <div style="font-size:2rem;font-weight:800;color:#009624">₦<span id="earn-credits-naira">0.00</span></div>
-            <div style="font-size:.78rem;color:var(--text-muted)">Used first on VTU, or withdrawable</div>
           </div>
           <div style="border-left:1px solid var(--border);padding-left:1rem;margin-left:.5rem">
             <div style="font-size:.8rem;color:var(--text-muted);margin-bottom:.2rem">Earned Today</div>
@@ -1601,6 +1599,12 @@ function updateCreditsUI(amount) {
   if (el) el.textContent = fmt;
   const vtuEl = document.getElementById('vtu-credits-display');
   if (vtuEl) vtuEl.textContent = plain;
+  // ✅ FIX: this was missing, so the Read & Earn tab's "Spendable Now"
+  // figure never got refreshed once the real balance loaded from
+  // Supabase — it stayed stuck at the 0.00 default until the user
+  // manually switched tabs away and back.
+  const earnNairaEl = document.getElementById('earn-credits-naira');
+  if (earnNairaEl) earnNairaEl.textContent = plain;
 }
 
 // ════════════════════════════════════════════════
