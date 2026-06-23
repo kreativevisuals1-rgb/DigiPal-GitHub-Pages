@@ -2397,6 +2397,11 @@ function copyRef() {
 // ── SHARE SHEET ──────────────────────────────────────────────────────
 function openShareSheet() {
   if (!currentReceiptTx) return;
+  // Dismiss the receipt sheet so only the share options remain visible
+  const receiptSheet = document.getElementById('receipt-sheet');
+  receiptSheet.style.transform = 'translateY(100%)';
+  setTimeout(() => { document.getElementById('receipt-modal').style.display = 'none'; }, 280);
+
   const overlay = document.getElementById('share-sheet-overlay');
   const sheet   = document.getElementById('share-sheet');
   overlay.style.display = 'flex';
@@ -2474,29 +2479,26 @@ async function shareAsImage() {
   spinner.style.display = 'block';
 
   try {
-    const canvas  = await captureReceiptCanvas();
-    const dataUrl = canvas.toDataURL('image/png');
+    const canvas = await captureReceiptCanvas();
+    const blob   = await new Promise(res => canvas.toBlob(res, 'image/png'));
+    const file   = new File([blob], `DigiPal_Receipt_${currentReceiptTx.reference || Date.now()}.png`, { type: 'image/png' });
 
-    // Try Web Share API with file (works on Android Chrome / Safari iOS)
-    if (navigator.canShare) {
-      const blob = await (await fetch(dataUrl)).blob();
-      const file = new File([blob], 'DigiPal_Receipt.png', { type: 'image/png' });
-      if (navigator.canShare({ files: [file] })) {
-        await navigator.share({ files: [file], title: 'DigiPal Receipt' });
-        closeShareSheet();
-        return;
-      }
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      // Native share sheet — WhatsApp, Telegram, email, save to gallery, etc.
+      await navigator.share({ files: [file], title: 'DigiPal Receipt' });
+    } else {
+      // Browser doesn't support file sharing — fall back to download
+      const url = URL.createObjectURL(blob);
+      const a   = document.createElement('a');
+      a.href    = url;
+      a.download = file.name;
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast('✅ Receipt image downloaded!', 'success', 3000);
     }
-
-    // Fallback: download the image
-    const a    = document.createElement('a');
-    a.href     = dataUrl;
-    a.download = `DigiPal_Receipt_${currentReceiptTx.reference || Date.now()}.png`;
-    a.click();
     closeShareSheet();
-    showToast('✅ Receipt image downloaded!', 'success', 3000);
   } catch (e) {
-    if (e.name !== 'AbortError') showToast('Could not save image. Please try again.', 'error', 4000);
+    if (e.name !== 'AbortError') showToast('Could not share image. Please try again.', 'error', 4000);
   } finally {
     imgBtn.disabled = false;
     spinner.style.display = 'none';
@@ -2515,27 +2517,38 @@ async function shareAsPDF() {
     const imgData = canvas.toDataURL('image/png');
 
     const { jsPDF } = window.jspdf;
-    // A5 portrait — compact enough for a receipt
-    const pdf    = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a5' });
-    const pw     = pdf.internal.pageSize.getWidth();
-    const ph     = pdf.internal.pageSize.getHeight();
-
-    // Scale the receipt image to fit width with proportional height
-    const imgW   = canvas.width;
-    const imgH   = canvas.height;
-    const ratio  = imgH / imgW;
-    const pdfImgW = pw - 20;           // 10mm margin each side
+    const pdf     = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a5' });
+    const pw      = pdf.internal.pageSize.getWidth();
+    const ph      = pdf.internal.pageSize.getHeight();
+    const ratio   = canvas.height / canvas.width;
+    const pdfImgW = pw - 20;
     const pdfImgH = pdfImgW * ratio;
-    const yOffset = (ph - pdfImgH) / 2; // vertically centred
-
+    const yOffset = (ph - pdfImgH) / 2;
     pdf.addImage(imgData, 'PNG', 10, Math.max(10, yOffset), pdfImgW, pdfImgH);
-    pdf.save(`DigiPal_Receipt_${currentReceiptTx.reference || Date.now()}.pdf`);
 
+    const filename = `DigiPal_Receipt_${currentReceiptTx.reference || Date.now()}.pdf`;
+    const pdfBlob  = pdf.output('blob');
+    const file     = new File([pdfBlob], filename, { type: 'application/pdf' });
+
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      // Native share sheet — WhatsApp, Telegram, email, Drive, etc.
+      await navigator.share({ files: [file], title: 'DigiPal Receipt' });
+    } else {
+      // Browser doesn't support file sharing — fall back to download
+      const url = URL.createObjectURL(pdfBlob);
+      const a   = document.createElement('a');
+      a.href    = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast('✅ PDF downloaded!', 'success', 3000);
+    }
     closeShareSheet();
-    showToast('✅ PDF downloaded!', 'success', 3000);
   } catch (e) {
-    showToast('Could not generate PDF. Please try again.', 'error', 4000);
-    console.error('PDF export error:', e);
+    if (e.name !== 'AbortError') {
+      showToast('Could not share PDF. Please try again.', 'error', 4000);
+      console.error('PDF share error:', e);
+    }
   } finally {
     pdfBtn.disabled = false;
     spinner.style.display = 'none';
