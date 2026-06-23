@@ -331,6 +331,19 @@ html,body{overflow-x:hidden;max-width:100vw}
 .amt-chip:hover,.amt-chip.selected{border-color:var(--brand);background:var(--brand-light);color:var(--brand)}
 .modal-actions{display:flex;gap:.75rem;margin-top:1.25rem}
 
+/* ── PIN INPUT ── */
+.pin-boxes{display:flex;gap:.6rem;justify-content:center;margin:1.5rem 0}
+.pin-box{width:48px;height:56px;border:1.5px solid var(--border);border-radius:10px;text-align:center;font-size:1.4rem;font-weight:700;outline:none;transition:border .15s}
+.pin-box:focus{border-color:var(--brand)}
+.pin-box.filled{border-color:var(--brand);background:var(--brand-light)}
+.pin-error-shake{animation:pinShake .35s}
+@keyframes pinShake{20%,60%{transform:translateX(-6px)}40%,80%{transform:translateX(6px)}}
+.pin-lock-icon{font-size:2.4rem;text-align:center;margin-bottom:.25rem}
+.withdraw-review-box{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:1rem 1.1rem;margin-bottom:1.25rem;font-size:.88rem}
+.withdraw-review-row{display:flex;justify-content:space-between;padding:.3rem 0}
+.withdraw-review-row.total{border-top:1px solid var(--border);margin-top:.4rem;padding-top:.55rem;font-weight:700}
+.pin-setup-banner{background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:.9rem 1rem;font-size:.85rem;color:#9a3412;margin-bottom:1.25rem;display:flex;gap:.6rem;align-items:flex-start}
+
 /* ── BANK PICKER ── */
 .bank-option{padding:.6rem 1rem;font-size:.9rem;cursor:pointer;color:var(--text);transition:background .12s;border-bottom:1px solid #f5f5f5}
 .bank-option:last-child{border-bottom:none}
@@ -726,7 +739,7 @@ html,body{overflow-x:hidden;max-width:100vw}
       </div>
     </div>
 
-    <!-- WITHDRAW MODAL -->
+    <!-- WITHDRAW MODAL — STEP 1: FORM -->
     <div class="modal-overlay" id="withdraw-modal" onclick="if(event.target===this)closeWithdrawModal()">
       <div class="modal-box">
         <div class="modal-title">💸 Withdraw to Bank</div>
@@ -775,7 +788,97 @@ html,body{overflow-x:hidden;max-width:100vw}
         <p id="withdraw-modal-error" style="display:none;font-size:.83rem;color:#dc2626;margin-top:.25rem"></p>
         <div class="modal-actions">
           <button class="btn btn-outline" style="flex:1" onclick="closeWithdrawModal()">Cancel</button>
-          <button class="btn btn-primary" style="flex:2" onclick="submitWithdrawal()" id="withdraw-submit-btn">Withdraw</button>
+          <button class="btn btn-primary" style="flex:2" onclick="goToWithdrawReview()" id="withdraw-submit-btn">Review Withdrawal</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- WITHDRAW MODAL — STEP 2: REVIEW -->
+    <div class="modal-overlay" id="withdraw-review-modal" onclick="if(event.target===this)closeWithdrawReview()">
+      <div class="modal-box">
+        <div class="modal-title">Confirm Withdrawal</div>
+        <div class="modal-sub">Double-check these details — transfers can't be reversed</div>
+
+        <div class="withdraw-review-box">
+          <div class="withdraw-review-row"><span style="color:var(--text-muted)">Recipient</span><span style="font-weight:700" id="wr-account-name">—</span></div>
+          <div class="withdraw-review-row"><span style="color:var(--text-muted)">Bank</span><span id="wr-bank-name">—</span></div>
+          <div class="withdraw-review-row"><span style="color:var(--text-muted)">Account number</span><span id="wr-account-number">—</span></div>
+          <div class="withdraw-review-row total"><span>Amount</span><span id="wr-amount">₦0</span></div>
+        </div>
+
+        <div class="modal-actions">
+          <button class="btn btn-outline" style="flex:1" onclick="closeWithdrawReview()">Back</button>
+          <button class="btn btn-primary" style="flex:2" onclick="proceedToWithdrawPin()">Continue</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- WITHDRAW MODAL — STEP 3: PIN AUTHORIZATION -->
+    <div class="modal-overlay" id="withdraw-pin-modal" onclick="if(event.target===this)closeWithdrawPinModal()">
+      <div class="modal-box" style="max-width:360px;text-align:center">
+        <div class="pin-lock-icon">🔒</div>
+        <div class="modal-title">Enter your PIN</div>
+        <div class="modal-sub">Authorize this withdrawal of <strong id="pin-modal-amount">₦0</strong></div>
+        <div class="pin-boxes" id="withdraw-pin-boxes" onclick="document.getElementById('withdraw-pin-hidden').focus()">
+          <input class="pin-box" maxlength="1" inputmode="numeric" readonly>
+          <input class="pin-box" maxlength="1" inputmode="numeric" readonly>
+          <input class="pin-box" maxlength="1" inputmode="numeric" readonly>
+          <input class="pin-box" maxlength="1" inputmode="numeric" readonly>
+        </div>
+        <input type="tel" id="withdraw-pin-hidden" maxlength="4" inputmode="numeric" autocomplete="off"
+          style="position:absolute;opacity:0;pointer-events:none" oninput="onWithdrawPinInput(this.value)"/>
+        <p id="withdraw-pin-error" style="display:none;font-size:.83rem;color:#dc2626;margin-top:.25rem"></p>
+        <button class="btn btn-outline" style="width:100%;margin-top:1rem" onclick="closeWithdrawPinModal()">Cancel</button>
+        <div style="margin-top:1rem">
+          <a href="#" onclick="event.preventDefault();forgotPinFromWithdraw()" style="font-size:.82rem;color:var(--text-muted)">Forgot PIN?</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- PIN SETUP MODAL (first-time / forced) -->
+    <div class="modal-overlay" id="pin-setup-modal">
+      <div class="modal-box" style="max-width:380px;text-align:center">
+        <div class="pin-lock-icon">🔐</div>
+        <div class="modal-title" id="pin-setup-title">Create a Transaction PIN</div>
+        <div class="modal-sub" id="pin-setup-sub">Set a 4-digit PIN to authorize withdrawals. Don't share this with anyone.</div>
+        <div class="pin-boxes" id="pin-setup-boxes-1" onclick="document.getElementById('pin-setup-hidden-1').focus()">
+          <input class="pin-box" maxlength="1" inputmode="numeric" readonly>
+          <input class="pin-box" maxlength="1" inputmode="numeric" readonly>
+          <input class="pin-box" maxlength="1" inputmode="numeric" readonly>
+          <input class="pin-box" maxlength="1" inputmode="numeric" readonly>
+        </div>
+        <input type="tel" id="pin-setup-hidden-1" maxlength="4" inputmode="numeric" autocomplete="off"
+          style="position:absolute;opacity:0;pointer-events:none" oninput="onPinSetupStep1Input(this.value)"/>
+        <div id="pin-setup-confirm-wrap" style="display:none">
+          <div class="modal-sub" style="margin-top:1rem;margin-bottom:.5rem">Confirm your PIN</div>
+          <div class="pin-boxes" id="pin-setup-boxes-2" onclick="document.getElementById('pin-setup-hidden-2').focus()">
+            <input class="pin-box" maxlength="1" inputmode="numeric" readonly>
+            <input class="pin-box" maxlength="1" inputmode="numeric" readonly>
+            <input class="pin-box" maxlength="1" inputmode="numeric" readonly>
+            <input class="pin-box" maxlength="1" inputmode="numeric" readonly>
+          </div>
+          <input type="tel" id="pin-setup-hidden-2" maxlength="4" inputmode="numeric" autocomplete="off"
+            style="position:absolute;opacity:0;pointer-events:none" oninput="onPinSetupStep2Input(this.value)"/>
+        </div>
+        <p id="pin-setup-error" style="display:none;font-size:.83rem;color:#dc2626;margin-top:.6rem"></p>
+        <button class="btn btn-outline" style="width:100%;margin-top:1.25rem" id="pin-setup-cancel-btn" onclick="closePinSetupModal()">Cancel</button>
+      </div>
+    </div>
+
+    <!-- PIN RESET MODAL (forgot pin → re-auth with password) -->
+    <div class="modal-overlay" id="pin-reset-modal" onclick="if(event.target===this)closePinResetModal()">
+      <div class="modal-box" style="max-width:380px">
+        <div class="modal-title">Reset Transaction PIN</div>
+        <div class="modal-sub">For your security, confirm your account password to reset your PIN.</div>
+        <div class="form-group">
+          <label style="font-size:.85rem;font-weight:600">Account Password</label>
+          <input type="password" id="pin-reset-password" placeholder="Enter your password"
+            style="width:100%;padding:.7rem 1rem;border:1.5px solid var(--border);border-radius:8px;font-size:1rem;margin-top:.4rem;outline:none"/>
+        </div>
+        <p id="pin-reset-error" style="display:none;font-size:.83rem;color:#dc2626;margin-top:.25rem"></p>
+        <div class="modal-actions">
+          <button class="btn btn-outline" style="flex:1" onclick="closePinResetModal()">Cancel</button>
+          <button class="btn btn-primary" style="flex:2" onclick="confirmPinReset()" id="pin-reset-btn">Verify & Continue</button>
         </div>
       </div>
     </div>
@@ -793,12 +896,12 @@ html,body{overflow-x:hidden;max-width:100vw}
         <div style="font-size:3.5rem;margin-bottom:.75rem">🏦</div>
         <h2 style="font-size:1.3rem;font-weight:800;margin-bottom:.5rem">Withdrawal Request Received</h2>
         <p style="color:var(--text-muted);font-size:.9rem;margin-bottom:1.25rem">
-          <strong id="wd-success-amount">₦0</strong> will be sent to <strong id="wd-success-name">your account</strong> within <strong>24 hours</strong>.
+          <strong id="wd-success-amount">₦0</strong> is being sent to <strong id="wd-success-name">your account</strong>. Your transfer is reviewed and sent manually by our team, usually within <strong>24 hours</strong>.
         </p>
         <div style="background:var(--brand-light);border-radius:10px;padding:1rem;font-size:.85rem;color:var(--brand);margin-bottom:1.25rem;text-align:left">
           <div style="font-weight:700;margin-bottom:.4rem">What happens next?</div>
           <div>✅ Your wallet has been debited immediately.</div>
-          <div style="margin-top:.3rem">⏳ Your transaction shows <strong>Pending</strong> until we send the funds.</div>
+          <div style="margin-top:.3rem">⏳ Your transaction shows <strong>Pending</strong> while our team reviews and sends the transfer from our bank.</div>
           <div style="margin-top:.3rem">🔔 Once sent, it will change to <strong>Successful</strong>.</div>
         </div>
         <button class="btn btn-primary" style="width:100%" onclick="closeWithdrawalSuccess()">View Transaction History</button>
@@ -928,6 +1031,16 @@ html,body{overflow-x:hidden;max-width:100vw}
           <div class="form-group"><label>Phone Number</label><input type="tel" id="profile-phone-input" placeholder="08012345678"/></div>
         </div>
         <button class="btn btn-primary" id="profile-save-btn" onclick="handleProfileSave()">Save Changes</button>
+      </div>
+      <div class="profile-section">
+        <h3>🔐 Security</h3>
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap">
+          <div>
+            <div style="font-weight:700;font-size:.92rem">Transaction PIN</div>
+            <div style="font-size:.82rem;color:var(--text-muted);margin-top:.15rem" id="pin-status-text">Checking status…</div>
+          </div>
+          <button class="btn btn-outline" id="pin-action-btn" onclick="openPinSetupModal()">Set Up PIN</button>
+        </div>
       </div>
       <div class="profile-section">
         <h3>Referral Program</h3>
@@ -1374,6 +1487,7 @@ function loadDashboard(user) {
   loadWalletBalance();
   loadTransactions();
   loadEarnCredits();
+  updatePinStatusUI();
 }
 
 // ════════════════════════════════════════════════
@@ -2368,7 +2482,8 @@ async function resolveWithdrawAccount(accountNumber, bankCode) {
 }
 
 
-async function submitWithdrawal() {
+// ── STEP 1 → 2: move from form to review ──
+function goToWithdrawReview() {
   const errEl = document.getElementById('withdraw-modal-error');
   errEl.style.display = 'none';
 
@@ -2407,9 +2522,72 @@ async function submitWithdrawal() {
     return;
   }
 
-  const btn = document.getElementById('withdraw-submit-btn');
-  btn.disabled = true;
-  btn.textContent = 'Processing…';
+  pendingWithdrawAmount = amount;
+  document.getElementById('wr-account-name').textContent = withdrawResolvedAccount.account_name;
+  document.getElementById('wr-bank-name').textContent = withdrawResolvedAccount.bank_name;
+  document.getElementById('wr-account-number').textContent = withdrawResolvedAccount.account_number;
+  document.getElementById('wr-amount').textContent = '₦' + amount.toLocaleString();
+
+  document.getElementById('withdraw-modal').classList.remove('show');
+  document.getElementById('withdraw-review-modal').classList.add('show');
+}
+
+function closeWithdrawReview() {
+  document.getElementById('withdraw-review-modal').classList.remove('show');
+  document.getElementById('withdraw-modal').classList.add('show');
+}
+
+// ── STEP 2 → 3: review to PIN (or force PIN setup first) ──
+function proceedToWithdrawPin() {
+  document.getElementById('withdraw-review-modal').classList.remove('show');
+  if (!userHasPin()) {
+    openPinSetupModal(true); // forced=true, will chain into PIN entry after setup
+    return;
+  }
+  openWithdrawPinModal();
+}
+
+function openWithdrawPinModal() {
+  document.getElementById('pin-modal-amount').textContent = '₦' + pendingWithdrawAmount.toLocaleString();
+  resetPinBoxes('withdraw-pin-boxes');
+  document.getElementById('withdraw-pin-hidden').value = '';
+  document.getElementById('withdraw-pin-error').style.display = 'none';
+  document.getElementById('withdraw-pin-modal').classList.add('show');
+  setTimeout(() => document.getElementById('withdraw-pin-hidden').focus(), 80);
+}
+
+function closeWithdrawPinModal() {
+  document.getElementById('withdraw-pin-modal').classList.remove('show');
+}
+
+async function onWithdrawPinInput(value) {
+  paintPinBoxes('withdraw-pin-boxes', value);
+  if (value.length < 4) return;
+  const errEl = document.getElementById('withdraw-pin-error');
+  errEl.style.display = 'none';
+  const valid = await verifyPin(value);
+  if (!valid) {
+    errEl.textContent = 'Incorrect PIN. Please try again.';
+    errEl.style.display = 'block';
+    document.getElementById('withdraw-pin-boxes').classList.add('pin-error-shake');
+    setTimeout(() => document.getElementById('withdraw-pin-boxes').classList.remove('pin-error-shake'), 350);
+    document.getElementById('withdraw-pin-hidden').value = '';
+    paintPinBoxes('withdraw-pin-boxes', '');
+    return;
+  }
+  document.getElementById('withdraw-pin-modal').classList.remove('show');
+  executeWithdrawal(pendingWithdrawAmount);
+}
+
+function forgotPinFromWithdraw() {
+  document.getElementById('withdraw-pin-modal').classList.remove('show');
+  openPinResetModal();
+}
+
+// ── STEP 3 → submit: the actual withdrawal write, now gated by PIN ──
+async function executeWithdrawal(amount) {
+  const errEl = document.getElementById('withdraw-modal-error');
+  errEl.style.display = 'none';
 
   try {
     const txRef = 'WD_' + Date.now() + '_' + Math.random().toString(36).slice(2,7).toUpperCase();
@@ -2476,11 +2654,10 @@ async function submitWithdrawal() {
 
   } catch (err) {
     console.error('Withdrawal error:', err);
+    showToast('⚠️ ' + (err.message || 'Withdrawal failed. Please try again.'), 'error', 5000);
+    document.getElementById('withdraw-modal').classList.add('show');
     errEl.textContent = err.message || 'Withdrawal failed. Please try again.';
     errEl.style.display = 'block';
-  } finally {
-    btn.disabled = false;
-    btn.textContent = 'Withdraw';
   }
 }
 
@@ -2493,6 +2670,200 @@ function showWithdrawalSuccess(amount, accountName) {
 function closeWithdrawalSuccess() {
   const _wdov2 = document.getElementById('withdrawal-success-overlay'); _wdov2.style.display='none'; _wdov2.classList.remove('show');
   switchTab('wallet');
+}
+
+// ════════════════════════════════════════════════
+//  TRANSACTION PIN — setup, verification, reset
+//
+//  Stored as a salted SHA-256 hash in Supabase Auth
+//  user_metadata (pin_hash / pin_salt). This is not
+//  as strong as a server-side secret check (there is
+//  no edge function verifying it), but it is far
+//  better than plaintext and matches what's feasible
+//  without standing up new backend infrastructure.
+// ════════════════════════════════════════════════
+let pendingWithdrawAmount = 0;
+let pinSetupForcedChain = false; // true if we opened setup mid-withdrawal
+let pinSetupStep1Value = '';
+
+function userHasPin() {
+  if (!currentUser) return false;
+  const meta = currentUser.user_metadata || {};
+  return !!(meta.pin_hash && meta.pin_salt);
+}
+
+async function sha256Hex(str) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+
+function genSalt() {
+  const arr = crypto.getRandomValues(new Uint8Array(16));
+  return Array.from(arr).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+
+async function hashPin(pin, salt) {
+  return await sha256Hex(salt + ':' + pin);
+}
+
+async function verifyPin(pin) {
+  const meta = currentUser.user_metadata || {};
+  if (!meta.pin_hash || !meta.pin_salt) return false;
+  const computed = await hashPin(pin, meta.pin_salt);
+  return computed === meta.pin_hash;
+}
+
+function resetPinBoxes(containerId) {
+  const boxes = document.querySelectorAll('#' + containerId + ' .pin-box');
+  boxes.forEach(b => { b.value = ''; b.classList.remove('filled'); });
+}
+
+function paintPinBoxes(containerId, value) {
+  const boxes = document.querySelectorAll('#' + containerId + ' .pin-box');
+  boxes.forEach((b, i) => {
+    b.value = value[i] || '';
+    b.classList.toggle('filled', !!value[i]);
+  });
+}
+
+function updatePinStatusUI() {
+  const statusEl = document.getElementById('pin-status-text');
+  const btnEl = document.getElementById('pin-action-btn');
+  if (!statusEl || !btnEl) return;
+  if (userHasPin()) {
+    statusEl.textContent = '✓ PIN is set — required to authorize withdrawals';
+    statusEl.style.color = 'var(--brand)';
+    btnEl.textContent = 'Change PIN';
+    btnEl.onclick = () => openPinResetModal();
+  } else {
+    statusEl.textContent = 'Not set — required before you can withdraw';
+    statusEl.style.color = 'var(--text-muted)';
+    btnEl.textContent = 'Set Up PIN';
+    btnEl.onclick = () => openPinSetupModal(false);
+  }
+}
+
+// ── PIN SETUP (two-step: enter, confirm) ──
+function openPinSetupModal(forced) {
+  pinSetupForcedChain = !!forced;
+  pinSetupStep1Value = '';
+  document.getElementById('pin-setup-title').textContent = forced ? 'Set up your PIN first' : 'Create a Transaction PIN';
+  document.getElementById('pin-setup-sub').textContent = forced
+    ? 'You need a 4-digit transaction PIN before you can withdraw. This protects your funds even if someone else has your phone unlocked.'
+    : "Set a 4-digit PIN to authorize withdrawals. Don't share this with anyone.";
+  document.getElementById('pin-setup-confirm-wrap').style.display = 'none';
+  document.getElementById('pin-setup-error').style.display = 'none';
+  document.getElementById('pin-setup-cancel-btn').style.display = forced ? 'none' : 'block';
+  resetPinBoxes('pin-setup-boxes-1');
+  resetPinBoxes('pin-setup-boxes-2');
+  document.getElementById('pin-setup-hidden-1').value = '';
+  document.getElementById('pin-setup-hidden-2').value = '';
+  document.getElementById('pin-setup-modal').classList.add('show');
+  setTimeout(() => document.getElementById('pin-setup-hidden-1').focus(), 80);
+}
+
+function closePinSetupModal() {
+  document.getElementById('pin-setup-modal').classList.remove('show');
+}
+
+function onPinSetupStep1Input(value) {
+  paintPinBoxes('pin-setup-boxes-1', value);
+  if (value.length < 4) return;
+  pinSetupStep1Value = value;
+  document.getElementById('pin-setup-confirm-wrap').style.display = 'block';
+  setTimeout(() => document.getElementById('pin-setup-hidden-2').focus(), 80);
+}
+
+async function onPinSetupStep2Input(value) {
+  paintPinBoxes('pin-setup-boxes-2', value);
+  if (value.length < 4) return;
+  const errEl = document.getElementById('pin-setup-error');
+  if (value !== pinSetupStep1Value) {
+    errEl.textContent = "PINs don't match. Let's try again.";
+    errEl.style.display = 'block';
+    pinSetupStep1Value = '';
+    document.getElementById('pin-setup-confirm-wrap').style.display = 'none';
+    resetPinBoxes('pin-setup-boxes-1');
+    resetPinBoxes('pin-setup-boxes-2');
+    document.getElementById('pin-setup-hidden-1').value = '';
+    document.getElementById('pin-setup-hidden-2').value = '';
+    setTimeout(() => document.getElementById('pin-setup-hidden-1').focus(), 80);
+    return;
+  }
+  if (/^(\d)\1{3}$/.test(value) || value === '1234' || value === '0000') {
+    errEl.textContent = 'Please choose a less predictable PIN (avoid 1111, 1234, etc).';
+    errEl.style.display = 'block';
+    pinSetupStep1Value = '';
+    document.getElementById('pin-setup-confirm-wrap').style.display = 'none';
+    resetPinBoxes('pin-setup-boxes-1');
+    resetPinBoxes('pin-setup-boxes-2');
+    document.getElementById('pin-setup-hidden-1').value = '';
+    document.getElementById('pin-setup-hidden-2').value = '';
+    setTimeout(() => document.getElementById('pin-setup-hidden-1').focus(), 80);
+    return;
+  }
+
+  errEl.style.display = 'none';
+  try {
+    const salt = genSalt();
+    const hash = await hashPin(value, salt);
+    const { data, error } = await sb.auth.updateUser({
+      data: { pin_hash: hash, pin_salt: salt }
+    });
+    if (error) throw error;
+    currentUser = data.user;
+    document.getElementById('pin-setup-modal').classList.remove('show');
+    updatePinStatusUI();
+    showToast('🔐 Transaction PIN set successfully', 'success', 3500);
+
+    if (pinSetupForcedChain) {
+      pinSetupForcedChain = false;
+      openWithdrawPinModal();
+    }
+  } catch (err) {
+    console.error('PIN setup error:', err);
+    errEl.textContent = err.message || 'Could not save PIN. Please try again.';
+    errEl.style.display = 'block';
+  }
+}
+
+// ── PIN RESET (forgot PIN → verify password → set new PIN) ──
+function openPinResetModal() {
+  document.getElementById('pin-reset-password').value = '';
+  document.getElementById('pin-reset-error').style.display = 'none';
+  document.getElementById('pin-reset-modal').classList.add('show');
+}
+function closePinResetModal() {
+  document.getElementById('pin-reset-modal').classList.remove('show');
+}
+
+async function confirmPinReset() {
+  const errEl = document.getElementById('pin-reset-error');
+  errEl.style.display = 'none';
+  const password = document.getElementById('pin-reset-password').value;
+  if (!password) {
+    errEl.textContent = 'Please enter your account password.';
+    errEl.style.display = 'block';
+    return;
+  }
+  const btn = document.getElementById('pin-reset-btn');
+  btn.disabled = true;
+  btn.textContent = 'Verifying…';
+  try {
+    const { error } = await sb.auth.signInWithPassword({
+      email: currentUser.email,
+      password
+    });
+    if (error) throw new Error('Incorrect password. Please try again.');
+    document.getElementById('pin-reset-modal').classList.remove('show');
+    openPinSetupModal(false);
+  } catch (err) {
+    errEl.textContent = err.message || 'Verification failed.';
+    errEl.style.display = 'block';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Verify & Continue';
+  }
 }
 
 
