@@ -691,6 +691,16 @@ function initAdmin() {
   document.getElementById('winnerNameInput').addEventListener('input', updateNoticePreview);
   document.getElementById('winnerDate').addEventListener('input', updateNoticePreview);
   updateNoticePreview();
+
+  // Load withdrawal pending count for sidebar badge
+  if (sbAdmin) {
+    sbAdmin.from('withdrawal_requests').select('id', { count: 'exact', head: true })
+      .eq('status', 'pending')
+      .then(({ count }) => {
+        const badge = document.getElementById('pending-badge');
+        if (badge && count > 0) { badge.textContent = count; badge.style.display = 'inline'; }
+      });
+  }
 }
 
 // ═══════════════════════════════════════════════
@@ -1318,7 +1328,7 @@ async function markFailed(id) {
     // 1. Update withdrawal_requests status to failed
     const { error: reqErr } = await sbAdmin
       .from('withdrawal_requests')
-      .update({ status: 'failed', failed_at: new Date().toISOString() })
+      .update({ status: 'failed' })
       .eq('id', id);
     if (reqErr) throw reqErr;
 
@@ -1376,20 +1386,7 @@ async function markFailed(id) {
   }
 }
 
-// Auto-load pending count on admin init
-const _origInitAdmin = initAdmin;
-function initAdmin() {
-  _origInitAdmin();
-  // Load withdrawal count for badge
-  if (sbAdmin) {
-    sbAdmin.from('withdrawal_requests').select('id', { count: 'exact', head: true })
-      .eq('status', 'pending')
-      .then(({ count }) => {
-        const badge = document.getElementById('pending-badge');
-        if (badge && count > 0) { badge.textContent = count; badge.style.display = 'inline'; }
-      });
-  }
-}
+// Badge count is now loaded inside initAdmin() above
 </script>
 </body>
 </html>
