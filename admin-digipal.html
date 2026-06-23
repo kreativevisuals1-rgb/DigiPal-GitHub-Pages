@@ -1358,23 +1358,7 @@ async function markFailed(id) {
       .eq('user_id', w.user_id);
     if (walletErr) throw walletErr;
 
-    // 4. Insert a credit transaction record for the refund
-    const { error: refundTxErr } = await sbAdmin
-      .from('transactions')
-      .insert([{
-        user_id: w.user_id,
-        user_name: w.user_name,
-        user_email: w.user_email,
-        type: 'credit',
-        category: 'withdrawal_reversal',
-        status: 'completed',
-        amount: Number(w.amount),
-        description: 'Reversal — failed withdrawal to ' + (w.bank_name || 'bank'),
-        reference: 'REV_' + w.reference,
-      }]);
-    if (refundTxErr) console.warn('refund tx insert err:', refundTxErr.message);
-
-    // 5. Update local state and UI
+    // 4. Update local state and UI
     const idx = allWithdrawals.findIndex(r => r.id === id);
     if (idx !== -1) allWithdrawals[idx].status = 'failed';
     updateWdStats();
