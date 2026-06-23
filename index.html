@@ -2022,10 +2022,50 @@ async function loadTransactions() {
       .select('*')
       .eq('user_id', currentUser.id)
       .order('created_at', { ascending: false })
-      .limit(20);
+      .limit(50);
 
     if (error) throw error;
-    renderTransactions(data || []);
+    const txs = data || [];
+
+    // Auto-insert reversal credits for any failed withdrawal
+    // that doesn't already have a matching REV_ credit entry.
+    // Done client-side so the user's own RLS session is used.
+    const reversalRefs = new Set(
+      txs.filter(t => t.category === 'withdrawal_reversal').map(t => t.reference)
+    );
+    const failedWithoutReversal = txs.filter(t =>
+      t.category === 'withdrawal' &&
+      t.status === 'failed' &&
+      !reversalRefs.has('REV_' + t.reference)
+    );
+    if (failedWithoutReversal.length > 0) {
+      const inserts = failedWithoutReversal.map(t => ({
+        user_id: currentUser.id,
+        type: 'credit',
+        category: 'withdrawal_reversal',
+        status: 'completed',
+        amount: Number(t.amount),
+        description: 'Reversal — failed withdrawal to ' + (t.bank_name || 'bank'),
+        reference: 'REV_' + t.reference,
+        bank_name: t.bank_name || null,
+      }));
+      const { error: insErr } = await sb.from('transactions').insert(inserts);
+      if (insErr) {
+        console.warn('Reversal insert error:', insErr.message);
+      } else {
+        // Reload so the new reversal entries appear in the list
+        const { data: refreshed } = await sb
+          .from('transactions')
+          .select('*')
+          .eq('user_id', currentUser.id)
+          .order('created_at', { ascending: false })
+          .limit(50);
+        renderTransactions(refreshed || []);
+        return;
+      }
+    }
+
+    renderTransactions(txs.slice(0, 20));
   } catch (err) {
     console.error('Transactions error:', err);
   }
