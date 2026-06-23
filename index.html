@@ -2532,8 +2532,18 @@ function closeWithdrawReview() {
 }
 
 // ── STEP 2 → 3: review to PIN (or force PIN setup first) ──
-function proceedToWithdrawPin() {
+async function proceedToWithdrawPin() {
   document.getElementById('withdraw-review-modal').classList.remove('show');
+
+  // Re-fetch fresh user data right here, at the moment it matters most —
+  // this is the single highest-stakes place for a stale PIN check to slip
+  // through (e.g. PIN was set in another tab, or this tab has been open
+  // a while since the last refresh).
+  try {
+    const { data, error } = await sb.auth.getUser();
+    if (!error && data?.user) currentUser = data.user;
+  } catch (_) { /* fall back to whatever currentUser already holds */ }
+
   if (!userHasPin()) {
     openPinSetupModal(true); // forced=true, will chain into PIN entry after setup
     return;
@@ -2946,9 +2956,15 @@ async function init() {
 
   const { data: { session } } = await sb.auth.getSession();
   if (session?.user) {
-    currentUser = session.user;
+    // getSession() returns a cached session object — its user_metadata can
+    // be stale (e.g. if a PIN was set in a previous tab/session and this
+    // tab's cached copy predates that write). getUser() forces a real
+    // round-trip to Supabase Auth so currentUser always reflects the
+    // latest metadata, which the PIN check depends on being correct.
+    const { data: freshUserData, error: freshUserErr } = await sb.auth.getUser();
+    currentUser = (!freshUserErr && freshUserData?.user) ? freshUserData.user : session.user;
     dashboardLoaded = true;
-    loadDashboard(session.user);
+    loadDashboard(currentUser);
     showPage('dashboard');
   }
 
