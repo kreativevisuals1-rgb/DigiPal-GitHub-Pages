@@ -2027,19 +2027,23 @@ async function loadTransactions() {
     if (error) throw error;
     const txs = data || [];
 
-    // Auto-insert reversal credits for any failed withdrawal
-    // that doesn't already have a matching REV_ credit entry.
-    // Done client-side so the user's own RLS session is used.
+    // ── Reconcile failed withdrawals ──────────────────────────────────────
+    // For every failed withdrawal, there must be a matching reversal credit
+    // (reference = 'REV_' + original reference) AND the wallet balance must
+    // reflect that credit. We check both independently so we can fix either
+    // without depending on the other.
+
     const reversalRefs = new Set(
       txs.filter(t => t.category === 'withdrawal_reversal').map(t => t.reference)
     );
-    const failedWithoutReversal = txs.filter(t =>
-      t.category === 'withdrawal' &&
-      t.status === 'failed' &&
-      !reversalRefs.has('REV_' + t.reference)
+    const failedTxs = txs.filter(t =>
+      t.category === 'withdrawal' && t.status === 'failed'
     );
-    if (failedWithoutReversal.length > 0) {
-      const inserts = failedWithoutReversal.map(t => ({
+
+    // 1. Insert missing reversal transaction records
+    const missingReversals = failedTxs.filter(t => !reversalRefs.has('REV_' + t.reference));
+    if (missingReversals.length > 0) {
+      const inserts = missingReversals.map(t => ({
         user_id: currentUser.id,
         type: 'credit',
         category: 'withdrawal_reversal',
@@ -2050,22 +2054,48 @@ async function loadTransactions() {
         bank_name: t.bank_name || null,
       }));
       const { error: insErr } = await sb.from('transactions').insert(inserts);
-      if (insErr) {
-        console.warn('Reversal insert error:', insErr.message);
-      } else {
-        // Reload so the new reversal entries appear in the list
-        const { data: refreshed } = await sb
-          .from('transactions')
-          .select('*')
-          .eq('user_id', currentUser.id)
-          .order('created_at', { ascending: false })
-          .limit(50);
-        renderTransactions(refreshed || []);
-        return;
+      if (insErr) console.warn('Reversal insert error:', insErr.message);
+    }
+
+    // 2. Ensure wallet balance includes all reversal credits.
+    // We compute what the balance should be: sum of all credits minus sum of
+    // all debits across the full transaction set, then sync if it differs.
+    const expectedBalance = txs.reduce((sum, t) => {
+      if (t.type === 'credit' && t.status !== 'failed') return sum + Number(t.amount);
+      if (t.type === 'debit' && t.status !== 'failed') return sum - Number(t.amount);
+      return sum;
+    }, 0);
+    const { data: walletRow } = await sb
+      .from('wallets')
+      .select('balance')
+      .eq('user_id', currentUser.id)
+      .maybeSingle();
+    const storedBalance = walletRow?.balance ?? 0;
+    // Only patch if the discrepancy is due to unaccounted reversal credits
+    const unaccountedReversalTotal = failedTxs
+      .filter(t => reversalRefs.has('REV_' + t.reference) && !missingReversals.find(m => m.id === t.id))
+      .reduce((sum, t) => sum + Number(t.amount), 0);
+    // A simpler, safer check: if stored balance is less than expected, top it up
+    if (storedBalance < expectedBalance) {
+      const corrected = expectedBalance;
+      const { error: balErr } = await sb
+        .from('wallets')
+        .update({ balance: corrected })
+        .eq('user_id', currentUser.id);
+      if (!balErr) {
+        walletBalance = corrected;
+        updateBalanceUI(walletBalance);
       }
     }
 
-    renderTransactions(txs.slice(0, 20));
+    // 3. Reload transactions (picks up any newly inserted reversals) then render
+    const { data: refreshed } = await sb
+      .from('transactions')
+      .select('*')
+      .eq('user_id', currentUser.id)
+      .order('created_at', { ascending: false })
+      .limit(50);
+    renderTransactions((refreshed || []).slice(0, 20));
   } catch (err) {
     console.error('Transactions error:', err);
   }
