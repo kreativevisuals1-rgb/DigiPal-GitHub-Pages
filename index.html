@@ -2348,8 +2348,7 @@ async function shareReceipt() {
     `Ref:       ${tx.reference || '—'}`,
     '─────────────────────',
     'DigiPal · digipal.app',
-  ].filter(Boolean).join('
-');
+  ].filter(Boolean).join('\n');
 
   if (navigator.share) {
     try {
