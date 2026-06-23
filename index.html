@@ -2565,14 +2565,22 @@ async function onWithdrawPinInput(value) {
   if (value.length < 4) return;
   const errEl = document.getElementById('withdraw-pin-error');
   errEl.style.display = 'none';
-  const valid = await verifyPin(value);
-  if (!valid) {
-    errEl.textContent = 'Incorrect PIN. Please try again.';
+
+  const hiddenInput = document.getElementById('withdraw-pin-hidden');
+  hiddenInput.disabled = true; // prevent double-submit while the request is in flight
+
+  const result = await verifyPin(value);
+
+  hiddenInput.disabled = false;
+
+  if (!result.valid) {
+    errEl.textContent = result.error || 'Incorrect PIN. Please try again.';
     errEl.style.display = 'block';
     document.getElementById('withdraw-pin-boxes').classList.add('pin-error-shake');
     setTimeout(() => document.getElementById('withdraw-pin-boxes').classList.remove('pin-error-shake'), 350);
-    document.getElementById('withdraw-pin-hidden').value = '';
+    hiddenInput.value = '';
     paintPinBoxes('withdraw-pin-boxes', '');
+    if (!result.locked) setTimeout(() => hiddenInput.focus(), 50);
     return;
   }
   document.getElementById('withdraw-pin-modal').classList.remove('show');
@@ -2675,42 +2683,50 @@ function closeWithdrawalSuccess() {
 // ════════════════════════════════════════════════
 //  TRANSACTION PIN — setup, verification, reset
 //
-//  Stored as a salted SHA-256 hash in Supabase Auth
-//  user_metadata (pin_hash / pin_salt). This is not
-//  as strong as a server-side secret check (there is
-//  no edge function verifying it), but it is far
-//  better than plaintext and matches what's feasible
-//  without standing up new backend infrastructure.
+//  All hashing and comparison happens server-side in
+//  the setup-pin / verify-pin Supabase edge functions.
+//  The browser never computes a hash and never learns
+//  the stored hash or salt — it only sends the raw PIN
+//  over HTTPS and gets back true/false. This also gives
+//  us server-side brute-force lockout, which a purely
+//  client-side check could never enforce.
 // ════════════════════════════════════════════════
 let pendingWithdrawAmount = 0;
 let pinSetupForcedChain = false; // true if we opened setup mid-withdrawal
 let pinSetupStep1Value = '';
+let pinChangePassword = null; // carried through when changing an existing PIN
 
 function userHasPin() {
   if (!currentUser) return false;
   const meta = currentUser.user_metadata || {};
-  return !!(meta.pin_hash && meta.pin_salt);
+  return !!meta.pin_hash;
 }
 
-async function sha256Hex(str) {
-  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
-  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
-}
-
-function genSalt() {
-  const arr = crypto.getRandomValues(new Uint8Array(16));
-  return Array.from(arr).map(b => b.toString(16).padStart(2,'0')).join('');
-}
-
-async function hashPin(pin, salt) {
-  return await sha256Hex(salt + ':' + pin);
+async function callPinFunction(name, body) {
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) throw new Error('You must be logged in.');
+  const res = await sb.functions.invoke(name, { body });
+  if (res.error) {
+    // Supabase JS surfaces non-2xx as res.error but still gives us the body
+    let msg = 'Something went wrong. Please try again.';
+    try {
+      const ctx = res.error.context;
+      if (ctx) { const j = await ctx.json(); if (j?.error) msg = j.error; }
+    } catch (_) {}
+    const err = new Error(msg);
+    err.raw = res;
+    throw err;
+  }
+  return res.data;
 }
 
 async function verifyPin(pin) {
-  const meta = currentUser.user_metadata || {};
-  if (!meta.pin_hash || !meta.pin_salt) return false;
-  const computed = await hashPin(pin, meta.pin_salt);
-  return computed === meta.pin_hash;
+  try {
+    const data = await callPinFunction('verify-pin', { pin });
+    return data; // { valid, locked?, attemptsRemaining?, error? }
+  } catch (err) {
+    return { valid: false, error: err.message || 'Could not verify PIN.' };
+  }
 }
 
 function resetPinBoxes(containerId) {
@@ -2747,7 +2763,7 @@ function updatePinStatusUI() {
 function openPinSetupModal(forced) {
   pinSetupForcedChain = !!forced;
   pinSetupStep1Value = '';
-  document.getElementById('pin-setup-title').textContent = forced ? 'Set up your PIN first' : 'Create a Transaction PIN';
+  document.getElementById('pin-setup-title').textContent = forced ? 'Set up your PIN first' : (userHasPin() ? 'Change Transaction PIN' : 'Create a Transaction PIN');
   document.getElementById('pin-setup-sub').textContent = forced
     ? 'You need a 4-digit transaction PIN before you can withdraw. This protects your funds even if someone else has your phone unlocked.'
     : "Set a 4-digit PIN to authorize withdrawals. Don't share this with anyone.";
@@ -2763,6 +2779,7 @@ function openPinSetupModal(forced) {
 }
 
 function closePinSetupModal() {
+  pinChangePassword = null;
   document.getElementById('pin-setup-modal').classList.remove('show');
 }
 
@@ -2774,44 +2791,41 @@ function onPinSetupStep1Input(value) {
   setTimeout(() => document.getElementById('pin-setup-hidden-2').focus(), 80);
 }
 
+function resetPinSetupToStep1(message) {
+  const errEl = document.getElementById('pin-setup-error');
+  errEl.textContent = message;
+  errEl.style.display = 'block';
+  pinSetupStep1Value = '';
+  document.getElementById('pin-setup-confirm-wrap').style.display = 'none';
+  resetPinBoxes('pin-setup-boxes-1');
+  resetPinBoxes('pin-setup-boxes-2');
+  document.getElementById('pin-setup-hidden-1').value = '';
+  document.getElementById('pin-setup-hidden-2').value = '';
+  setTimeout(() => document.getElementById('pin-setup-hidden-1').focus(), 80);
+}
+
 async function onPinSetupStep2Input(value) {
   paintPinBoxes('pin-setup-boxes-2', value);
   if (value.length < 4) return;
-  const errEl = document.getElementById('pin-setup-error');
+
   if (value !== pinSetupStep1Value) {
-    errEl.textContent = "PINs don't match. Let's try again.";
-    errEl.style.display = 'block';
-    pinSetupStep1Value = '';
-    document.getElementById('pin-setup-confirm-wrap').style.display = 'none';
-    resetPinBoxes('pin-setup-boxes-1');
-    resetPinBoxes('pin-setup-boxes-2');
-    document.getElementById('pin-setup-hidden-1').value = '';
-    document.getElementById('pin-setup-hidden-2').value = '';
-    setTimeout(() => document.getElementById('pin-setup-hidden-1').focus(), 80);
-    return;
-  }
-  if (/^(\d)\1{3}$/.test(value) || value === '1234' || value === '0000') {
-    errEl.textContent = 'Please choose a less predictable PIN (avoid 1111, 1234, etc).';
-    errEl.style.display = 'block';
-    pinSetupStep1Value = '';
-    document.getElementById('pin-setup-confirm-wrap').style.display = 'none';
-    resetPinBoxes('pin-setup-boxes-1');
-    resetPinBoxes('pin-setup-boxes-2');
-    document.getElementById('pin-setup-hidden-1').value = '';
-    document.getElementById('pin-setup-hidden-2').value = '';
-    setTimeout(() => document.getElementById('pin-setup-hidden-1').focus(), 80);
+    resetPinSetupToStep1("PINs don't match. Let's try again.");
     return;
   }
 
+  const errEl = document.getElementById('pin-setup-error');
   errEl.style.display = 'none';
+
   try {
-    const salt = genSalt();
-    const hash = await hashPin(value, salt);
-    const { data, error } = await sb.auth.updateUser({
-      data: { pin_hash: hash, pin_salt: salt }
-    });
-    if (error) throw error;
-    currentUser = data.user;
+    const body = { pin: value };
+    if (pinChangePassword) body.password = pinChangePassword;
+    await callPinFunction('setup-pin', body);
+
+    // Refresh currentUser so userHasPin() reflects the change immediately
+    const { data: { user } } = await sb.auth.getUser();
+    if (user) currentUser = user;
+
+    pinChangePassword = null;
     document.getElementById('pin-setup-modal').classList.remove('show');
     updatePinStatusUI();
     showToast('🔐 Transaction PIN set successfully', 'success', 3500);
@@ -2822,12 +2836,12 @@ async function onPinSetupStep2Input(value) {
     }
   } catch (err) {
     console.error('PIN setup error:', err);
-    errEl.textContent = err.message || 'Could not save PIN. Please try again.';
-    errEl.style.display = 'block';
+    // Weak-PIN rejection should let them retry from a blank slate, not just step 2
+    resetPinSetupToStep1(err.message || 'Could not save PIN. Please try again.');
   }
 }
 
-// ── PIN RESET (forgot PIN → verify password → set new PIN) ──
+// ── PIN RESET (forgot PIN / change PIN → verify password → set new PIN) ──
 function openPinResetModal() {
   document.getElementById('pin-reset-password').value = '';
   document.getElementById('pin-reset-error').style.display = 'none';
@@ -2850,11 +2864,16 @@ async function confirmPinReset() {
   btn.disabled = true;
   btn.textContent = 'Verifying…';
   try {
+    // Verify password against a fresh, separate sign-in check before
+    // trusting it. The actual PIN write (setup-pin) re-checks this same
+    // password server-side too — this client-side check just gives fast
+    // feedback and avoids sending a wrong password through twice.
     const { error } = await sb.auth.signInWithPassword({
       email: currentUser.email,
       password
     });
     if (error) throw new Error('Incorrect password. Please try again.');
+    pinChangePassword = password; // carried into setup-pin's body
     document.getElementById('pin-reset-modal').classList.remove('show');
     openPinSetupModal(false);
   } catch (err) {
