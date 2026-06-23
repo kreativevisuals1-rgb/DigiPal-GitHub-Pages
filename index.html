@@ -819,14 +819,12 @@ html,body{overflow-x:hidden;max-width:100vw}
         <div class="pin-lock-icon">🔒</div>
         <div class="modal-title">Enter your PIN</div>
         <div class="modal-sub">Authorize this withdrawal of <strong id="pin-modal-amount">₦0</strong></div>
-        <div class="pin-boxes" id="withdraw-pin-boxes" onclick="document.getElementById('withdraw-pin-hidden').focus()">
-          <input class="pin-box" maxlength="1" inputmode="numeric" readonly>
-          <input class="pin-box" maxlength="1" inputmode="numeric" readonly>
-          <input class="pin-box" maxlength="1" inputmode="numeric" readonly>
-          <input class="pin-box" maxlength="1" inputmode="numeric" readonly>
+        <div class="pin-boxes" id="withdraw-pin-boxes">
+          <input class="pin-box" maxlength="1" inputmode="numeric" pattern="[0-9]*" autocomplete="off">
+          <input class="pin-box" maxlength="1" inputmode="numeric" pattern="[0-9]*" autocomplete="off">
+          <input class="pin-box" maxlength="1" inputmode="numeric" pattern="[0-9]*" autocomplete="off">
+          <input class="pin-box" maxlength="1" inputmode="numeric" pattern="[0-9]*" autocomplete="off">
         </div>
-        <input type="tel" id="withdraw-pin-hidden" maxlength="4" inputmode="numeric" autocomplete="off"
-          style="position:absolute;opacity:0;pointer-events:none" oninput="onWithdrawPinInput(this.value)"/>
         <p id="withdraw-pin-error" style="display:none;font-size:.83rem;color:#dc2626;margin-top:.25rem"></p>
         <button class="btn btn-outline" style="width:100%;margin-top:1rem" onclick="closeWithdrawPinModal()">Cancel</button>
         <div style="margin-top:1rem">
@@ -841,24 +839,20 @@ html,body{overflow-x:hidden;max-width:100vw}
         <div class="pin-lock-icon">🔐</div>
         <div class="modal-title" id="pin-setup-title">Create a Transaction PIN</div>
         <div class="modal-sub" id="pin-setup-sub">Set a 4-digit PIN to authorize withdrawals. Don't share this with anyone.</div>
-        <div class="pin-boxes" id="pin-setup-boxes-1" onclick="document.getElementById('pin-setup-hidden-1').focus()">
-          <input class="pin-box" maxlength="1" inputmode="numeric" readonly>
-          <input class="pin-box" maxlength="1" inputmode="numeric" readonly>
-          <input class="pin-box" maxlength="1" inputmode="numeric" readonly>
-          <input class="pin-box" maxlength="1" inputmode="numeric" readonly>
+        <div class="pin-boxes" id="pin-setup-boxes-1">
+          <input class="pin-box" maxlength="1" inputmode="numeric" pattern="[0-9]*" autocomplete="off">
+          <input class="pin-box" maxlength="1" inputmode="numeric" pattern="[0-9]*" autocomplete="off">
+          <input class="pin-box" maxlength="1" inputmode="numeric" pattern="[0-9]*" autocomplete="off">
+          <input class="pin-box" maxlength="1" inputmode="numeric" pattern="[0-9]*" autocomplete="off">
         </div>
-        <input type="tel" id="pin-setup-hidden-1" maxlength="4" inputmode="numeric" autocomplete="off"
-          style="position:absolute;opacity:0;pointer-events:none" oninput="onPinSetupStep1Input(this.value)"/>
         <div id="pin-setup-confirm-wrap" style="display:none">
           <div class="modal-sub" style="margin-top:1rem;margin-bottom:.5rem">Confirm your PIN</div>
-          <div class="pin-boxes" id="pin-setup-boxes-2" onclick="document.getElementById('pin-setup-hidden-2').focus()">
-            <input class="pin-box" maxlength="1" inputmode="numeric" readonly>
-            <input class="pin-box" maxlength="1" inputmode="numeric" readonly>
-            <input class="pin-box" maxlength="1" inputmode="numeric" readonly>
-            <input class="pin-box" maxlength="1" inputmode="numeric" readonly>
+          <div class="pin-boxes" id="pin-setup-boxes-2">
+            <input class="pin-box" maxlength="1" inputmode="numeric" pattern="[0-9]*" autocomplete="off">
+            <input class="pin-box" maxlength="1" inputmode="numeric" pattern="[0-9]*" autocomplete="off">
+            <input class="pin-box" maxlength="1" inputmode="numeric" pattern="[0-9]*" autocomplete="off">
+            <input class="pin-box" maxlength="1" inputmode="numeric" pattern="[0-9]*" autocomplete="off">
           </div>
-          <input type="tel" id="pin-setup-hidden-2" maxlength="4" inputmode="numeric" autocomplete="off"
-            style="position:absolute;opacity:0;pointer-events:none" oninput="onPinSetupStep2Input(this.value)"/>
         </div>
         <p id="pin-setup-error" style="display:none;font-size:.83rem;color:#dc2626;margin-top:.6rem"></p>
         <button class="btn btn-outline" style="width:100%;margin-top:1.25rem" id="pin-setup-cancel-btn" onclick="closePinSetupModal()">Cancel</button>
@@ -2547,40 +2541,44 @@ function proceedToWithdrawPin() {
   openWithdrawPinModal();
 }
 
+let withdrawPinWired = false;
 function openWithdrawPinModal() {
   document.getElementById('pin-modal-amount').textContent = '₦' + pendingWithdrawAmount.toLocaleString();
   resetPinBoxes('withdraw-pin-boxes');
-  document.getElementById('withdraw-pin-hidden').value = '';
   document.getElementById('withdraw-pin-error').style.display = 'none';
   document.getElementById('withdraw-pin-modal').classList.add('show');
-  setTimeout(() => document.getElementById('withdraw-pin-hidden').focus(), 80);
+  if (!withdrawPinWired) {
+    wirePinBoxAutoAdvance('withdraw-pin-boxes', handleWithdrawPinComplete);
+    withdrawPinWired = true;
+  }
+  setTimeout(() => focusPinBox('withdraw-pin-boxes', 0), 80);
 }
 
 function closeWithdrawPinModal() {
   document.getElementById('withdraw-pin-modal').classList.remove('show');
 }
 
-async function onWithdrawPinInput(value) {
-  paintPinBoxes('withdraw-pin-boxes', value);
-  if (value.length < 4) return;
+function setPinBoxesDisabled(containerId, disabled) {
+  document.querySelectorAll('#' + containerId + ' .pin-box').forEach(b => b.disabled = disabled);
+}
+
+async function handleWithdrawPinComplete(value) {
   const errEl = document.getElementById('withdraw-pin-error');
   errEl.style.display = 'none';
 
-  const hiddenInput = document.getElementById('withdraw-pin-hidden');
-  hiddenInput.disabled = true; // prevent double-submit while the request is in flight
+  setPinBoxesDisabled('withdraw-pin-boxes', true); // prevent double-submit while the request is in flight
 
   const result = await verifyPin(value);
 
-  hiddenInput.disabled = false;
+  setPinBoxesDisabled('withdraw-pin-boxes', false);
 
   if (!result.valid) {
     errEl.textContent = result.error || 'Incorrect PIN. Please try again.';
     errEl.style.display = 'block';
     document.getElementById('withdraw-pin-boxes').classList.add('pin-error-shake');
     setTimeout(() => document.getElementById('withdraw-pin-boxes').classList.remove('pin-error-shake'), 350);
-    hiddenInput.value = '';
-    paintPinBoxes('withdraw-pin-boxes', '');
-    if (!result.locked) setTimeout(() => hiddenInput.focus(), 50);
+    resetPinBoxes('withdraw-pin-boxes');
+    if (!result.locked) setTimeout(() => focusPinBox('withdraw-pin-boxes', 0), 50);
     return;
   }
   document.getElementById('withdraw-pin-modal').classList.remove('show');
@@ -2742,6 +2740,49 @@ function paintPinBoxes(containerId, value) {
   });
 }
 
+function readPinBoxValue(containerId) {
+  const boxes = document.querySelectorAll('#' + containerId + ' .pin-box');
+  return Array.from(boxes).map(b => b.value).join('');
+}
+
+function focusPinBox(containerId, index) {
+  const boxes = document.querySelectorAll('#' + containerId + ' .pin-box');
+  if (boxes[index]) { boxes[index].focus(); boxes[index].select(); }
+}
+
+// Wires a row of 4 real <input class="pin-box"> elements so it behaves
+// like a single 4-digit field: typing a digit auto-advances to the next
+// box, backspace on an empty box steps back, and pasting a 4-digit
+// string fills all boxes at once. onComplete fires once all 4 are filled.
+function wirePinBoxAutoAdvance(containerId, onComplete) {
+  const boxes = document.querySelectorAll('#' + containerId + ' .pin-box');
+  boxes.forEach((box, i) => {
+    box.addEventListener('input', () => {
+      box.value = box.value.replace(/[^0-9]/g, '').slice(0, 1);
+      box.classList.toggle('filled', !!box.value);
+      if (box.value && i < boxes.length - 1) boxes[i + 1].focus();
+      const full = readPinBoxValue(containerId);
+      if (full.length === 4) onComplete(full);
+    });
+    box.addEventListener('keydown', (e) => {
+      if (e.key === 'Backspace' && !box.value && i > 0) {
+        boxes[i - 1].focus();
+        boxes[i - 1].value = '';
+        boxes[i - 1].classList.remove('filled');
+        e.preventDefault();
+      }
+    });
+    box.addEventListener('paste', (e) => {
+      const text = (e.clipboardData || window.clipboardData).getData('text').replace(/[^0-9]/g, '').slice(0, 4);
+      if (!text) return;
+      e.preventDefault();
+      paintPinBoxes(containerId, text);
+      if (text.length === 4) { onComplete(text); }
+      else focusPinBox(containerId, text.length);
+    });
+  });
+}
+
 function updatePinStatusUI() {
   const statusEl = document.getElementById('pin-status-text');
   const btnEl = document.getElementById('pin-action-btn');
@@ -2769,26 +2810,36 @@ function openPinSetupModal(forced) {
     : "Set a 4-digit PIN to authorize withdrawals. Don't share this with anyone.";
   document.getElementById('pin-setup-confirm-wrap').style.display = 'none';
   document.getElementById('pin-setup-error').style.display = 'none';
-  document.getElementById('pin-setup-cancel-btn').style.display = forced ? 'none' : 'block';
+  // Always leave a way out — even mid-withdrawal, a person must be able to
+  // back out instead of getting stuck on a modal with no exit.
+  const cancelBtn = document.getElementById('pin-setup-cancel-btn');
+  cancelBtn.style.display = 'block';
+  cancelBtn.textContent = forced ? 'Cancel withdrawal' : 'Cancel';
   resetPinBoxes('pin-setup-boxes-1');
   resetPinBoxes('pin-setup-boxes-2');
-  document.getElementById('pin-setup-hidden-1').value = '';
-  document.getElementById('pin-setup-hidden-2').value = '';
   document.getElementById('pin-setup-modal').classList.add('show');
-  setTimeout(() => document.getElementById('pin-setup-hidden-1').focus(), 80);
+  wirePinSetupBoxesIfNeeded();
+  setTimeout(() => focusPinBox('pin-setup-boxes-1', 0), 80);
 }
 
 function closePinSetupModal() {
   pinChangePassword = null;
+  pinSetupForcedChain = false;
   document.getElementById('pin-setup-modal').classList.remove('show');
 }
 
-function onPinSetupStep1Input(value) {
-  paintPinBoxes('pin-setup-boxes-1', value);
-  if (value.length < 4) return;
+let pinSetupWired = false;
+function wirePinSetupBoxesIfNeeded() {
+  if (pinSetupWired) return;
+  wirePinBoxAutoAdvance('pin-setup-boxes-1', onPinSetupStep1Complete);
+  wirePinBoxAutoAdvance('pin-setup-boxes-2', onPinSetupStep2Complete);
+  pinSetupWired = true;
+}
+
+function onPinSetupStep1Complete(value) {
   pinSetupStep1Value = value;
   document.getElementById('pin-setup-confirm-wrap').style.display = 'block';
-  setTimeout(() => document.getElementById('pin-setup-hidden-2').focus(), 80);
+  setTimeout(() => focusPinBox('pin-setup-boxes-2', 0), 80);
 }
 
 function resetPinSetupToStep1(message) {
@@ -2799,15 +2850,12 @@ function resetPinSetupToStep1(message) {
   document.getElementById('pin-setup-confirm-wrap').style.display = 'none';
   resetPinBoxes('pin-setup-boxes-1');
   resetPinBoxes('pin-setup-boxes-2');
-  document.getElementById('pin-setup-hidden-1').value = '';
-  document.getElementById('pin-setup-hidden-2').value = '';
-  setTimeout(() => document.getElementById('pin-setup-hidden-1').focus(), 80);
+  setPinBoxesDisabled('pin-setup-boxes-1', false);
+  setPinBoxesDisabled('pin-setup-boxes-2', false);
+  setTimeout(() => focusPinBox('pin-setup-boxes-1', 0), 80);
 }
 
-async function onPinSetupStep2Input(value) {
-  paintPinBoxes('pin-setup-boxes-2', value);
-  if (value.length < 4) return;
-
+async function onPinSetupStep2Complete(value) {
   if (value !== pinSetupStep1Value) {
     resetPinSetupToStep1("PINs don't match. Let's try again.");
     return;
@@ -2815,6 +2863,7 @@ async function onPinSetupStep2Input(value) {
 
   const errEl = document.getElementById('pin-setup-error');
   errEl.style.display = 'none';
+  setPinBoxesDisabled('pin-setup-boxes-2', true);
 
   try {
     const body = { pin: value };
