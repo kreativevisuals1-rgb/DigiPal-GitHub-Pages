@@ -2057,27 +2057,31 @@ async function loadTransactions() {
       if (insErr) console.warn('Reversal insert error:', insErr.message);
     }
 
-    // 2. Ensure wallet balance includes all reversal credits.
-    // We compute what the balance should be: sum of all credits minus sum of
-    // all debits across the full transaction set, then sync if it differs.
-    const expectedBalance = txs.reduce((sum, t) => {
-      if (t.type === 'credit' && t.status !== 'failed') return sum + Number(t.amount);
-      if (t.type === 'debit' && t.status !== 'failed') return sum - Number(t.amount);
-      return sum;
-    }, 0);
+    // 2. Ensure wallet balance reflects all reversal credits that exist in
+    // the transactions table but haven't been applied to wallets.balance yet.
+    // Only reversals that are already recorded (reversalRefs) but whose amount
+    // is not yet reflected in the stored balance need to be added.
+    // We deliberately avoid recomputing the full expected balance from
+    // transactions because other categories (earn, vtu_refund_credits) touch
+    // credits_balance, not wallets.balance, and would corrupt the calculation.
     const { data: walletRow } = await sb
       .from('wallets')
       .select('balance')
       .eq('user_id', currentUser.id)
       .maybeSingle();
     const storedBalance = walletRow?.balance ?? 0;
-    // Only patch if the discrepancy is due to unaccounted reversal credits
-    const unaccountedReversalTotal = failedTxs
-      .filter(t => reversalRefs.has('REV_' + t.reference) && !missingReversals.find(m => m.id === t.id))
-      .reduce((sum, t) => sum + Number(t.amount), 0);
-    // A simpler, safer check: if stored balance is less than expected, top it up
-    if (storedBalance < expectedBalance) {
-      const corrected = expectedBalance;
+
+    // Find reversal credits that are already in transactions but whose
+    // originating failed withdrawal amount is NOT yet in the stored balance.
+    // We detect this by checking: for each failed withdrawal that has a
+    // reversal entry in the DB (reversalRefs), did that reversal come from
+    // our missingReversals insert this session? If yes, the balance update
+    // needs to happen now. If it was already there before, the balance was
+    // already updated at mark-failed time (or needs patching now).
+    // Safest approach: only add amounts for reversals we just inserted.
+    if (missingReversals.length > 0) {
+      const totalRefund = missingReversals.reduce((sum, t) => sum + Number(t.amount), 0);
+      const corrected = storedBalance + totalRefund;
       const { error: balErr } = await sb
         .from('wallets')
         .update({ balance: corrected })
