@@ -1309,31 +1309,68 @@ async function confirmMarkProcessed() {
 }
 
 async function markFailed(id) {
-  if (!confirm('Mark this withdrawal as failed? The user will need to be refunded manually.')) return;
+  if (!confirm('Mark this withdrawal as failed? The user\'s wallet will be automatically refunded.')) return;
   if (!sbAdmin) return;
   const w = allWithdrawals.find(r => r.id === id);
   if (!w) return;
 
   try {
+    // 1. Update withdrawal_requests status to failed
     const { error: reqErr } = await sbAdmin
       .from('withdrawal_requests')
-      .update({ status: 'failed' })
+      .update({ status: 'failed', failed_at: new Date().toISOString() })
       .eq('id', id);
     if (reqErr) throw reqErr;
 
+    // 2. Update transaction status to failed
     const { error: txErr } = await sbAdmin
       .from('transactions')
       .update({ status: 'failed' })
       .eq('reference', w.reference)
       .eq('user_id', w.user_id);
-    if (txErr) console.warn(txErr.message);
+    if (txErr) console.warn('tx update err:', txErr.message);
 
+    // 3. Refund the user's wallet balance
+    // Read current balance first to avoid race conditions
+    const { data: walletData, error: walletReadErr } = await sbAdmin
+      .from('wallets')
+      .select('balance')
+      .eq('user_id', w.user_id)
+      .maybeSingle();
+    if (walletReadErr) throw walletReadErr;
+
+    const currentBalance = walletData?.balance ?? 0;
+    const refundedBalance = currentBalance + Number(w.amount);
+
+    const { error: walletErr } = await sbAdmin
+      .from('wallets')
+      .update({ balance: refundedBalance })
+      .eq('user_id', w.user_id);
+    if (walletErr) throw walletErr;
+
+    // 4. Insert a credit transaction record for the refund
+    const { error: refundTxErr } = await sbAdmin
+      .from('transactions')
+      .insert([{
+        user_id: w.user_id,
+        user_name: w.user_name,
+        user_email: w.user_email,
+        type: 'credit',
+        category: 'withdrawal_reversal',
+        status: 'completed',
+        amount: Number(w.amount),
+        description: 'Reversal — failed withdrawal to ' + (w.bank_name || 'bank'),
+        reference: 'REV_' + w.reference,
+      }]);
+    if (refundTxErr) console.warn('refund tx insert err:', refundTxErr.message);
+
+    // 5. Update local state and UI
     const idx = allWithdrawals.findIndex(r => r.id === id);
     if (idx !== -1) allWithdrawals[idx].status = 'failed';
     updateWdStats();
     renderWithdrawalsTable();
     updatePendingBadge();
-    showToast('Marked as failed. Remember to refund the user\'s wallet if needed.', 'red');
+    showToast(`✅ Marked as failed. ₦${Number(w.amount).toLocaleString()} has been refunded to ${w.user_name}'s wallet.`, 'green');
   } catch(err) {
     showToast('Error: ' + err.message, 'red');
   }
