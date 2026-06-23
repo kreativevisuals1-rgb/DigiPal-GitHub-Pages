@@ -8,6 +8,8 @@
 <title>DigiPal Solutions</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://js.paystack.co/v1/inline.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -742,11 +744,79 @@ html,body{overflow-x:hidden;max-width:100vw}
             <!-- Actions -->
             <div style="display:flex;gap:.75rem;padding:1.25rem 1.5rem 0">
               <button onclick="closeReceipt()" style="flex:1;padding:.75rem;border-radius:10px;border:1.5px solid #e5e7eb;background:#fff;font-size:.9rem;font-weight:600;cursor:pointer;color:#374151">Close</button>
-              <button onclick="shareReceipt()" style="flex:2;padding:.75rem;border-radius:10px;border:none;background:var(--brand);color:#fff;font-size:.9rem;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:.5rem">
+              <button onclick="openShareSheet()" style="flex:2;padding:.75rem;border-radius:10px;border:none;background:var(--brand);color:#fff;font-size:.9rem;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:.5rem">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
                 Share Receipt
               </button>
             </div>
+          </div>
+        </div>
+
+        <!-- ── SHARE OPTIONS SHEET ── -->
+        <div id="share-sheet-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:3000;align-items:flex-end;justify-content:center" onclick="if(event.target===this)closeShareSheet()">
+          <div id="share-sheet" style="background:#fff;border-radius:20px 20px 0 0;width:100%;max-width:480px;padding:0 0 1.5rem;transform:translateY(100%);transition:transform .3s cubic-bezier(.32,.72,0,1)">
+            <!-- Handle -->
+            <div style="display:flex;justify-content:center;padding:10px 0 0">
+              <div style="width:36px;height:4px;border-radius:2px;background:#e5e7eb"></div>
+            </div>
+            <div style="padding:1.1rem 1.5rem .75rem;border-bottom:1px solid #f3f4f6">
+              <div style="font-size:1rem;font-weight:800;color:#111">Share Receipt</div>
+              <div style="font-size:.82rem;color:#9ca3af;margin-top:.2rem">Choose how to share this transaction</div>
+            </div>
+            <!-- Options -->
+            <div style="padding:.75rem 1rem">
+              <!-- Save as Image -->
+              <button onclick="shareAsImage()" id="share-img-btn" style="width:100%;display:flex;align-items:center;gap:1rem;padding:.9rem 1rem;border:none;background:none;cursor:pointer;border-radius:12px;transition:background .15s;text-align:left" onmouseover="this.style.background='#f9fafb'" onmouseout="this.style.background='none'">
+                <div style="width:46px;height:46px;border-radius:12px;background:#e1f5ee;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0F6E56" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                </div>
+                <div>
+                  <div style="font-size:.92rem;font-weight:700;color:#111">Save as Image</div>
+                  <div style="font-size:.78rem;color:#9ca3af;margin-top:.1rem">Download receipt as a PNG photo</div>
+                </div>
+                <div id="share-img-spinner" style="display:none;margin-left:auto"><div style="width:20px;height:20px;border:2.5px solid #e5e7eb;border-top-color:var(--brand);border-radius:50%;animation:spin .7s linear infinite"></div></div>
+              </button>
+              <!-- Download as PDF -->
+              <button onclick="shareAsPDF()" id="share-pdf-btn" style="width:100%;display:flex;align-items:center;gap:1rem;padding:.9rem 1rem;border:none;background:none;cursor:pointer;border-radius:12px;transition:background .15s;text-align:left" onmouseover="this.style.background='#f9fafb'" onmouseout="this.style.background='none'">
+                <div style="width:46px;height:46px;border-radius:12px;background:#fef3c7;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#92400e" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                </div>
+                <div>
+                  <div style="font-size:.92rem;font-weight:700;color:#111">Download as PDF</div>
+                  <div style="font-size:.78rem;color:#9ca3af;margin-top:.1rem">Save a printable PDF of this receipt</div>
+                </div>
+                <div id="share-pdf-spinner" style="display:none;margin-left:auto"><div style="width:20px;height:20px;border:2.5px solid #e5e7eb;border-top-color:#92400e;border-radius:50%;animation:spin .7s linear infinite"></div></div>
+              </button>
+
+            </div>
+            <div style="padding:0 1.5rem">
+              <button onclick="closeShareSheet()" style="width:100%;padding:.75rem;border-radius:10px;border:1.5px solid #e5e7eb;background:#fff;font-size:.9rem;font-weight:600;cursor:pointer;color:#374151">Cancel</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── HIDDEN RECEIPT CARD (used by html2canvas) ── -->
+        <div id="receipt-export-card" style="position:fixed;left:-9999px;top:0;width:400px;background:#fff;font-family:'Segoe UI',system-ui,sans-serif;padding:0;border-radius:16px;overflow:hidden;box-shadow:0 4px 32px rgba(0,0,0,.12)">
+          <!-- Green header band -->
+          <div id="rec-export-header" style="background:linear-gradient(135deg,#04342C,#0F6E56);padding:2rem 1.75rem 1.5rem;text-align:center;color:#fff">
+            <div style="font-size:1.15rem;font-weight:800;letter-spacing:.01em;margin-bottom:1rem">DigiPal.</div>
+            <div id="rec-export-icon" style="width:60px;height:60px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.6rem;margin:0 auto .75rem;background:rgba(255,255,255,.15)"></div>
+            <div id="rec-export-status" style="font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.75);margin-bottom:.4rem"></div>
+            <div id="rec-export-amount" style="font-size:2.2rem;font-weight:900"></div>
+          </div>
+          <!-- Body rows -->
+          <div style="padding:1.25rem 1.75rem">
+            <div id="rec-export-rows"></div>
+            <!-- Reference box -->
+            <div style="background:#f9fafb;border-radius:10px;padding:.85rem 1rem;margin-top:.5rem">
+              <div style="font-size:.68rem;color:#9ca3af;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:.3rem">Transaction Reference</div>
+              <div id="rec-export-ref" style="font-size:.78rem;font-family:monospace;color:#374151;word-break:break-all"></div>
+            </div>
+          </div>
+          <!-- Footer -->
+          <div style="border-top:1px solid #f3f4f6;padding:.85rem 1.75rem;display:flex;align-items:center;justify-content:space-between">
+            <div style="font-size:.72rem;color:#9ca3af">Powered by DigiPal</div>
+            <div style="font-size:.72rem;color:#9ca3af" id="rec-export-date-footer"></div>
           </div>
         </div>
       </div>
@@ -2324,41 +2394,155 @@ function copyRef() {
   });
 }
 
-async function shareReceipt() {
+// ── SHARE SHEET ──────────────────────────────────────────────────────
+function openShareSheet() {
   if (!currentReceiptTx) return;
-  const tx = currentReceiptTx;
-  const meta = txMeta(tx);
+  const overlay = document.getElementById('share-sheet-overlay');
+  const sheet   = document.getElementById('share-sheet');
+  overlay.style.display = 'flex';
+  requestAnimationFrame(() => { sheet.style.transform = 'translateY(0)'; });
+}
+
+function closeShareSheet() {
+  const sheet   = document.getElementById('share-sheet');
+  sheet.style.transform = 'translateY(100%)';
+  setTimeout(() => { document.getElementById('share-sheet-overlay').style.display = 'none'; }, 300);
+}
+
+// Populate the hidden export card with current receipt data, then return it.
+function buildExportCard() {
+  const tx     = currentReceiptTx;
+  const meta   = txMeta(tx);
   const status = txStatusInfo(tx);
-  const sign = tx.type === 'credit' ? '+' : '-';
-  const amt = '₦' + Number(tx.amount).toLocaleString('en-NG', {minimumFractionDigits:2});
-  const date = new Date(tx.created_at).toLocaleString('en-NG', {
-    day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit'
+  const sign   = tx.type === 'credit' ? '+' : '-';
+  const amt    = '₦' + Number(tx.amount).toLocaleString('en-NG', {minimumFractionDigits:2});
+  const fullDate = new Date(tx.created_at).toLocaleString('en-NG', {
+    weekday:'short', day:'numeric', month:'short', year:'numeric',
+    hour:'2-digit', minute:'2-digit'
   });
 
-  const text = [
-    '🧾 DigiPal Transaction Receipt',
-    '─────────────────────',
-    `Type:      ${meta.label}`,
-    `Amount:    ${sign}${amt}`,
-    tx.bank_name ? `Bank:      ${tx.bank_name}` : '',
-    tx.account_number ? `Account:   ${tx.account_number}` : '',
-    tx.account_name ? `Name:      ${tx.account_name}` : '',
-    `Date:      ${date}`,
-    `Status:    ${status.label}`,
-    `Ref:       ${tx.reference || '—'}`,
-    '─────────────────────',
-    'DigiPal · digipal.app',
-  ].filter(Boolean).join('\n');
+  document.getElementById('rec-export-icon').textContent   = meta.icon;
+  document.getElementById('rec-export-status').textContent = status.label;
+  document.getElementById('rec-export-amount').textContent = sign + amt;
+  document.getElementById('rec-export-ref').textContent    = tx.reference || '—';
+  document.getElementById('rec-export-date-footer').textContent = new Date(tx.created_at)
+    .toLocaleDateString('en-NG', {day:'numeric', month:'short', year:'numeric'});
 
-  if (navigator.share) {
-    try {
-      await navigator.share({ title: 'DigiPal Receipt', text });
-    } catch(e) { /* user cancelled */ }
-  } else {
-    await navigator.clipboard.writeText(text);
-    showToast('Receipt copied to clipboard!', 'success', 3000);
+  const rows = [
+    { label: 'Transaction Type', value: meta.label },
+    tx.bank_name      ? { label: 'Bank',           value: tx.bank_name } : null,
+    tx.account_number ? { label: 'Account Number', value: tx.account_number } : null,
+    tx.account_name   ? { label: 'Account Name',   value: tx.account_name } : null,
+    { label: 'Date & Time', value: fullDate },
+    { label: 'Status',      value: status.label },
+  ].filter(Boolean);
+
+  document.getElementById('rec-export-rows').innerHTML = rows.map(r => `
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;padding:.6rem 0;border-bottom:1px solid #f3f4f6">
+      <span style="font-size:.75rem;color:#9ca3af;font-weight:600;flex-shrink:0;margin-right:.75rem">${r.label}</span>
+      <span style="font-size:.82rem;font-weight:700;color:#111;text-align:right">${r.value}</span>
+    </div>
+  `).join('');
+
+  return document.getElementById('receipt-export-card');
+}
+
+// Capture the hidden card as a canvas → return a data URL (PNG).
+async function captureReceiptCanvas() {
+  const card = buildExportCard();
+  // Briefly place it on-screen but invisible so html2canvas can measure it
+  card.style.left   = '-9999px';
+  card.style.top    = '0';
+  card.style.display = 'block';
+
+  const canvas = await html2canvas(card, {
+    scale: 3,          // high-DPI / retina quality
+    useCORS: true,
+    backgroundColor: '#ffffff',
+    logging: false,
+  });
+
+  card.style.left = '-9999px'; // push back off-screen
+  return canvas;
+}
+
+// ── Save as Image ────────────────────────────────────────────────────
+async function shareAsImage() {
+  const imgBtn     = document.getElementById('share-img-btn');
+  const spinner    = document.getElementById('share-img-spinner');
+  imgBtn.disabled  = true;
+  spinner.style.display = 'block';
+
+  try {
+    const canvas  = await captureReceiptCanvas();
+    const dataUrl = canvas.toDataURL('image/png');
+
+    // Try Web Share API with file (works on Android Chrome / Safari iOS)
+    if (navigator.canShare) {
+      const blob = await (await fetch(dataUrl)).blob();
+      const file = new File([blob], 'DigiPal_Receipt.png', { type: 'image/png' });
+      if (navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], title: 'DigiPal Receipt' });
+        closeShareSheet();
+        return;
+      }
+    }
+
+    // Fallback: download the image
+    const a    = document.createElement('a');
+    a.href     = dataUrl;
+    a.download = `DigiPal_Receipt_${currentReceiptTx.reference || Date.now()}.png`;
+    a.click();
+    closeShareSheet();
+    showToast('✅ Receipt image downloaded!', 'success', 3000);
+  } catch (e) {
+    if (e.name !== 'AbortError') showToast('Could not save image. Please try again.', 'error', 4000);
+  } finally {
+    imgBtn.disabled = false;
+    spinner.style.display = 'none';
   }
 }
+
+// ── Download as PDF ──────────────────────────────────────────────────
+async function shareAsPDF() {
+  const pdfBtn    = document.getElementById('share-pdf-btn');
+  const spinner   = document.getElementById('share-pdf-spinner');
+  pdfBtn.disabled = true;
+  spinner.style.display = 'block';
+
+  try {
+    const canvas  = await captureReceiptCanvas();
+    const imgData = canvas.toDataURL('image/png');
+
+    const { jsPDF } = window.jspdf;
+    // A5 portrait — compact enough for a receipt
+    const pdf    = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a5' });
+    const pw     = pdf.internal.pageSize.getWidth();
+    const ph     = pdf.internal.pageSize.getHeight();
+
+    // Scale the receipt image to fit width with proportional height
+    const imgW   = canvas.width;
+    const imgH   = canvas.height;
+    const ratio  = imgH / imgW;
+    const pdfImgW = pw - 20;           // 10mm margin each side
+    const pdfImgH = pdfImgW * ratio;
+    const yOffset = (ph - pdfImgH) / 2; // vertically centred
+
+    pdf.addImage(imgData, 'PNG', 10, Math.max(10, yOffset), pdfImgW, pdfImgH);
+    pdf.save(`DigiPal_Receipt_${currentReceiptTx.reference || Date.now()}.pdf`);
+
+    closeShareSheet();
+    showToast('✅ PDF downloaded!', 'success', 3000);
+  } catch (e) {
+    showToast('Could not generate PDF. Please try again.', 'error', 4000);
+    console.error('PDF export error:', e);
+  } finally {
+    pdfBtn.disabled = false;
+    spinner.style.display = 'none';
+  }
+}
+
+
 
 // ════════════════════════════════════════════════
 //  FUND WALLET — PAYSTACK
