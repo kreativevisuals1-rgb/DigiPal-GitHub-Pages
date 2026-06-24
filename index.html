@@ -638,59 +638,65 @@ html,body{overflow-x:hidden;max-width:100vw}
         <div><h1>👋 Welcome back, <span id="dash-firstname">there</span>!</h1><p>Here's what's happening on your account today.</p></div>
       </div>
 
-      <div style="max-width:600px">
+      <div class="overview-grid">
 
-        <!-- Balance card -->
-        <div class="hero-balance-card">
-          <div class="hero-balance-top">
-            <span class="hero-balance-label">Wallet Balance</span>
+        <!-- LEFT COLUMN -->
+        <div>
+          <!-- Balance card -->
+          <div class="hero-balance-card">
+            <div class="hero-balance-top">
+              <span class="hero-balance-label">Wallet Balance</span>
+            </div>
+            <div class="hero-balance-amount stat-value green" id="overview-wallet-balance">₦0.00</div>
+            <div class="hero-balance-actions">
+              <div class="hero-balance-btn primary" onclick="openFundModal()">+ Add Money</div>
+              <div class="hero-balance-btn outline" onclick="openWithdrawModal()">Withdraw</div>
+            </div>
           </div>
-          <div class="hero-balance-amount stat-value green" id="overview-wallet-balance">₦0.00</div>
-          <div class="hero-balance-actions">
-            <div class="hero-balance-btn primary" onclick="openFundModal()">+ Add Money</div>
-            <div class="hero-balance-btn outline" onclick="openWithdrawModal()">Withdraw</div>
+
+          <!-- DVA -->
+          <div class="dva-card" id="dva-card-overview" onclick="handleDVAClick()" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:1rem 1.25rem;margin-bottom:1rem">
+            <div>
+              <div style="font-weight:700;font-size:.92rem">🏦 Permanent Funding Account</div>
+              <div style="font-size:.78rem;color:var(--text-muted);margin-top:.15rem">A dedicated account number just for you</div>
+            </div>
+            <span class="btn btn-outline" style="font-size:.8rem;padding:.45rem 1rem;flex-shrink:0">Get Account</span>
           </div>
-        </div>
 
-        <!-- DVA -->
-        <div class="dva-card" id="dva-card-overview" onclick="handleDVAClick()" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:1rem 1.25rem;margin-bottom:1rem">
-          <div>
-            <div style="font-weight:700;font-size:.92rem">🏦 Permanent Funding Account</div>
-            <div style="font-size:.78rem;color:var(--text-muted);margin-top:.15rem">A dedicated account number just for you</div>
-          </div>
-          <span class="btn btn-outline" style="font-size:.8rem;padding:.45rem 1rem;flex-shrink:0">Get Account</span>
-        </div>
-
-        <!-- Mini stats -->
-        <div class="mini-stats-row" style="margin-bottom:1rem">
-          <div class="mini-stat"><div class="mini-stat-label">Credits Balance</div><div class="mini-stat-value" id="credits-balance-display" style="color:#8a6d00">₦0.00</div></div>
-          <div class="mini-stat"><div class="mini-stat-label">Referrals</div><div class="mini-stat-value" id="overview-referral-count">0</div></div>
-        </div>
-
-        <!-- Quick Services -->
-        <div class="dash-card" style="margin-bottom:1rem">
-          <h3>⚡ Quick Services</h3>
-          <div class="icon-grid">
-            <div class="icon-grid-item" onclick="openVtuSheet('airtime')"><span class="icon-grid-circle">📞</span><span>Airtime</span></div>
-            <div class="icon-grid-item" onclick="openVtuSheet('data')"><span class="icon-grid-circle">📶</span><span>Data</span></div>
-            <div class="icon-grid-item" onclick="openVtuSheet('cable')"><span class="icon-grid-circle">📺</span><span>Cable TV</span></div>
-            <div class="icon-grid-item" onclick="openVtuSheet('electricity')"><span class="icon-grid-circle">💡</span><span>Electricity</span></div>
-            <div class="icon-grid-item" onclick="openFundModal()"><span class="icon-grid-circle">💳</span><span>Add Money</span></div>
+          <!-- Quick Services -->
+          <div class="dash-card">
+            <h3>⚡ Quick Services</h3>
+            <div class="icon-grid">
+              <div class="icon-grid-item" onclick="openVtuSheet('airtime')"><span class="icon-grid-circle">📞</span><span>Airtime</span></div>
+              <div class="icon-grid-item" onclick="openVtuSheet('data')"><span class="icon-grid-circle">📶</span><span>Data</span></div>
+              <div class="icon-grid-item" onclick="openVtuSheet('cable')"><span class="icon-grid-circle">📺</span><span>Cable TV</span></div>
+              <div class="icon-grid-item" onclick="openVtuSheet('electricity')"><span class="icon-grid-circle">💡</span><span>Electricity</span></div>
+              <div class="icon-grid-item" onclick="openFundModal()"><span class="icon-grid-circle">💳</span><span>Add Money</span></div>
+            </div>
           </div>
         </div>
 
-        <!-- Recent Transactions -->
-        <div class="dash-card" style="padding:0;overflow:hidden">
-          <div style="display:flex;align-items:center;justify-content:space-between;padding:1rem 1.25rem;border-bottom:1px solid var(--border)">
-            <h3 style="margin:0;font-size:.95rem;font-weight:700">Recent Transactions</h3>
-            <span onclick="showTxHistoryPage()" style="font-size:.85rem;font-weight:600;color:var(--brand);cursor:pointer;display:flex;align-items:center;gap:.25rem">
-              Transaction History <span style="font-size:1rem">›</span>
-            </span>
+        <!-- RIGHT COLUMN -->
+        <div>
+          <!-- Mini stats -->
+          <div class="mini-stats-row" style="margin-bottom:1.25rem">
+            <div class="mini-stat"><div class="mini-stat-label">Credits Balance</div><div class="mini-stat-value" id="credits-balance-display" style="color:#8a6d00">₦0.00</div></div>
+            <div class="mini-stat"><div class="mini-stat-label">Referrals</div><div class="mini-stat-value" id="overview-referral-count">0</div></div>
           </div>
-          <div id="tx-list-overview" class="tx-list">
-            <div style="text-align:center;padding:2rem 0;color:var(--text-muted);font-size:.9rem">
-              <div style="font-size:2rem;margin-bottom:.5rem">📭</div>
-              No transactions yet.<br>Add money to get started.
+
+          <!-- Recent Transactions -->
+          <div class="dash-card" style="padding:0;overflow:hidden">
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:1rem 1.25rem;border-bottom:1px solid var(--border)">
+              <h3 style="margin:0;font-size:.95rem;font-weight:700">Recent Transactions</h3>
+              <span onclick="showTxHistoryPage()" style="font-size:.85rem;font-weight:600;color:var(--brand);cursor:pointer;display:flex;align-items:center;gap:.25rem">
+                Transaction History <span style="font-size:1rem">›</span>
+              </span>
+            </div>
+            <div id="tx-list-overview" class="tx-list">
+              <div style="text-align:center;padding:2rem 0;color:var(--text-muted);font-size:.9rem">
+                <div style="font-size:2rem;margin-bottom:.5rem">📭</div>
+                No transactions yet.<br>Add money to get started.
+              </div>
             </div>
           </div>
         </div>
@@ -960,6 +966,25 @@ html,body{overflow-x:hidden;max-width:100vw}
         <button class="btn btn-outline" style="width:100%;margin-top:1rem" onclick="closeWithdrawPinModal()">Cancel</button>
         <div style="margin-top:1rem">
           <a href="#" onclick="event.preventDefault();forgotPinFromWithdraw()" style="font-size:.82rem;color:var(--text-muted)">Forgot PIN?</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- VTU PURCHASE PIN MODAL -->
+    <div class="modal-overlay" id="vtu-pin-modal" onclick="if(event.target===this)closeVtuPinModal()">
+      <div class="modal-box">
+        <div class="pin-lock-icon">🔒</div>
+        <div class="modal-title">Enter your PIN</div>
+        <div class="modal-sub">Authorize this purchase of <strong id="vtu-pin-modal-amount">₦0</strong></div>
+        <div class="pin-boxes" id="vtu-pin-boxes">
+          <input class="pin-box" maxlength="1" inputmode="numeric" pattern="[0-9]*" autocomplete="off">
+          <input class="pin-box" maxlength="1" inputmode="numeric" pattern="[0-9]*" autocomplete="off">
+          <input class="pin-box" maxlength="1" inputmode="numeric" pattern="[0-9]*" autocomplete="off">
+          <input class="pin-box" maxlength="1" inputmode="numeric" pattern="[0-9]*" autocomplete="off">
+        </div>
+        <p id="vtu-pin-error" style="display:none;font-size:.83rem;color:#dc2626;margin-top:.25rem;text-align:center"></p>
+        <div style="text-align:center;margin-top:.5rem">
+          <a href="#" onclick="event.preventDefault();forgotPinFromVtu()" style="font-size:.82rem;color:var(--text-muted)">Forgot PIN?</a>
         </div>
       </div>
     </div>
@@ -2173,6 +2198,65 @@ function vcmRecalc() {
 
 async function vcmExecute() {
   if (!_vcmPending) return;
+
+  // Re-fetch fresh user data so pin_hash is current
+  try {
+    const { data, error } = await sb.auth.getUser();
+    if (!error && data?.user) currentUser = data.user;
+  } catch (_) {}
+
+  if (!userHasPin()) {
+    // No PIN set yet — force setup first, then re-open confirm modal after
+    openPinSetupModal(true);
+    return;
+  }
+
+  // Show PIN modal to authorize
+  document.getElementById('vtu-pin-modal-amount').textContent =
+    '₦' + Number(_vcmPending.amount).toLocaleString('en-NG', {minimumFractionDigits:2});
+  resetPinBoxes('vtu-pin-boxes');
+  document.getElementById('vtu-pin-error').style.display = 'none';
+  document.getElementById('vtu-pin-modal').classList.add('show');
+  if (!vtuPinWired) {
+    wirePinBoxAutoAdvance('vtu-pin-boxes', handleVtuPinComplete);
+    vtuPinWired = true;
+  }
+  setTimeout(() => focusPinBox('vtu-pin-boxes', 0), 80);
+}
+
+function closeVtuPinModal() {
+  document.getElementById('vtu-pin-modal').classList.remove('show');
+  resetPinBoxes('vtu-pin-boxes');
+}
+
+function forgotPinFromVtu() {
+  document.getElementById('vtu-pin-modal').classList.remove('show');
+  openPinResetModal();
+}
+
+let vtuPinWired = false;
+
+async function handleVtuPinComplete(value) {
+  const errEl = document.getElementById('vtu-pin-error');
+  errEl.style.display = 'none';
+
+  document.querySelectorAll('#vtu-pin-boxes .pin-box').forEach(b => b.disabled = true);
+  const result = await verifyPin(value);
+  document.querySelectorAll('#vtu-pin-boxes .pin-box').forEach(b => b.disabled = false);
+
+  if (!result.valid) {
+    errEl.textContent = result.error || 'Incorrect PIN. Please try again.';
+    errEl.style.display = 'block';
+    document.getElementById('vtu-pin-boxes').classList.add('pin-error-shake');
+    setTimeout(() => document.getElementById('vtu-pin-boxes').classList.remove('pin-error-shake'), 350);
+    resetPinBoxes('vtu-pin-boxes');
+    if (!result.locked) setTimeout(() => focusPinBox('vtu-pin-boxes', 0), 50);
+    return;
+  }
+
+  // PIN correct — close PIN modal and execute purchase
+  document.getElementById('vtu-pin-modal').classList.remove('show');
+
   const payBtn = document.getElementById('vcm-pay-btn');
   payBtn.disabled    = true;
   payBtn.textContent = 'Processing…';
