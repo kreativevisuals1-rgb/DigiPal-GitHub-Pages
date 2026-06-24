@@ -613,7 +613,6 @@ html,body{overflow-x:hidden;max-width:100vw}
     <div class="sidebar-nav">
       <div class="nav-item active" onclick="switchTab('overview')"><span class="ni">🏠</span> Overview</div>
       <div class="nav-item" onclick="switchTab('wallet')"><span class="ni">💰</span> Wallet</div>
-      <div class="nav-item" onclick="switchTab('vtu')"><span class="ni">⚡</span> VTU Services</div>
       <div class="nav-item" onclick="switchTab('courses')"><span class="ni">🎓</span> Courses</div>
       <div class="nav-item" onclick="switchTab('marketplace')"><span class="ni">🛍️</span> Marketplace</div>
       <div class="nav-item" onclick="switchTab('profile')"><span class="ni">👤</span> Profile</div>
@@ -656,9 +655,10 @@ html,body{overflow-x:hidden;max-width:100vw}
           <div class="dash-card">
             <h3>⚡ Quick Services</h3>
             <div class="icon-grid">
-              <div class="icon-grid-item" onclick="switchTab('vtu')"><span class="icon-grid-circle">📞</span><span>Airtime</span></div>
-              <div class="icon-grid-item" onclick="switchTab('vtu')"><span class="icon-grid-circle">📶</span><span>Data</span></div>
-              <div class="icon-grid-item" onclick="switchTab('vtu')"><span class="icon-grid-circle">📺</span><span>Cable TV</span></div>
+              <div class="icon-grid-item" onclick="openVtuSheet('airtime')"><span class="icon-grid-circle">📞</span><span>Airtime</span></div>
+              <div class="icon-grid-item" onclick="openVtuSheet('data')"><span class="icon-grid-circle">📶</span><span>Data</span></div>
+              <div class="icon-grid-item" onclick="openVtuSheet('cable')"><span class="icon-grid-circle">📺</span><span>Cable TV</span></div>
+              <div class="icon-grid-item" onclick="openVtuSheet('electricity')"><span class="icon-grid-circle">💡</span><span>Electricity</span></div>
               <div class="icon-grid-item" onclick="switchTab('wallet')"><span class="icon-grid-circle">💳</span><span>Fund</span></div>
             </div>
           </div>
@@ -989,6 +989,105 @@ html,body{overflow-x:hidden;max-width:100vw}
       </div>
     </div>
 
+    <!-- VTU BOTTOM SHEETS (OPay-style, one per service) -->
+
+    <!-- AIRTIME SHEET -->
+    <div class="modal-overlay" id="vtu-sheet-airtime" onclick="if(event.target===this)closeVtuSheet('airtime')">
+      <div class="modal-box" style="max-width:420px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem">
+          <div class="modal-title" style="margin-bottom:0">📞 Buy Airtime</div>
+          <button onclick="closeVtuSheet('airtime')" style="background:none;border:none;font-size:1.3rem;cursor:pointer;color:var(--text-muted)">✕</button>
+        </div>
+        <div class="form-group"><label>Network</label>
+          <select id="vtu-air-network" style="width:100%;padding:.65rem .9rem;border:1.5px solid var(--border);border-radius:8px;font-size:.9rem;outline:none;color:var(--text)">
+            <option value="mtn">MTN</option><option value="airtel">Airtel</option><option value="glo">Glo</option><option value="etisalat">9mobile</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Phone Number</label><input type="tel" id="vtu-air-phone" placeholder="08012345678" style="width:100%;padding:.7rem 1rem;border:1.5px solid var(--border);border-radius:8px;font-size:1rem;outline:none"/></div>
+        <div class="form-group"><label>Amount (₦)</label><input type="number" id="vtu-air-amount" placeholder="100" min="50" style="width:100%;padding:.7rem 1rem;border:1.5px solid var(--border);border-radius:8px;font-size:1rem;outline:none"/></div>
+        <div class="modal-actions">
+          <button class="btn btn-outline" style="flex:1" onclick="closeVtuSheet('airtime')">Cancel</button>
+          <button class="btn btn-primary" style="flex:2" onclick="vtuBuyAirtime()">Continue</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- DATA SHEET -->
+    <div class="modal-overlay" id="vtu-sheet-data" onclick="if(event.target===this)closeVtuSheet('data')">
+      <div class="modal-box" style="max-width:420px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem">
+          <div class="modal-title" style="margin-bottom:0">📶 Buy Data</div>
+          <button onclick="closeVtuSheet('data')" style="background:none;border:none;font-size:1.3rem;cursor:pointer;color:var(--text-muted)">✕</button>
+        </div>
+        <div class="form-group"><label>Network</label>
+          <select id="vtu-data-network" onchange="vtuLoadVariations('data')" style="width:100%;padding:.65rem .9rem;border:1.5px solid var(--border);border-radius:8px;font-size:.9rem;outline:none;color:var(--text)">
+            <option value="mtn-data">MTN</option><option value="airtel-data">Airtel</option><option value="glo-data">Glo</option><option value="etisalat-data">9mobile</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Phone Number</label><input type="tel" id="vtu-data-phone" placeholder="08012345678" style="width:100%;padding:.7rem 1rem;border:1.5px solid var(--border);border-radius:8px;font-size:1rem;outline:none"/></div>
+        <div class="form-group"><label>Data Plan</label>
+          <select id="vtu-data-plan" style="width:100%;padding:.65rem .9rem;border:1.5px solid var(--border);border-radius:8px;font-size:.9rem;outline:none;color:var(--text)">
+            <option value="">Loading plans…</option>
+          </select>
+        </div>
+        <div class="modal-actions">
+          <button class="btn btn-outline" style="flex:1" onclick="closeVtuSheet('data')">Cancel</button>
+          <button class="btn btn-primary" style="flex:2" onclick="vtuBuyData()">Continue</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- CABLE TV SHEET -->
+    <div class="modal-overlay" id="vtu-sheet-cable" onclick="if(event.target===this)closeVtuSheet('cable')">
+      <div class="modal-box" style="max-width:420px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem">
+          <div class="modal-title" style="margin-bottom:0">📺 Cable TV</div>
+          <button onclick="closeVtuSheet('cable')" style="background:none;border:none;font-size:1.3rem;cursor:pointer;color:var(--text-muted)">✕</button>
+        </div>
+        <div class="form-group"><label>Provider</label>
+          <select id="vtu-cable-provider" onchange="vtuLoadVariations('cable')" style="width:100%;padding:.65rem .9rem;border:1.5px solid var(--border);border-radius:8px;font-size:.9rem;outline:none;color:var(--text)">
+            <option value="dstv">DStv</option><option value="gotv">GOtv</option><option value="startimes">StarTimes</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Smart Card Number</label><input type="text" id="vtu-cable-card" placeholder="Enter smart card number" style="width:100%;padding:.7rem 1rem;border:1.5px solid var(--border);border-radius:8px;font-size:1rem;outline:none"/></div>
+        <div class="form-group"><label>Package</label>
+          <select id="vtu-cable-plan" style="width:100%;padding:.65rem .9rem;border:1.5px solid var(--border);border-radius:8px;font-size:.9rem;outline:none;color:var(--text)">
+            <option value="">Loading packages…</option>
+          </select>
+        </div>
+        <div class="modal-actions">
+          <button class="btn btn-outline" style="flex:1" onclick="closeVtuSheet('cable')">Cancel</button>
+          <button class="btn btn-primary" style="flex:2" onclick="vtuPayCable()">Continue</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ELECTRICITY SHEET -->
+    <div class="modal-overlay" id="vtu-sheet-electricity" onclick="if(event.target===this)closeVtuSheet('electricity')">
+      <div class="modal-box" style="max-width:420px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem">
+          <div class="modal-title" style="margin-bottom:0">💡 Electricity Bill</div>
+          <button onclick="closeVtuSheet('electricity')" style="background:none;border:none;font-size:1.3rem;cursor:pointer;color:var(--text-muted)">✕</button>
+        </div>
+        <div class="form-group"><label>Disco</label>
+          <select id="vtu-elec-disco" style="width:100%;padding:.65rem .9rem;border:1.5px solid var(--border);border-radius:8px;font-size:.9rem;outline:none;color:var(--text)">
+            <option value="eko-electric">EKEDC (Eko)</option><option value="ikeja-electric">IKEDC (Ikeja)</option><option value="abuja-electric">AEDC (Abuja)</option><option value="portharcourt-electric">PHEDC (Port Harcourt)</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Meter Type</label>
+          <select id="vtu-elec-type" style="width:100%;padding:.65rem .9rem;border:1.5px solid var(--border);border-radius:8px;font-size:.9rem;outline:none;color:var(--text)">
+            <option value="prepaid">Prepaid</option><option value="postpaid">Postpaid</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Meter Number</label><input type="text" id="vtu-elec-meter" placeholder="Enter meter number" style="width:100%;padding:.7rem 1rem;border:1.5px solid var(--border);border-radius:8px;font-size:1rem;outline:none"/></div>
+        <div class="form-group"><label>Amount (₦)</label><input type="number" id="vtu-elec-amount" placeholder="1000" min="500" style="width:100%;padding:.7rem 1rem;border:1.5px solid var(--border);border-radius:8px;font-size:1rem;outline:none"/></div>
+        <div class="modal-actions">
+          <button class="btn btn-outline" style="flex:1" onclick="closeVtuSheet('electricity')">Cancel</button>
+          <button class="btn btn-primary" style="flex:2" onclick="vtuPayElectricity()">Continue</button>
+        </div>
+      </div>
+    </div>
+
     <!-- VTU CONFIRM MODAL (OPay-style credits toggle) -->
     <div class="modal-overlay" id="vtu-confirm-modal" onclick="if(event.target===this)closeVtuConfirm()">
       <div class="modal-box" style="max-width:420px;padding:1.75rem">
@@ -1080,77 +1179,6 @@ html,body{overflow-x:hidden;max-width:100vw}
     <!-- TOAST -->
     <div class="toast" id="toast"></div>
 
-    <!-- VTU TAB -->
-    <div class="dash-tab" id="tab-vtu">
-      <div class="dash-header"><div><h1>⚡ VTU Services</h1><p>Instant airtime, data, and bill payments — toggle your credits balance at checkout to use it.</p></div></div>
-      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px">
-        <div id="vtu-credits-note" style="background:#fff8e1;border:1px solid #ffe082;border-radius:10px;padding:10px 16px;font-size:.88rem;color:#8a6d00;font-weight:600;flex:1;min-width:220px">
-          🎁 Credits balance: ₦<span id="vtu-credits-display">0.00</span>
-        </div>
-        <div id="vtu-balance-note" style="background:#e8f5e9;border:1px solid #a7f3d0;border-radius:10px;padding:10px 16px;font-size:.88rem;color:#009624;font-weight:600;flex:1;min-width:220px">
-          💰 Wallet balance: ₦<span id="vtu-balance-display">0.00</span>
-        </div>
-      </div>
-      <div class="dash-grid">
-        <div class="dash-card">
-          <h3>📞 Buy Airtime</h3>
-          <div class="form-group"><label>Network</label>
-            <select id="vtu-air-network" style="width:100%;padding:.65rem .9rem;border:1.5px solid var(--border);border-radius:8px;font-size:.9rem;outline:none;color:var(--text)">
-              <option value="mtn">MTN</option><option value="airtel">Airtel</option><option value="glo">Glo</option><option value="etisalat">9mobile</option>
-            </select>
-          </div>
-          <div class="form-group"><label>Phone Number</label><input type="tel" id="vtu-air-phone" placeholder="08012345678"/></div>
-          <div class="form-group"><label>Amount (₦)</label><input type="number" id="vtu-air-amount" placeholder="100" min="50"/></div>
-          <button class="btn btn-primary" style="width:100%" id="vtu-air-btn" onclick="vtuBuyAirtime()">Buy Airtime</button>
-        </div>
-        <div class="dash-card">
-          <h3>📶 Buy Data</h3>
-          <div class="form-group"><label>Network</label>
-            <select id="vtu-data-network" onchange="vtuLoadVariations('data')" style="width:100%;padding:.65rem .9rem;border:1.5px solid var(--border);border-radius:8px;font-size:.9rem;outline:none;color:var(--text)">
-              <option value="mtn-data">MTN</option><option value="airtel-data">Airtel</option><option value="glo-data">Glo</option><option value="etisalat-data">9mobile</option>
-            </select>
-          </div>
-          <div class="form-group"><label>Phone Number</label><input type="tel" id="vtu-data-phone" placeholder="08012345678"/></div>
-          <div class="form-group"><label>Data Plan</label>
-            <select id="vtu-data-plan" style="width:100%;padding:.65rem .9rem;border:1.5px solid var(--border);border-radius:8px;font-size:.9rem;outline:none;color:var(--text)">
-              <option value="">Loading plans…</option>
-            </select>
-          </div>
-          <button class="btn btn-primary" style="width:100%" id="vtu-data-btn" onclick="vtuBuyData()">Buy Data</button>
-        </div>
-        <div class="dash-card">
-          <h3>📺 Cable TV</h3>
-          <div class="form-group"><label>Provider</label>
-            <select id="vtu-cable-provider" onchange="vtuLoadVariations('cable')" style="width:100%;padding:.65rem .9rem;border:1.5px solid var(--border);border-radius:8px;font-size:.9rem;outline:none;color:var(--text)">
-              <option value="dstv">DStv</option><option value="gotv">GOtv</option><option value="startimes">StarTimes</option>
-            </select>
-          </div>
-          <div class="form-group"><label>Smart Card Number</label><input type="text" id="vtu-cable-card" placeholder="Enter smart card number"/></div>
-          <div class="form-group"><label>Package</label>
-            <select id="vtu-cable-plan" style="width:100%;padding:.65rem .9rem;border:1.5px solid var(--border);border-radius:8px;font-size:.9rem;outline:none;color:var(--text)">
-              <option value="">Loading packages…</option>
-            </select>
-          </div>
-          <button class="btn btn-primary" style="width:100%" id="vtu-cable-btn" onclick="vtuPayCable()">Pay Now</button>
-        </div>
-        <div class="dash-card">
-          <h3>💡 Electricity Bill</h3>
-          <div class="form-group"><label>Disco</label>
-            <select id="vtu-elec-disco" style="width:100%;padding:.65rem .9rem;border:1.5px solid var(--border);border-radius:8px;font-size:.9rem;outline:none;color:var(--text)">
-              <option value="eko-electric">EKEDC (Eko)</option><option value="ikeja-electric">IKEDC (Ikeja)</option><option value="abuja-electric">AEDC (Abuja)</option><option value="portharcourt-electric">PHEDC (Port Harcourt)</option>
-            </select>
-          </div>
-          <div class="form-group"><label>Meter Type</label>
-            <select id="vtu-elec-type" style="width:100%;padding:.65rem .9rem;border:1.5px solid var(--border);border-radius:8px;font-size:.9rem;outline:none;color:var(--text)">
-              <option value="prepaid">Prepaid</option><option value="postpaid">Postpaid</option>
-            </select>
-          </div>
-          <div class="form-group"><label>Meter Number</label><input type="text" id="vtu-elec-meter" placeholder="Enter meter number"/></div>
-          <div class="form-group"><label>Amount (₦)</label><input type="number" id="vtu-elec-amount" placeholder="1000" min="500"/></div>
-          <button class="btn btn-primary" style="width:100%" id="vtu-elec-btn" onclick="vtuPayElectricity()">Pay Bill</button>
-        </div>
-      </div>
-    </div>
 
     <!-- COURSES TAB -->
     <div class="dash-tab" id="tab-courses">
@@ -1454,7 +1482,6 @@ function switchTab(name) {
   if (map[name] !== undefined) items[map[name]].classList.add('active');
   closeSidebar();
   if (name === 'earn') { initEarnTab(); loadEarnCredits(); }
-  if (name === 'vtu') { vtuInitTab(); loadWalletBalance(); }
   if (name === 'wallet') { loadTransactions(); loadWalletBalance(); }
   // Remember which tab the user was on so a refresh restores it
   localStorage.setItem('digipal_active_tab', name);
@@ -1984,6 +2011,19 @@ async function vtuLoadVariations(kind) {
   }
 }
 
+// ─── VTU BOTTOM SHEETS ───────────────────────────────────────────────────────
+function openVtuSheet(type) {
+  if (!currentUser) { showToast('Please log in first.', 'red'); return; }
+  // Load plans lazily when data/cable sheet first opens
+  if (type === 'data')  vtuLoadVariations('data');
+  if (type === 'cable') vtuLoadVariations('cable');
+  loadWalletBalance();
+  document.getElementById('vtu-sheet-' + type).classList.add('show');
+}
+function closeVtuSheet(type) {
+  document.getElementById('vtu-sheet-' + type).classList.remove('show');
+}
+
 // ─── VTU CONFIRM MODAL (OPay-style credits toggle) ───────────────────────────
 // Holds the pending transaction while the user reviews and optionally
 // toggles their credits balance on/off before confirming.
@@ -2243,6 +2283,7 @@ function vtuBuyAirtime() {
   const amount  = document.getElementById('vtu-air-amount').value;
   if (!phone)   { showToast('Enter a phone number.', 'red'); return; }
   if (!amount || Number(amount) < 50) { showToast('Enter a valid amount (min ₦50).', 'red'); return; }
+  closeVtuSheet('airtime');
   showVtuConfirm({ service: 'Airtime', serviceID: network, amount, phone, btnLabel: 'Airtime purchase' });
 }
 
@@ -2255,6 +2296,7 @@ function vtuBuyData() {
   if (!phone) { showToast('Enter a phone number.', 'red'); return; }
   const planText = planSel.selectedOptions[0]?.textContent || '';
   const amount   = (planText.match(/₦([\d,]+)/) || [])[1]?.replace(/,/g, '') || 0;
+  closeVtuSheet('data');
   showVtuConfirm({ service: 'Data', serviceID: network, variation_code, amount, phone, btnLabel: 'Data purchase', extraLabel: 'Data Plan', extraValue: planText });
 }
 
@@ -2267,6 +2309,7 @@ function vtuPayCable() {
   if (!card) { showToast('Enter your smart card number.', 'red'); return; }
   const planText = planSel.selectedOptions[0]?.textContent || '';
   const amount   = (planText.match(/₦([\d,]+)/) || [])[1]?.replace(/,/g, '') || 0;
+  closeVtuSheet('cable');
   showVtuConfirm({ service: 'Cable TV', serviceID: provider, billersCode: card, variation_code, amount, phone: card, btnLabel: 'Cable TV payment', extraLabel: 'Package', extraValue: planText });
 }
 
@@ -2277,6 +2320,7 @@ function vtuPayElectricity() {
   const amount     = document.getElementById('vtu-elec-amount').value;
   if (!meter)  { showToast('Enter your meter number.', 'red'); return; }
   if (!amount || Number(amount) < 500) { showToast('Enter a valid amount (min ₦500).', 'red'); return; }
+  closeVtuSheet('electricity');
   showVtuConfirm({ service: 'Electricity', serviceID: `${disco}-${meterType}`, billersCode: meter, amount, phone: meter, btnLabel: 'Electricity payment', extraLabel: 'Meter No.', extraValue: meter });
 }
 
