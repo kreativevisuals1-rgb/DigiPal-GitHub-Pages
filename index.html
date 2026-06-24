@@ -950,41 +950,22 @@ html,body{overflow-x:hidden;max-width:100vw}
       </div>
     </div>
 
-    <!-- WITHDRAW MODAL — STEP 3: PIN AUTHORIZATION -->
-    <div class="modal-overlay" id="withdraw-pin-modal" onclick="if(event.target===this)closeWithdrawPinModal()">
+    <!-- SHARED PIN AUTHORIZATION MODAL — used for both withdrawals and VTU purchases -->
+    <div class="modal-overlay" id="shared-pin-modal" onclick="if(event.target===this)closeSharedPinModal()" style="z-index:1100">
       <div class="modal-box" style="max-width:360px;text-align:center">
         <div class="pin-lock-icon">🔒</div>
         <div class="modal-title">Enter your PIN</div>
-        <div class="modal-sub">Authorize this withdrawal of <strong id="pin-modal-amount">₦0</strong></div>
-        <div class="pin-boxes" id="withdraw-pin-boxes">
+        <div class="modal-sub">Authorize this <span id="shared-pin-modal-action">transaction</span> of <strong id="shared-pin-modal-amount">₦0</strong></div>
+        <div class="pin-boxes" id="shared-pin-boxes">
           <input class="pin-box" maxlength="1" inputmode="numeric" pattern="[0-9]*" autocomplete="off">
           <input class="pin-box" maxlength="1" inputmode="numeric" pattern="[0-9]*" autocomplete="off">
           <input class="pin-box" maxlength="1" inputmode="numeric" pattern="[0-9]*" autocomplete="off">
           <input class="pin-box" maxlength="1" inputmode="numeric" pattern="[0-9]*" autocomplete="off">
         </div>
-        <p id="withdraw-pin-error" style="display:none;font-size:.83rem;color:#dc2626;margin-top:.25rem"></p>
-        <button class="btn btn-outline" style="width:100%;margin-top:1rem" onclick="closeWithdrawPinModal()">Cancel</button>
+        <p id="shared-pin-error" style="display:none;font-size:.83rem;color:#dc2626;margin-top:.25rem"></p>
+        <button class="btn btn-outline" style="width:100%;margin-top:1rem" onclick="closeSharedPinModal()">Cancel</button>
         <div style="margin-top:1rem">
-          <a href="#" onclick="event.preventDefault();forgotPinFromWithdraw()" style="font-size:.82rem;color:var(--text-muted)">Forgot PIN?</a>
-        </div>
-      </div>
-    </div>
-
-    <!-- VTU PURCHASE PIN MODAL -->
-    <div class="modal-overlay" id="vtu-pin-modal" onclick="if(event.target===this)closeVtuPinModal()" style="z-index:1100">
-      <div class="modal-box">
-        <div class="pin-lock-icon">🔒</div>
-        <div class="modal-title">Enter your PIN</div>
-        <div class="modal-sub">Authorize this purchase of <strong id="vtu-pin-modal-amount">₦0</strong></div>
-        <div class="pin-boxes" id="vtu-pin-boxes">
-          <input class="pin-box" maxlength="1" inputmode="numeric" pattern="[0-9]*" autocomplete="off">
-          <input class="pin-box" maxlength="1" inputmode="numeric" pattern="[0-9]*" autocomplete="off">
-          <input class="pin-box" maxlength="1" inputmode="numeric" pattern="[0-9]*" autocomplete="off">
-          <input class="pin-box" maxlength="1" inputmode="numeric" pattern="[0-9]*" autocomplete="off">
-        </div>
-        <p id="vtu-pin-error" style="display:none;font-size:.83rem;color:#dc2626;margin-top:.25rem;text-align:center"></p>
-        <div style="text-align:center;margin-top:.5rem">
-          <a href="#" onclick="event.preventDefault();forgotPinFromVtu()" style="font-size:.82rem;color:var(--text-muted)">Forgot PIN?</a>
+          <a href="#" onclick="event.preventDefault();forgotPinFromShared()" style="font-size:.82rem;color:var(--text-muted)">Forgot PIN?</a>
         </div>
       </div>
     </div>
@@ -2090,7 +2071,7 @@ function closeVtuSheet(type) {
 // toggles their credits balance on/off before confirming.
 let _vcmPending = null;
 
-function showVtuConfirm({ service, serviceID, billersCode, variation_code, amount, phone, btnId, btnLabel, extraLabel, extraValue }) {
+function showVtuConfirm({ service, serviceID, billersCode, variation_code, amount, phone, btnId, btnLabel, extraLabel, extraValue, descSuffix }) {
   if (!vtuCheckConfigured()) return;
   if (!currentUser) { showToast('Please log in first.', 'red'); return; }
   if (!sb) { showToast('Service is not available right now.', 'red'); return; }
@@ -2098,7 +2079,7 @@ function showVtuConfirm({ service, serviceID, billersCode, variation_code, amoun
   if (!numericAmount || numericAmount <= 0) { showToast('Enter a valid amount.', 'red'); return; }
   if (!phone && !billersCode) { showToast('Enter the required number.', 'red'); return; }
 
-  _vcmPending = { service, serviceID, billersCode, variation_code, amount: numericAmount, phone, btnId, btnLabel };
+  _vcmPending = { service, serviceID, billersCode, variation_code, amount: numericAmount, phone, btnId, btnLabel, descSuffix };
 
   const fmt = n => Number(n).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -2209,67 +2190,19 @@ async function vcmExecute() {
     // No PIN set yet — close confirm modal, force PIN setup
     // _vcmPending is preserved so user can re-open confirm after setup
     document.getElementById('vtu-confirm-modal').classList.remove('show');
-    openPinSetupModal(true);
+    openPinSetupModal(true, 'vtu');
     return;
   }
 
-  // Close the confirm modal first so PIN modal renders cleanly on top
+  // Close the confirm modal first so the shared PIN modal renders cleanly on top
   document.getElementById('vtu-confirm-modal').classList.remove('show');
 
-  // Show PIN modal to authorize
-  document.getElementById('vtu-pin-modal-amount').textContent =
-    '₦' + Number(_vcmPending.amount).toLocaleString('en-NG', {minimumFractionDigits:2});
-  resetPinBoxes('vtu-pin-boxes');
-  document.getElementById('vtu-pin-error').style.display = 'none';
-  document.getElementById('vtu-pin-modal').classList.add('show');
-  if (!vtuPinWired) {
-    wirePinBoxAutoAdvance('vtu-pin-boxes', handleVtuPinComplete);
-    vtuPinWired = true;
-  }
-  setTimeout(() => focusPinBox('vtu-pin-boxes', 0), 80);
+  // Show shared PIN modal to authorize (context = 'vtu')
+  openSharedPinModal('vtu', _vcmPending.amount, 'purchase');
 }
 
-function closeVtuPinModal() {
-  document.getElementById('vtu-pin-modal').classList.remove('show');
-  resetPinBoxes('vtu-pin-boxes');
-  // Re-open the confirm modal so user can cancel or retry
-  if (_vcmPending) {
-    document.getElementById('vtu-confirm-modal').classList.add('show');
-    const payBtn = document.getElementById('vcm-pay-btn');
-    payBtn.disabled = false;
-    payBtn.textContent = 'Pay';
-  }
-}
-
-function forgotPinFromVtu() {
-  document.getElementById('vtu-pin-modal').classList.remove('show');
-  document.getElementById('vtu-confirm-modal').classList.remove('show');
-  openPinResetModal();
-}
-
-let vtuPinWired = false;
-
-async function handleVtuPinComplete(value) {
-  const errEl = document.getElementById('vtu-pin-error');
-  errEl.style.display = 'none';
-
-  document.querySelectorAll('#vtu-pin-boxes .pin-box').forEach(b => b.disabled = true);
-  const result = await verifyPin(value);
-  document.querySelectorAll('#vtu-pin-boxes .pin-box').forEach(b => b.disabled = false);
-
-  if (!result.valid) {
-    errEl.textContent = result.error || 'Incorrect PIN. Please try again.';
-    errEl.style.display = 'block';
-    document.getElementById('vtu-pin-boxes').classList.add('pin-error-shake');
-    setTimeout(() => document.getElementById('vtu-pin-boxes').classList.remove('pin-error-shake'), 350);
-    resetPinBoxes('vtu-pin-boxes');
-    if (!result.locked) setTimeout(() => focusPinBox('vtu-pin-boxes', 0), 50);
-    return;
-  }
-
-  // PIN correct — close PIN modal and execute purchase
-  document.getElementById('vtu-pin-modal').classList.remove('show');
-
+// Runs once the shared PIN modal confirms a correct PIN for a VTU purchase.
+async function runVtuPurchaseAfterPin() {
   const payBtn = document.getElementById('vcm-pay-btn');
   payBtn.disabled    = true;
   payBtn.textContent = 'Processing…';
@@ -2285,7 +2218,7 @@ async function handleVtuPinComplete(value) {
 
 // Shared purchase executor — called by vcmExecute after user confirms.
 // Now supports splitting: _creditsUsed + _walletUsed are set by the modal.
-async function vtuPurchase({ service, serviceID, billersCode, variation_code, amount, phone, btnId, btnLabel, _creditsUsed, _walletUsed }) {
+async function vtuPurchase({ service, serviceID, billersCode, variation_code, amount, phone, btnId, btnLabel, descSuffix, _creditsUsed, _walletUsed }) {
   const numericAmount = Number(amount);
   const creditsUsed   = Number(_creditsUsed || 0);
   const walletUsed    = Number(_walletUsed  ?? numericAmount);
@@ -2295,10 +2228,16 @@ async function vtuPurchase({ service, serviceID, billersCode, variation_code, am
   const userName = ((meta.first_name || '') + ' ' + (meta.last_name || '')).trim() || currentUser.email;
   let debited    = false;
 
-  // Determine label for toasts/transactions
+  // Fund-source label — used only for the success toast, never in the
+  // persisted transaction description (the description should say exactly
+  // what was bought, e.g. "Airtime — 08011111111 (MTN)", not how it was paid for).
   const fundLabel = creditsUsed > 0 && walletUsed === 0 ? 'Read & Earn credits'
                   : creditsUsed > 0 && walletUsed > 0   ? 'credits + wallet'
                   :                                        'wallet balance';
+
+  // What actually shows up in the transaction list: the service, the
+  // recipient (phone/card/meter), and exactly what was purchased.
+  const txDescription = `${service}${phone ? ' — ' + phone : ''}${descSuffix ? ' (' + descSuffix + ')' : ''}`;
 
   try {
     // 1. Re-fetch live balances to prevent race conditions
@@ -2352,7 +2291,7 @@ async function vtuPurchase({ service, serviceID, billersCode, variation_code, am
       category:   creditsUsed > 0 && walletUsed === 0 ? 'vtu_credits' : creditsUsed > 0 ? 'vtu_split' : 'vtu_wallet',
       status:     'success',
       amount:     numericAmount,
-      description: `${service}${phone ? ' — ' + phone : ''} (${fundLabel})`,
+      description: txDescription,
       reference:  txRef,
       user_name:  userName,
       user_email: currentUser.email
@@ -2410,18 +2349,33 @@ async function vtuPurchase({ service, serviceID, billersCode, variation_code, am
   }
 }
 
+// Returns the visible label of the currently selected <option> in a <select>
+// (e.g. "MTN", "DStv") — used to build human-readable transaction descriptions.
+function vtuSelLabel(id) {
+  const el = document.getElementById(id);
+  return el?.selectedOptions?.[0]?.textContent?.trim() || '';
+}
+
+// Strips a trailing " — ₦1,234" price tag off a plan label, since the
+// amount is already shown separately — leaves just "1GB - 30 Days" etc.
+function vtuStripPrice(label) {
+  return (label || '').replace(/\s*—\s*₦[\d,]+\s*$/, '').trim();
+}
+
 function vtuBuyAirtime() {
-  const network = document.getElementById('vtu-air-network').value;
+  const network      = document.getElementById('vtu-air-network').value;
+  const networkLabel = vtuSelLabel('vtu-air-network');
   const phone   = document.getElementById('vtu-air-phone').value.trim();
   const amount  = document.getElementById('vtu-air-amount').value;
   if (!phone)   { showToast('Enter a phone number.', 'red'); return; }
   if (!amount || Number(amount) < 50) { showToast('Enter a valid amount (min ₦50).', 'red'); return; }
   closeVtuSheet('airtime');
-  showVtuConfirm({ service: 'Airtime', serviceID: network, amount, phone, btnLabel: 'Airtime purchase' });
+  showVtuConfirm({ service: 'Airtime', serviceID: network, amount, phone, btnLabel: 'Airtime purchase', descSuffix: networkLabel });
 }
 
 function vtuBuyData() {
-  const network  = document.getElementById('vtu-data-network').value;
+  const network      = document.getElementById('vtu-data-network').value;
+  const networkLabel = vtuSelLabel('vtu-data-network');
   const phone    = document.getElementById('vtu-data-phone').value.trim();
   const planSel  = document.getElementById('vtu-data-plan');
   const variation_code = planSel.value;
@@ -2429,12 +2383,14 @@ function vtuBuyData() {
   if (!phone) { showToast('Enter a phone number.', 'red'); return; }
   const planText = planSel.selectedOptions[0]?.textContent || '';
   const amount   = (planText.match(/₦([\d,]+)/) || [])[1]?.replace(/,/g, '') || 0;
+  const planName = vtuStripPrice(planText);
   closeVtuSheet('data');
-  showVtuConfirm({ service: 'Data', serviceID: network, variation_code, amount, phone, btnLabel: 'Data purchase', extraLabel: 'Data Plan', extraValue: planText });
+  showVtuConfirm({ service: 'Data', serviceID: network, variation_code, amount, phone, btnLabel: 'Data purchase', extraLabel: 'Data Plan', extraValue: planText, descSuffix: `${networkLabel} ${planName}`.trim() });
 }
 
 function vtuPayCable() {
-  const provider = document.getElementById('vtu-cable-provider').value;
+  const provider      = document.getElementById('vtu-cable-provider').value;
+  const providerLabel = vtuSelLabel('vtu-cable-provider');
   const card     = document.getElementById('vtu-cable-card').value.trim();
   const planSel  = document.getElementById('vtu-cable-plan');
   const variation_code = planSel.value;
@@ -2442,19 +2398,22 @@ function vtuPayCable() {
   if (!card) { showToast('Enter your smart card number.', 'red'); return; }
   const planText = planSel.selectedOptions[0]?.textContent || '';
   const amount   = (planText.match(/₦([\d,]+)/) || [])[1]?.replace(/,/g, '') || 0;
+  const planName = vtuStripPrice(planText);
   closeVtuSheet('cable');
-  showVtuConfirm({ service: 'Cable TV', serviceID: provider, billersCode: card, variation_code, amount, phone: card, btnLabel: 'Cable TV payment', extraLabel: 'Package', extraValue: planText });
+  showVtuConfirm({ service: 'Cable TV', serviceID: provider, billersCode: card, variation_code, amount, phone: card, btnLabel: 'Cable TV payment', extraLabel: 'Package', extraValue: planText, descSuffix: `${providerLabel} ${planName}`.trim() });
 }
 
 function vtuPayElectricity() {
-  const disco      = document.getElementById('vtu-elec-disco').value;
-  const meterType  = document.getElementById('vtu-elec-type').value;
+  const disco          = document.getElementById('vtu-elec-disco').value;
+  const discoLabel     = vtuSelLabel('vtu-elec-disco');
+  const meterType      = document.getElementById('vtu-elec-type').value;
+  const meterTypeLabel = vtuSelLabel('vtu-elec-type');
   const meter      = document.getElementById('vtu-elec-meter').value.trim();
   const amount     = document.getElementById('vtu-elec-amount').value;
   if (!meter)  { showToast('Enter your meter number.', 'red'); return; }
   if (!amount || Number(amount) < 500) { showToast('Enter a valid amount (min ₦500).', 'red'); return; }
   closeVtuSheet('electricity');
-  showVtuConfirm({ service: 'Electricity', serviceID: `${disco}-${meterType}`, billersCode: meter, amount, phone: meter, btnLabel: 'Electricity payment', extraLabel: 'Meter No.', extraValue: meter });
+  showVtuConfirm({ service: 'Electricity', serviceID: `${disco}-${meterType}`, billersCode: meter, amount, phone: meter, btnLabel: 'Electricity payment', extraLabel: 'Meter No.', extraValue: meter, descSuffix: `${discoLabel} (${meterTypeLabel})`.trim() });
 }
 
 // Load live data/cable plans the first time the VTU tab is opened.
@@ -3445,59 +3404,92 @@ async function proceedToWithdrawPin() {
   } catch (_) { /* fall back to whatever currentUser already holds */ }
 
   if (!userHasPin()) {
-    openPinSetupModal(true); // forced=true, will chain into PIN entry after setup
+    openPinSetupModal(true, 'withdraw'); // forced=true, will chain into PIN entry after setup
     return;
   }
-  openWithdrawPinModal();
+  openSharedPinModal('withdraw', pendingWithdrawAmount, 'withdrawal');
 }
 
-let withdrawPinWired = false;
-function openWithdrawPinModal() {
-  document.getElementById('pin-modal-amount').textContent = '₦' + pendingWithdrawAmount.toLocaleString();
-  resetPinBoxes('withdraw-pin-boxes');
-  document.getElementById('withdraw-pin-error').style.display = 'none';
-  document.getElementById('withdraw-pin-modal').classList.add('show');
-  if (!withdrawPinWired) {
-    wirePinBoxAutoAdvance('withdraw-pin-boxes', handleWithdrawPinComplete);
-    withdrawPinWired = true;
-  }
-  setTimeout(() => focusPinBox('withdraw-pin-boxes', 0), 80);
-}
-
-function closeWithdrawPinModal() {
-  document.getElementById('withdraw-pin-modal').classList.remove('show');
-}
+// ════════════════════════════════════════════════
+//  SHARED PIN AUTHORIZATION MODAL
+//  One modal, one set of handlers, used by both the
+//  withdrawal flow and the VTU purchase flow. The
+//  `context` argument ('withdraw' | 'vtu') decides what
+//  happens on Cancel, Forgot PIN, and successful entry.
+// ════════════════════════════════════════════════
+let sharedPinContext = null; // 'withdraw' | 'vtu'
+let sharedPinWired   = false;
 
 function setPinBoxesDisabled(containerId, disabled) {
   document.querySelectorAll('#' + containerId + ' .pin-box').forEach(b => b.disabled = disabled);
 }
 
-async function handleWithdrawPinComplete(value) {
-  const errEl = document.getElementById('withdraw-pin-error');
+function openSharedPinModal(context, amount, actionLabel) {
+  sharedPinContext = context;
+  document.getElementById('shared-pin-modal-action').textContent = actionLabel || 'transaction';
+  document.getElementById('shared-pin-modal-amount').textContent =
+    '₦' + Number(amount).toLocaleString('en-NG', { minimumFractionDigits: 2 });
+  resetPinBoxes('shared-pin-boxes');
+  document.getElementById('shared-pin-error').style.display = 'none';
+  document.getElementById('shared-pin-modal').classList.add('show');
+  if (!sharedPinWired) {
+    wirePinBoxAutoAdvance('shared-pin-boxes', handleSharedPinComplete);
+    sharedPinWired = true;
+  }
+  setTimeout(() => focusPinBox('shared-pin-boxes', 0), 80);
+}
+
+function closeSharedPinModal() {
+  document.getElementById('shared-pin-modal').classList.remove('show');
+  resetPinBoxes('shared-pin-boxes');
+  // VTU purchases re-open the confirm modal so the user can cancel or retry;
+  // withdrawals just close, since the review modal stays behind it.
+  if (sharedPinContext === 'vtu' && _vcmPending) {
+    document.getElementById('vtu-confirm-modal').classList.add('show');
+    const payBtn = document.getElementById('vcm-pay-btn');
+    payBtn.disabled = false;
+    payBtn.textContent = 'Pay';
+  }
+  sharedPinContext = null;
+}
+
+function forgotPinFromShared() {
+  document.getElementById('shared-pin-modal').classList.remove('show');
+  if (sharedPinContext === 'vtu') {
+    document.getElementById('vtu-confirm-modal').classList.remove('show');
+  }
+  sharedPinContext = null;
+  openPinResetModal();
+}
+
+async function handleSharedPinComplete(value) {
+  const errEl = document.getElementById('shared-pin-error');
   errEl.style.display = 'none';
 
-  setPinBoxesDisabled('withdraw-pin-boxes', true); // prevent double-submit while the request is in flight
-
+  setPinBoxesDisabled('shared-pin-boxes', true); // prevent double-submit while the request is in flight
   const result = await verifyPin(value);
-
-  setPinBoxesDisabled('withdraw-pin-boxes', false);
+  setPinBoxesDisabled('shared-pin-boxes', false);
 
   if (!result.valid) {
     errEl.textContent = result.error || 'Incorrect PIN. Please try again.';
     errEl.style.display = 'block';
-    document.getElementById('withdraw-pin-boxes').classList.add('pin-error-shake');
-    setTimeout(() => document.getElementById('withdraw-pin-boxes').classList.remove('pin-error-shake'), 350);
-    resetPinBoxes('withdraw-pin-boxes');
-    if (!result.locked) setTimeout(() => focusPinBox('withdraw-pin-boxes', 0), 50);
+    document.getElementById('shared-pin-boxes').classList.add('pin-error-shake');
+    setTimeout(() => document.getElementById('shared-pin-boxes').classList.remove('pin-error-shake'), 350);
+    resetPinBoxes('shared-pin-boxes');
+    if (!result.locked) setTimeout(() => focusPinBox('shared-pin-boxes', 0), 50);
     return;
   }
-  document.getElementById('withdraw-pin-modal').classList.remove('show');
-  executeWithdrawal(pendingWithdrawAmount);
-}
 
-function forgotPinFromWithdraw() {
-  document.getElementById('withdraw-pin-modal').classList.remove('show');
-  openPinResetModal();
+  // PIN correct — close the modal, then hand off to whichever flow opened it
+  document.getElementById('shared-pin-modal').classList.remove('show');
+  const context = sharedPinContext;
+  sharedPinContext = null;
+
+  if (context === 'withdraw') {
+    executeWithdrawal(pendingWithdrawAmount);
+  } else if (context === 'vtu') {
+    runVtuPurchaseAfterPin();
+  }
 }
 
 // ── STEP 3 → submit: the actual withdrawal write, now gated by PIN ──
@@ -3600,7 +3592,8 @@ function closeWithdrawalSuccess() {
 //  client-side check could never enforce.
 // ════════════════════════════════════════════════
 let pendingWithdrawAmount = 0;
-let pinSetupForcedChain = false; // true if we opened setup mid-withdrawal
+let pinSetupForcedChain = false; // true if we opened setup mid-withdrawal or mid-VTU-purchase
+let pinSetupChainContext = 'withdraw'; // 'withdraw' | 'vtu' — which flow to resume after forced setup
 let pinSetupStep1Value = '';
 let pinChangePassword = null; // carried through when changing an existing PIN
 
@@ -3711,12 +3704,16 @@ function updatePinStatusUI() {
 }
 
 // ── PIN SETUP (two-step: enter, confirm) ──
-function openPinSetupModal(forced) {
-  pinSetupForcedChain = !!forced;
+// chainContext: 'withdraw' | 'vtu' — which flow to resume after a forced setup
+function openPinSetupModal(forced, chainContext) {
+  pinSetupForcedChain  = !!forced;
+  pinSetupChainContext = chainContext || 'withdraw';
   pinSetupStep1Value = '';
   document.getElementById('pin-setup-title').textContent = forced ? 'Set up your PIN first' : (userHasPin() ? 'Change Transaction PIN' : 'Create a Transaction PIN');
   document.getElementById('pin-setup-sub').textContent = forced
-    ? 'You need a 4-digit transaction PIN before you can withdraw. This protects your funds even if someone else has your phone unlocked.'
+    ? (pinSetupChainContext === 'vtu'
+        ? 'You need a 4-digit transaction PIN before you can make this purchase. This protects your funds even if someone else has your phone unlocked.'
+        : 'You need a 4-digit transaction PIN before you can withdraw. This protects your funds even if someone else has your phone unlocked.')
     : "Set a 4-digit PIN to authorize withdrawals. Don't share this with anyone.";
   document.getElementById('pin-setup-confirm-wrap').style.display = 'none';
   document.getElementById('pin-setup-error').style.display = 'none';
@@ -3724,7 +3721,7 @@ function openPinSetupModal(forced) {
   // back out instead of getting stuck on a modal with no exit.
   const cancelBtn = document.getElementById('pin-setup-cancel-btn');
   cancelBtn.style.display = 'block';
-  cancelBtn.textContent = forced ? 'Cancel withdrawal' : 'Cancel';
+  cancelBtn.textContent = forced ? (pinSetupChainContext === 'vtu' ? 'Cancel purchase' : 'Cancel withdrawal') : 'Cancel';
   resetPinBoxes('pin-setup-boxes-1');
   resetPinBoxes('pin-setup-boxes-2');
   document.getElementById('pin-setup-modal').classList.add('show');
@@ -3791,7 +3788,11 @@ async function onPinSetupStep2Complete(value) {
 
     if (pinSetupForcedChain) {
       pinSetupForcedChain = false;
-      openWithdrawPinModal();
+      if (pinSetupChainContext === 'vtu' && _vcmPending) {
+        openSharedPinModal('vtu', _vcmPending.amount, 'purchase');
+      } else {
+        openSharedPinModal('withdraw', pendingWithdrawAmount, 'withdrawal');
+      }
     }
   } catch (err) {
     console.error('PIN setup error:', err);
