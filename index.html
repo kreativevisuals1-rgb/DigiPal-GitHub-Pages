@@ -2218,6 +2218,32 @@ async function runVtuPurchaseAfterPin() {
 
 // Shared purchase executor — called by vcmExecute after user confirms.
 // Now supports splitting: _creditsUsed + _walletUsed are set by the modal.
+// Logs a completed VTU purchase to the transactions table. Unlike a
+// fire-and-forget insert, this is awaited, retried once on failure, and
+// loudly surfaces a warning if it still fails — because by the time this
+// runs the wallet has already been debited and the purchase has already
+// gone through, so silently losing the record would leave the person with
+// no way to know what happened to their money.
+async function logVtuTransaction(payload, isRetry = false) {
+  const { error } = await sb.from('transactions').insert([payload]);
+  if (!error) {
+    loadTransactions();
+    return;
+  }
+  console.error('Transaction log failed' + (isRetry ? ' (retry)' : '') + ':', error);
+  if (!isRetry) {
+    setTimeout(() => logVtuTransaction(payload, true), 1200);
+    return;
+  }
+  // Both attempts failed — the purchase still went through and the wallet
+  // is still debited, so make sure the person knows to keep the reference.
+  showToast(
+    `⚠️ Your purchase went through but we couldn't save it to your history. Reference: ${payload.reference} — please screenshot this and contact support if it doesn't appear soon.`,
+    'red', 10000
+  );
+  loadTransactions(); // refresh anyway, in case it actually landed despite the reported error
+}
+
 async function vtuPurchase({ service, serviceID, billersCode, variation_code, amount, phone, btnId, btnLabel, descSuffix, _creditsUsed, _walletUsed }) {
   const numericAmount = Number(amount);
   const creditsUsed   = Number(_creditsUsed || 0);
@@ -2282,10 +2308,13 @@ async function vtuPurchase({ service, serviceID, billersCode, variation_code, am
     // 4. Fire success toast + UI refresh immediately — don't wait for DB log
     showToast(`✅ ${btnLabel || service} successful! Paid with ${fundLabel}.`, 'success', 5000);
     loadWalletBalance();
-    loadTransactions();
 
-    // Log transaction in background — non-blocking so user sees success instantly
-    sb.from('transactions').insert([{
+    // Log the transaction. The purchase has already gone through and the
+    // wallet is already debited, so this MUST NOT be silent if it fails —
+    // otherwise the person is left debited with zero record of what happened.
+    // Retry once (covers brief network blips), then loudly surface it if it
+    // still fails instead of swallowing the error.
+    logVtuTransaction({
       user_id:    currentUser.id,
       type:       'debit',
       category:   creditsUsed > 0 && walletUsed === 0 ? 'vtu_credits' : creditsUsed > 0 ? 'vtu_split' : 'vtu_wallet',
@@ -2295,8 +2324,6 @@ async function vtuPurchase({ service, serviceID, billersCode, variation_code, am
       reference:  txRef,
       user_name:  userName,
       user_email: currentUser.email
-    }]).then(({ error }) => {
-      if (error) console.error('Transaction log failed (non-critical):', error);
     });
 
     return true;
@@ -3497,12 +3524,14 @@ async function executeWithdrawal(amount) {
   const errEl = document.getElementById('withdraw-modal-error');
   errEl.style.display = 'none';
 
-  try {
-    const txRef = 'WD_' + Date.now() + '_' + Math.random().toString(36).slice(2,7).toUpperCase();
-    const meta = currentUser.user_metadata || {};
-    const userName = ((meta.first_name || '') + ' ' + (meta.last_name || '')).trim() || currentUser.email;
+  const txRef = 'WD_' + Date.now() + '_' + Math.random().toString(36).slice(2,7).toUpperCase();
+  const meta = currentUser.user_metadata || {};
+  const userName = ((meta.first_name || '') + ' ' + (meta.last_name || '')).trim() || currentUser.email;
+  let newBalance;
 
-    // 1. Debit the wallet immediately
+  // ── PHASE 1: debit the wallet. Nothing has moved yet, so if anything here
+  // fails it's genuinely safe to tell the person "failed, try again." ──
+  try {
     const { data: walletData, error: walletErr } = await sb
       .from('wallets')
       .select('balance')
@@ -3512,61 +3541,88 @@ async function executeWithdrawal(amount) {
     const currentBalance = walletData?.balance ?? 0;
     if (amount > currentBalance) throw new Error('Insufficient balance. Please refresh and try again.');
 
-    const newBalance = currentBalance - amount;
+    newBalance = currentBalance - amount;
     const { error: updateErr } = await sb
       .from('wallets')
       .update({ balance: newBalance })
       .eq('user_id', currentUser.id);
     if (updateErr) throw updateErr;
 
-    // 2. Create a pending withdrawal transaction record
-    const txPayload = {
-      user_id: currentUser.id,
-      type: 'debit',
-      category: 'withdrawal',
-      status: 'pending',
-      amount,
-      description: 'Withdrawal to ' + withdrawResolvedAccount.bank_name,
-      bank_name: withdrawResolvedAccount.bank_name,
-      bank_code: withdrawResolvedAccount.bank_code,
-      account_number: withdrawResolvedAccount.account_number,
-      account_name: withdrawResolvedAccount.account_name,
-      reference: txRef,
-      user_name: userName,
-      user_email: currentUser.email
-    };
-    const { error: txErr } = await sb.from('transactions').insert([txPayload]);
-    if (txErr) throw txErr;
-
-    // 3. Notify admin via withdrawal_requests table
-    const { error: reqErr } = await sb.from('withdrawal_requests').insert([{
-      user_id: currentUser.id,
-      user_name: userName,
-      user_email: currentUser.email,
-      amount,
-      bank_name: withdrawResolvedAccount.bank_name,
-      bank_code: withdrawResolvedAccount.bank_code,
-      account_number: withdrawResolvedAccount.account_number,
-      account_name: withdrawResolvedAccount.account_name,
-      reference: txRef,
-      status: 'pending'
-    }]);
-    if (reqErr) console.warn('Could not write withdrawal_request:', reqErr.message);
-
-    // 4. Update UI
-    closeWithdrawModal();
-    walletBalance = newBalance;
-    updateBalanceUI(walletBalance);
-    loadTransactions();
-    showWithdrawalSuccess(amount, withdrawResolvedAccount.account_name);
-
   } catch (err) {
-    console.error('Withdrawal error:', err);
+    console.error('Withdrawal error (pre-debit, safe to retry):', err);
     showToast('⚠️ ' + (err.message || 'Withdrawal failed. Please try again.'), 'error', 5000);
     document.getElementById('withdraw-modal').classList.add('show');
     errEl.textContent = err.message || 'Withdrawal failed. Please try again.';
     errEl.style.display = 'block';
+    return;
   }
+
+  // ── PHASE 2: the wallet is already debited from this point on. A failure
+  // here must NEVER say "failed, try again" — that would invite a second
+  // debit for money that already left the wallet. Instead: update the UI
+  // immediately (the debit is real), retry the record-keeping once, and if
+  // it still fails, surface a clear "your money moved, here's your
+  // reference" warning instead of a generic error. ──
+  walletBalance = newBalance;
+  updateBalanceUI(walletBalance);
+  closeWithdrawModal();
+  showWithdrawalSuccess(amount, withdrawResolvedAccount.account_name);
+
+  const txPayload = {
+    user_id: currentUser.id,
+    type: 'debit',
+    category: 'withdrawal',
+    status: 'pending',
+    amount,
+    description: 'Withdrawal to ' + withdrawResolvedAccount.bank_name,
+    bank_name: withdrawResolvedAccount.bank_name,
+    bank_code: withdrawResolvedAccount.bank_code,
+    account_number: withdrawResolvedAccount.account_number,
+    account_name: withdrawResolvedAccount.account_name,
+    reference: txRef,
+    user_name: userName,
+    user_email: currentUser.email
+  };
+  const reqPayload = {
+    user_id: currentUser.id,
+    user_name: userName,
+    user_email: currentUser.email,
+    amount,
+    bank_name: withdrawResolvedAccount.bank_name,
+    bank_code: withdrawResolvedAccount.bank_code,
+    account_number: withdrawResolvedAccount.account_number,
+    account_name: withdrawResolvedAccount.account_name,
+    reference: txRef,
+    status: 'pending'
+  };
+  logWithdrawalRecords(txPayload, reqPayload);
+}
+
+// Writes the withdrawal's transaction + admin-notification rows. Awaited,
+// retried once, and loudly surfaced if it still fails — see the comment
+// in PHASE 2 above for why this can never fail silently.
+async function logWithdrawalRecords(txPayload, reqPayload, isRetry = false) {
+  const { error: txErr } = await sb.from('transactions').insert([txPayload]);
+  if (txErr) {
+    console.error('Withdrawal record log failed' + (isRetry ? ' (retry)' : '') + ':', txErr);
+    if (!isRetry) {
+      setTimeout(() => logWithdrawalRecords(txPayload, reqPayload, true), 1200);
+      return;
+    }
+    showToast(
+      `⚠️ ₦${Number(txPayload.amount).toLocaleString()} left your wallet but we couldn't save it to your history. Reference: ${txPayload.reference} — please screenshot this and contact support.`,
+      'red', 10000
+    );
+    loadTransactions(); // refresh anyway, in case it actually landed despite the reported error
+    return;
+  }
+
+  // Transaction record saved — now notify admin (non-critical: the
+  // withdrawal itself is already recorded even if this part fails).
+  const { error: reqErr } = await sb.from('withdrawal_requests').insert([reqPayload]);
+  if (reqErr) console.warn('Could not write withdrawal_request:', reqErr.message);
+
+  loadTransactions();
 }
 
 function showWithdrawalSuccess(amount, accountName) {
