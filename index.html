@@ -1936,10 +1936,18 @@ function updateCreditsUI(amount) {
 //  paid for out of the real wallet balance via VTU_WORKER_URL.
 // ════════════════════════════════════════════════
 
+// Cache the access token — Supabase sessions last 1 hour so this is safe.
+// Avoids a round-trip on every VTU purchase.
+let _cachedVtuToken = null;
+let _cachedVtuTokenExp = 0;
 async function vtuGetAccessToken() {
   if (!sb) return null;
+  const now = Date.now();
+  if (_cachedVtuToken && now < _cachedVtuTokenExp) return _cachedVtuToken;
   const { data: { session } } = await sb.auth.getSession();
-  return session?.access_token || null;
+  _cachedVtuToken    = session?.access_token || null;
+  _cachedVtuTokenExp = now + 55 * 60 * 1000; // re-fetch after 55 min
+  return _cachedVtuToken;
 }
 
 function vtuCheckConfigured() {
@@ -2148,7 +2156,8 @@ async function vtuPurchase({ service, serviceID, billersCode, variation_code, am
     if (creditsUsed > 0) { creditsBalance = updates.credits_balance; updateCreditsUI(creditsBalance); }
     if (walletUsed  > 0) { walletBalance  = updates.balance;         updateBalanceUI(walletBalance); }
 
-    // 3. Call VTU worker
+    // 3. Fetch access token and call VTU worker
+    // (token fetch and any pre-flight work run first, then the purchase)
     const accessToken = await vtuGetAccessToken();
     const resp = await fetch(`${VTU_WORKER_URL}/purchase`, {
       method: 'POST',
@@ -2158,8 +2167,13 @@ async function vtuPurchase({ service, serviceID, billersCode, variation_code, am
     const result = await resp.json();
     if (!resp.ok) throw new Error(result.error || 'Purchase failed.');
 
-    // 4. Log success
-    await sb.from('transactions').insert([{
+    // 4. Fire success toast + UI refresh immediately — don't wait for DB log
+    showToast(`✅ ${btnLabel || service} successful! Paid with ${fundLabel}.`, 'success', 5000);
+    loadWalletBalance();
+    loadTransactions();
+
+    // Log transaction in background — non-blocking so user sees success instantly
+    sb.from('transactions').insert([{
       user_id:    currentUser.id,
       type:       'debit',
       category:   creditsUsed > 0 && walletUsed === 0 ? 'vtu_credits' : creditsUsed > 0 ? 'vtu_split' : 'vtu_wallet',
@@ -2169,11 +2183,10 @@ async function vtuPurchase({ service, serviceID, billersCode, variation_code, am
       reference:  txRef,
       user_name:  userName,
       user_email: currentUser.email
-    }]);
+    }]).then(({ error }) => {
+      if (error) console.error('Transaction log failed (non-critical):', error);
+    });
 
-    showToast(`✅ ${btnLabel || service} successful! Paid with ${fundLabel}.`, 'success', 5000);
-    loadWalletBalance();
-    loadTransactions();
     return true;
 
   } catch (err) {
