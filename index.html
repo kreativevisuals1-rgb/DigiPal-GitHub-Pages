@@ -612,7 +612,6 @@ html,body{overflow-x:hidden;max-width:100vw}
     <div class="sidebar-logo">Digi<span>Pal</span>.</div>
     <div class="sidebar-nav">
       <div class="nav-item active" onclick="switchTab('overview')"><span class="ni">🏠</span> Overview</div>
-      <div class="nav-item" onclick="switchTab('wallet')"><span class="ni">💰</span> Wallet</div>
       <div class="nav-item" onclick="switchTab('courses')"><span class="ni">🎓</span> Courses</div>
       <div class="nav-item" onclick="switchTab('marketplace')"><span class="ni">🛍️</span> Marketplace</div>
       <div class="nav-item" onclick="switchTab('profile')"><span class="ni">👤</span> Profile</div>
@@ -639,69 +638,22 @@ html,body{overflow-x:hidden;max-width:100vw}
         <div><h1>👋 Welcome back, <span id="dash-firstname">there</span>!</h1><p>Here's what's happening on your account today.</p></div>
       </div>
 
-      <div class="overview-grid">
-        <div>
-          <div class="hero-balance-card">
-            <div class="hero-balance-top">
-              <span class="hero-balance-label">Wallet Balance</span>
-            </div>
-            <div class="hero-balance-amount stat-value green" id="overview-wallet-balance">₦0.00</div>
-            <div class="hero-balance-actions">
-              <div class="hero-balance-btn primary" onclick="switchTab('wallet')">+ Fund Wallet</div>
-              <div class="hero-balance-btn outline" onclick="switchTab('wallet')">Withdraw</div>
-            </div>
-          </div>
-
-          <div class="dash-card">
-            <h3>⚡ Quick Services</h3>
-            <div class="icon-grid">
-              <div class="icon-grid-item" onclick="openVtuSheet('airtime')"><span class="icon-grid-circle">📞</span><span>Airtime</span></div>
-              <div class="icon-grid-item" onclick="openVtuSheet('data')"><span class="icon-grid-circle">📶</span><span>Data</span></div>
-              <div class="icon-grid-item" onclick="openVtuSheet('cable')"><span class="icon-grid-circle">📺</span><span>Cable TV</span></div>
-              <div class="icon-grid-item" onclick="openVtuSheet('electricity')"><span class="icon-grid-circle">💡</span><span>Electricity</span></div>
-              <div class="icon-grid-item" onclick="switchTab('wallet')"><span class="icon-grid-circle">💳</span><span>Fund</span></div>
-            </div>
-          </div>
-        </div>
-
-        <div>
-          <div class="mini-stats-row">
-            <div class="mini-stat"><div class="mini-stat-label">Credits Balance</div><div class="mini-stat-value" id="credits-balance-display" style="color:#8a6d00">₦0.00</div></div>
-            <div class="mini-stat"><div class="mini-stat-label">Transactions</div><div class="mini-stat-value">0</div></div>
-            <div class="mini-stat"><div class="mini-stat-label">Referrals</div><div class="mini-stat-value">0</div></div>
-            <div class="mini-stat"><div class="mini-stat-label">Courses Enrolled</div><div class="mini-stat-value">0</div></div>
-          </div>
-
-          <div class="dash-card">
-            <h3>📋 Recent Transactions</h3>
-            <div id="tx-list-overview" class="tx-list">
-              <div style="text-align:center;padding:2rem 0;color:var(--text-muted);font-size:.9rem">
-                <div style="font-size:2rem;margin-bottom:.5rem">📭</div>
-                No transactions yet.<br>Fund your wallet to get started.
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- WALLET TAB -->
-    <div class="dash-tab" id="tab-wallet">
-      <div class="dash-header"><div><h1>💰 My Wallet</h1><p>Manage your DigiPal wallet balance.</p></div></div>
-      <div style="max-width:480px">
+      <div style="max-width:600px">
 
         <!-- Balance card -->
-        <div class="wallet-card">
-          <div class="wallet-label">Available Balance</div>
-          <div class="wallet-amount" id="wallet-balance-display">₦0.00</div>
-          <div class="wallet-actions">
-            <div class="hero-balance-btn primary" onclick="openFundModal()">+ Fund Wallet</div>
+        <div class="hero-balance-card">
+          <div class="hero-balance-top">
+            <span class="hero-balance-label">Wallet Balance</span>
+          </div>
+          <div class="hero-balance-amount stat-value green" id="overview-wallet-balance">₦0.00</div>
+          <div class="hero-balance-actions">
+            <div class="hero-balance-btn primary" onclick="openFundModal()">+ Add Money</div>
             <div class="hero-balance-btn outline" onclick="openWithdrawModal()">Withdraw</div>
           </div>
         </div>
 
-        <!-- Permanent Funding Account (DVA) — small teaser box -->
-        <div class="dva-card" id="dva-card" onclick="handleDVAClick()" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:1rem 1.25rem">
+        <!-- DVA -->
+        <div class="dva-card" id="dva-card-overview" onclick="handleDVAClick()" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:1rem 1.25rem;margin-bottom:1rem">
           <div>
             <div style="font-weight:700;font-size:.92rem">🏦 Permanent Funding Account</div>
             <div style="font-size:.78rem;color:var(--text-muted);margin-top:.15rem">A dedicated account number just for you</div>
@@ -709,14 +661,58 @@ html,body{overflow-x:hidden;max-width:100vw}
           <span class="btn btn-outline" style="font-size:.8rem;padding:.45rem 1rem;flex-shrink:0">Get Account</span>
         </div>
 
-        <!-- Transaction History -->
+        <!-- Mini stats -->
+        <div class="mini-stats-row" style="margin-bottom:1rem">
+          <div class="mini-stat"><div class="mini-stat-label">Credits Balance</div><div class="mini-stat-value" id="credits-balance-display" style="color:#8a6d00">₦0.00</div></div>
+          <div class="mini-stat"><div class="mini-stat-label">Referrals</div><div class="mini-stat-value" id="overview-referral-count">0</div></div>
+        </div>
+
+        <!-- Quick Services -->
+        <div class="dash-card" style="margin-bottom:1rem">
+          <h3>⚡ Quick Services</h3>
+          <div class="icon-grid">
+            <div class="icon-grid-item" onclick="openVtuSheet('airtime')"><span class="icon-grid-circle">📞</span><span>Airtime</span></div>
+            <div class="icon-grid-item" onclick="openVtuSheet('data')"><span class="icon-grid-circle">📶</span><span>Data</span></div>
+            <div class="icon-grid-item" onclick="openVtuSheet('cable')"><span class="icon-grid-circle">📺</span><span>Cable TV</span></div>
+            <div class="icon-grid-item" onclick="openVtuSheet('electricity')"><span class="icon-grid-circle">💡</span><span>Electricity</span></div>
+            <div class="icon-grid-item" onclick="openFundModal()"><span class="icon-grid-circle">💳</span><span>Add Money</span></div>
+          </div>
+        </div>
+
+        <!-- Recent Transactions -->
+        <div class="dash-card" style="padding:0;overflow:hidden">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:1rem 1.25rem;border-bottom:1px solid var(--border)">
+            <h3 style="margin:0;font-size:.95rem;font-weight:700">Recent Transactions</h3>
+            <span onclick="showTxHistoryPage()" style="font-size:.85rem;font-weight:600;color:var(--brand);cursor:pointer;display:flex;align-items:center;gap:.25rem">
+              Transaction History <span style="font-size:1rem">›</span>
+            </span>
+          </div>
+          <div id="tx-list-overview" class="tx-list">
+            <div style="text-align:center;padding:2rem 0;color:var(--text-muted);font-size:.9rem">
+              <div style="font-size:2rem;margin-bottom:.5rem">📭</div>
+              No transactions yet.<br>Add money to get started.
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- TRANSACTION HISTORY PAGE (sub-page within overview) -->
+    <div class="dash-tab" id="tab-txhistory">
+      <div class="dash-header" style="margin-bottom:1.25rem">
+        <div style="display:flex;align-items:center;gap:.85rem">
+          <button onclick="hideTxHistoryPage()" style="background:none;border:1px solid var(--border);border-radius:8px;padding:.4rem .75rem;font-size:1.1rem;cursor:pointer;color:var(--brand);line-height:1">‹</button>
+          <div><h1 style="margin:0">Transaction History</h1></div>
+        </div>
+      </div>
+      <div style="max-width:600px">
         <div class="dash-card" style="padding:0;overflow:hidden">
           <div style="padding:1.1rem 1.25rem;border-bottom:1px solid var(--border)">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.85rem">
-              <h3 style="margin:0;font-size:.95rem;font-weight:700">Transaction History</h3>
+              <span style="font-size:.88rem;color:var(--text-muted)">Full history · all time</span>
               <button onclick="downloadStatement()" style="background:none;border:1px solid var(--border);border-radius:7px;padding:.3rem .75rem;font-size:.78rem;font-weight:600;color:var(--brand);cursor:pointer">⬇ Download</button>
             </div>
-            <!-- Filters -->
             <div style="display:flex;gap:.5rem">
               <select id="tx-filter-category" onchange="applyTxFilters()" style="flex:1;padding:.45rem .7rem;border:1.5px solid var(--border);border-radius:8px;font-size:.8rem;color:var(--text);outline:none;background:#fff">
                 <option value="">All Categories</option>
@@ -736,6 +732,11 @@ html,body{overflow-x:hidden;max-width:100vw}
           </div>
           <div id="tx-list" style="text-align:center;padding:2rem;color:var(--text-muted);font-size:.9rem">📭 No transactions yet.</div>
         </div>
+      </div>
+    </div>
+
+    <!-- WALLET TAB (retired — merged into overview) -->
+    <div class="dash-tab" id="tab-wallet" style="display:none"></div>
 
         <!-- RECEIPT MODAL -->
         <div id="receipt-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:2000;align-items:flex-end;justify-content:center" onclick="if(event.target===this)closeReceipt()">
@@ -840,13 +841,12 @@ html,body{overflow-x:hidden;max-width:100vw}
             <div style="font-size:.72rem;color:#9ca3af" id="rec-export-date-footer"></div>
           </div>
         </div>
-      </div>
     </div>
 
     <!-- FUND WALLET MODAL -->
     <div class="modal-overlay" id="fund-modal" onclick="if(event.target===this)closeFundModal()">
       <div class="modal-box">
-        <div class="modal-title">💳 Fund Your Wallet</div>
+        <div class="modal-title">💳 Add Money</div>
         <div class="modal-sub">Pay securely via card, bank transfer, or USSD</div>
         <div class="form-group">
           <label style="font-size:.85rem;font-weight:600">Enter Amount (₦)</label>
@@ -1497,13 +1497,28 @@ function switchTab(name) {
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   document.getElementById('tab-' + name).classList.add('active');
   const items = document.querySelectorAll('.nav-item');
-  const map = {overview:0, wallet:1, vtu:2, courses:3, marketplace:4, profile:5, earn:6};
+  const map = {overview:0, courses:1, marketplace:2, profile:3, earn:4};
   if (map[name] !== undefined) items[map[name]].classList.add('active');
   closeSidebar();
   if (name === 'earn') { initEarnTab(); loadEarnCredits(); }
-  if (name === 'wallet') { loadTransactions(); loadWalletBalance(); }
+  if (name === 'overview') { loadTransactions(); loadWalletBalance(); }
   // Remember which tab the user was on so a refresh restores it
   localStorage.setItem('digipal_active_tab', name);
+}
+
+function showTxHistoryPage() {
+  document.querySelectorAll('.dash-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-txhistory').classList.add('active');
+  loadTransactions();
+}
+
+function hideTxHistoryPage() {
+  document.querySelectorAll('.dash-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-overview').classList.add('active');
+  // Restore correct nav highlight
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const items = document.querySelectorAll('.nav-item');
+  if (items[0]) items[0].classList.add('active');
 }
 
 // ── FAQ ──
@@ -1695,7 +1710,9 @@ function loadDashboard(user) {
   document.getElementById('profile-phone-input').value = meta.phone || '';
   document.getElementById('referral-link').value = `https://digipal.ng/ref/${user.id.slice(0,8)}`;
   // Restore the tab the user was on before the refresh, default to overview
-  const savedTab = localStorage.getItem('digipal_active_tab') || 'overview';
+  // (wallet tab is retired — redirect to overview)
+  let savedTab = localStorage.getItem('digipal_active_tab') || 'overview';
+  if (savedTab === 'wallet') savedTab = 'overview';
   switchTab(savedTab);
 
   // Load wallet data
@@ -1949,9 +1966,9 @@ function updateBalanceUI(amount) {
   const fmt = '₦' + Number(amount).toLocaleString('en-NG', {minimumFractionDigits: 2, maximumFractionDigits: 2});
   const el = document.getElementById('wallet-balance-display');
   if (el) el.textContent = fmt;
-  // Also update overview stat card if present
-  const stat = document.querySelector('.stat-value.green');
-  if (stat) stat.textContent = fmt;
+  // Update the merged overview balance card
+  const ovEl = document.getElementById('overview-wallet-balance');
+  if (ovEl) ovEl.textContent = fmt;
   // Also update the VTU tab's balance note
   const vtuBal = document.getElementById('vtu-balance-display');
   if (vtuBal) vtuBal.textContent = Number(amount).toLocaleString('en-NG', {minimumFractionDigits: 2, maximumFractionDigits: 2});
@@ -2631,9 +2648,9 @@ function renderTransactions(txs, updateCache = true) {
     }).join('')}
   `).join('');
 
-  // ── Overview tab: compact last 3 ──────────────────────────────────
+  // ── Overview tab: compact last 5 ──────────────────────────────────
   const allTxs = window._txCacheFull || txs;
-  if (elOverview) elOverview.innerHTML = allTxs.slice(0,3).map(tx => {
+  if (elOverview) elOverview.innerHTML = allTxs.slice(0,5).map(tx => {
     const meta  = txMeta(tx);
     const sign  = tx.type === 'credit' ? '+' : '-';
     const color = tx.type === 'credit' ? '#0F6E56' : '#374151';
@@ -2980,7 +2997,7 @@ async function verifyAndCredit(reference, expectedAmount) {
         updateBalanceUI(walletBalance);
         loadTransactions();
         showToast(`✅ ₦${expectedAmount.toLocaleString()} added to your wallet!`, 'success', 5000);
-        switchTab('wallet');
+        switchTab('overview');
         return;
       }
 
@@ -3471,7 +3488,7 @@ function showWithdrawalSuccess(amount, accountName) {
 }
 function closeWithdrawalSuccess() {
   const _wdov2 = document.getElementById('withdrawal-success-overlay'); _wdov2.style.display='none'; _wdov2.classList.remove('show');
-  switchTab('wallet');
+  switchTab('overview');
 }
 
 // ════════════════════════════════════════════════
