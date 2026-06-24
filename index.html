@@ -272,6 +272,11 @@ html,body{overflow-x:hidden;max-width:100vw}
   .hero-stat{background:rgba(255,255,255,.08);border-radius:10px;padding:.75rem}
   .auth-box{padding:1.75rem 1.25rem}
   .wallet-actions{flex-direction:column}
+  .modal-box{padding:1.5rem 1.25rem}
+  .pin-box{width:42px;height:50px;font-size:1.25rem}
+  .pin-boxes{gap:.45rem}
+  .amount-grid{gap:.45rem}
+  .amt-chip{padding:.5rem .3rem;font-size:.82rem}
 }
 
 /* ── OPAY-STYLE DASHBOARD (hero balance, icon grid, tablet layout) ── */
@@ -287,7 +292,7 @@ html,body{overflow-x:hidden;max-width:100vw}
 .hero-balance-btn.outline{background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.35)}
 .hero-balance-btn.outline:hover{background:rgba(255,255,255,.2)}
 
-.icon-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:.6rem;text-align:center}
+.icon-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:.4rem;text-align:center}
 .icon-grid-item{display:flex;flex-direction:column;align-items:center;gap:.4rem;cursor:pointer;padding:.4rem 0;border-radius:10px;transition:background .15s}
 .icon-grid-item:hover{background:var(--bg2)}
 .icon-grid-circle{width:44px;height:44px;border-radius:50%;background:var(--bg2);display:flex;align-items:center;justify-content:center;font-size:1.25rem}
@@ -306,6 +311,8 @@ html,body{overflow-x:hidden;max-width:100vw}
 @media(max-width:480px){
   .hero-balance-amount{font-size:1.7rem}
   .icon-grid-circle{width:40px;height:40px;font-size:1.1rem}
+  .icon-grid{gap:.25rem}
+  .icon-grid-item span:last-child{font-size:.66rem}
   .mini-stats-row{grid-template-columns:1fr 1fr}
 }
 
@@ -374,12 +381,15 @@ html,body{overflow-x:hidden;max-width:100vw}
   #earn-reward-overlay.open { display: flex !important; }
   #earn-ai-checking.show { display: flex !important; }
   #earn-result-banner.show { display: block !important; }
-  .earn-post-card { background:#fff;border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,0.07);overflow:hidden;border:2px solid transparent;transition:border-color 0.2s,transform 0.15s;cursor:pointer; }
+  #earn-posts-grid { grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); }
+  .earn-post-card { background:#fff;border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,0.07);overflow:hidden;border:2px solid transparent;transition:border-color 0.2s,transform 0.15s;cursor:pointer;display:flex;flex-direction:column; }
+  .earn-post-card > div:first-child{flex:1}
   .earn-post-card:hover { transform:translateY(-2px); }
   .earn-post-card.completed { border-color:#a7f3d0; }
   .earn-post-card.locked { opacity:0.55;cursor:not-allowed; }
-  .earn-lb-row { display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid #e5e7eb; }
+  .earn-lb-row { display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid #e5e7eb;flex-wrap:wrap; }
   .earn-lb-row:last-child { border-bottom:none; }
+  .earn-lb-row > div:nth-child(2) { min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
 </style>
 </head>
 <body>
@@ -656,7 +666,7 @@ html,body{overflow-x:hidden;max-width:100vw}
 
           <!-- DVA -->
           <div class="dva-card" id="dva-card-overview" onclick="handleDVAClick()" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:1rem 1.25rem;margin-bottom:1rem">
-            <div>
+            <div style="flex:1;min-width:0">
               <div style="font-weight:700;font-size:.92rem">🏦 Permanent Funding Account</div>
               <div style="font-size:.78rem;color:var(--text-muted);margin-top:.15rem">A dedicated account number just for you</div>
             </div>
