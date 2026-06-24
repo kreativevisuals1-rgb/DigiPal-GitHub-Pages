@@ -333,8 +333,6 @@ html,body{overflow-x:hidden;max-width:100vw}
 .amt-chip{padding:.55rem;border:1.5px solid var(--border);border-radius:8px;text-align:center;font-size:.88rem;font-weight:600;cursor:pointer;transition:all .2s;color:var(--text)}
 .amt-chip:hover,.amt-chip.selected{border-color:var(--brand);background:var(--brand-light);color:var(--brand)}
 .modal-actions{display:flex;gap:.75rem;margin-top:1.25rem}
-#vcm-credits-toggle:checked ~ #vcm-toggle-track{background:var(--brand)}
-#vcm-credits-toggle:checked ~ #vcm-toggle-knob{transform:translateX(21px)}
 
 /* ── PIN INPUT ── */
 .pin-boxes{display:flex;gap:.6rem;justify-content:center;margin:1.5rem 0}
@@ -989,69 +987,6 @@ html,body{overflow-x:hidden;max-width:100vw}
       </div>
     </div>
 
-    <!-- VTU CONFIRM MODAL (OPay-style credits toggle) -->
-    <div class="modal-overlay" id="vtu-confirm-modal" onclick="if(event.target===this)closeVtuConfirm()">
-      <div class="modal-box" style="max-width:420px;padding:1.75rem">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem">
-          <div class="modal-title" style="margin-bottom:0" id="vcm-title">Confirm Payment</div>
-          <button onclick="closeVtuConfirm()" style="background:none;border:none;font-size:1.3rem;cursor:pointer;color:var(--text-muted);line-height:1">✕</button>
-        </div>
-        <div style="font-size:2rem;font-weight:800;text-align:center;margin-bottom:1.25rem;color:var(--text)" id="vcm-amount"></div>
-
-        <!-- Transaction details -->
-        <div style="border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:1rem">
-          <div style="display:flex;justify-content:space-between;padding:.7rem 1rem;border-bottom:1px solid var(--border);font-size:.88rem">
-            <span style="color:var(--text-muted)">Product</span>
-            <span style="font-weight:600;color:var(--text)" id="vcm-product"></span>
-          </div>
-          <div style="display:flex;justify-content:space-between;padding:.7rem 1rem;border-bottom:1px solid var(--border);font-size:.88rem">
-            <span style="color:var(--text-muted)">Recipient</span>
-            <span style="font-weight:600;color:var(--text)" id="vcm-recipient"></span>
-          </div>
-          <div id="vcm-extra-row" style="display:none;justify-content:space-between;padding:.7rem 1rem;border-bottom:1px solid var(--border);font-size:.88rem">
-            <span style="color:var(--text-muted)" id="vcm-extra-label"></span>
-            <span style="font-weight:600;color:var(--text);max-width:220px;text-align:right" id="vcm-extra-value"></span>
-          </div>
-          <div style="display:flex;justify-content:space-between;padding:.7rem 1rem;font-size:.88rem">
-            <span style="color:var(--text-muted)">Amount</span>
-            <span style="font-weight:700;color:var(--text)" id="vcm-amount-row"></span>
-          </div>
-        </div>
-
-        <!-- Credits toggle row (hidden if no credits) -->
-        <div id="vcm-credits-row" style="display:none;background:#fffbf0;border:1px solid #ffe082;border-radius:12px;padding:.85rem 1rem;margin-bottom:.75rem;align-items:center;justify-content:space-between">
-          <div>
-            <div style="font-size:.88rem;font-weight:700;color:#7a5a00">🎁 Use Credits Balance</div>
-            <div style="font-size:.8rem;color:#a07820;margin-top:.2rem">Available: ₦<span id="vcm-credits-avail">0.00</span></div>
-          </div>
-          <label style="position:relative;display:inline-block;width:46px;height:25px;flex-shrink:0">
-            <input type="checkbox" id="vcm-credits-toggle" onchange="vcmRecalc()" style="opacity:0;width:0;height:0">
-            <span id="vcm-toggle-track" style="position:absolute;inset:0;background:#ccc;border-radius:25px;cursor:pointer;transition:background .2s"></span>
-            <span id="vcm-toggle-knob" style="position:absolute;height:19px;width:19px;left:3px;top:3px;background:#fff;border-radius:50%;transition:transform .2s;box-shadow:0 1px 3px rgba(0,0,0,.25)"></span>
-          </label>
-        </div>
-
-        <!-- Payment breakdown -->
-        <div id="vcm-breakdown" style="display:none;font-size:.82rem;font-weight:600;color:var(--brand);text-align:center;margin-bottom:.5rem;padding:.5rem;background:var(--bg);border-radius:8px"></div>
-
-        <!-- Wallet line -->
-        <div style="border:1px solid var(--border);border-radius:12px;padding:.8rem 1rem;margin-bottom:.5rem;display:flex;justify-content:space-between;align-items:center">
-          <div>
-            <div style="font-size:.88rem;font-weight:600;color:var(--text)">💰 Wallet</div>
-            <div style="font-size:.78rem;color:var(--text-muted);margin-top:.15rem">Balance: ₦<span id="vcm-wallet-bal">0.00</span></div>
-          </div>
-          <span style="font-weight:700;color:var(--text);font-size:.95rem" id="vcm-wallet-charge"></span>
-        </div>
-
-        <p id="vcm-error" style="display:none;font-size:.82rem;color:#dc2626;text-align:center;margin:.5rem 0 0"></p>
-
-        <div class="modal-actions" style="margin-top:1rem">
-          <button class="btn btn-outline" style="flex:1" onclick="closeVtuConfirm()">Cancel</button>
-          <button class="btn btn-primary" style="flex:2" id="vcm-pay-btn" onclick="vcmExecute()">Pay</button>
-        </div>
-      </div>
-    </div>
-
     <!-- PROCESSING OVERLAY -->
     <div class="pay-processing" id="pay-processing">
       <div class="spin"></div>
@@ -1082,7 +1017,7 @@ html,body{overflow-x:hidden;max-width:100vw}
 
     <!-- VTU TAB -->
     <div class="dash-tab" id="tab-vtu">
-      <div class="dash-header"><div><h1>⚡ VTU Services</h1><p>Instant airtime, data, and bill payments — toggle your credits balance at checkout to use it.</p></div></div>
+      <div class="dash-header"><div><h1>⚡ VTU Services</h1><p>Instant airtime, data, and bill payments — Read & Earn credits are used first, then your wallet.</p></div></div>
       <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px">
         <div id="vtu-credits-note" style="background:#fff8e1;border:1px solid #ffe082;border-radius:10px;padding:10px 16px;font-size:.88rem;color:#8a6d00;font-weight:600;flex:1;min-width:220px">
           🎁 Credits balance: ₦<span id="vtu-credits-display">0.00</span>
@@ -1976,151 +1911,35 @@ async function vtuLoadVariations(kind) {
   }
 }
 
-// ─── VTU CONFIRM MODAL (OPay-style credits toggle) ───────────────────────────
-// Holds the pending transaction while the user reviews and optionally
-// toggles their credits balance on/off before confirming.
-let _vcmPending = null;
-
-function showVtuConfirm({ service, serviceID, billersCode, variation_code, amount, phone, btnId, btnLabel, extraLabel, extraValue }) {
+// Shared purchase call used by all four VTU forms below.
+// Spends from the user's REAL credits_balance first (Read & Earn money) —
+// but ONLY if it fully covers the purchase amount; credits and wallet are
+// never combined in a single purchase. If credits don't fully cover it,
+// the entire amount is debited from wallets.balance instead.
+async function vtuPurchase({ service, serviceID, billersCode, variation_code, amount, phone, btnId, btnLabel }) {
   if (!vtuCheckConfigured()) return;
   if (!currentUser) { showToast('Please log in first.', 'red'); return; }
   if (!sb) { showToast('Service is not available right now.', 'red'); return; }
+
   const numericAmount = Number(amount);
   if (!numericAmount || numericAmount <= 0) { showToast('Enter a valid amount.', 'red'); return; }
   if (!phone && !billersCode) { showToast('Enter the required number.', 'red'); return; }
 
-  _vcmPending = { service, serviceID, billersCode, variation_code, amount: numericAmount, phone, btnId, btnLabel };
+  const btn = btnId ? document.getElementById(btnId) : null;
+  const originalLabel = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = 'Processing…'; }
 
-  const fmt = n => Number(n).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-
-  document.getElementById('vcm-title').textContent    = `Confirm ${btnLabel || service}`;
-  document.getElementById('vcm-amount').textContent   = `₦${fmt(numericAmount)}`;
-  document.getElementById('vcm-amount-row').textContent = `₦${fmt(numericAmount)}`;
-  document.getElementById('vcm-product').textContent  = service;
-  document.getElementById('vcm-recipient').textContent = phone || billersCode || '—';
-
-  const extraRow = document.getElementById('vcm-extra-row');
-  if (extraLabel && extraValue) {
-    document.getElementById('vcm-extra-label').textContent = extraLabel;
-    document.getElementById('vcm-extra-value').textContent = extraValue;
-    extraRow.style.display = 'flex';
-  } else {
-    extraRow.style.display = 'none';
-  }
-
-  // Show/hide credits toggle based on available credits
-  const creditsRow = document.getElementById('vcm-credits-row');
-  if (creditsBalance > 0) {
-    document.getElementById('vcm-credits-avail').textContent = fmt(creditsBalance);
-    creditsRow.style.display = 'flex';
-  } else {
-    creditsRow.style.display = 'none';
-  }
-
-  // Reset toggle to OFF
-  const toggle = document.getElementById('vcm-credits-toggle');
-  toggle.checked = false;
-  document.getElementById('vcm-toggle-track').style.background = '#ccc';
-  document.getElementById('vcm-toggle-knob').style.transform = 'translateX(0)';
-
-  document.getElementById('vcm-error').style.display = 'none';
-  document.getElementById('vcm-pay-btn').disabled = false;
-  document.getElementById('vcm-pay-btn').textContent = 'Pay';
-
-  vcmRecalc();
-  document.getElementById('vtu-confirm-modal').classList.add('show');
-}
-
-function closeVtuConfirm() {
-  document.getElementById('vtu-confirm-modal').classList.remove('show');
-  _vcmPending = null;
-}
-
-// Update the toggle knob/track visually (pure CSS :checked can't target siblings easily here)
-document.addEventListener('change', function(e) {
-  if (e.target.id !== 'vcm-credits-toggle') return;
-  const on = e.target.checked;
-  document.getElementById('vcm-toggle-track').style.background = on ? 'var(--brand)' : '#ccc';
-  document.getElementById('vcm-toggle-knob').style.transform   = on ? 'translateX(21px)' : 'translateX(0)';
-});
-
-function vcmRecalc() {
-  if (!_vcmPending) return;
-  const fmt = n => Number(n).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  const useCredits = document.getElementById('vcm-credits-toggle').checked;
-  const { amount } = _vcmPending;
-
-  let creditsUsed = 0, walletUsed = 0;
-  if (useCredits && creditsBalance > 0) {
-    creditsUsed = Math.min(creditsBalance, amount);
-    walletUsed  = Math.max(0, amount - creditsUsed);
-  } else {
-    walletUsed = amount;
-  }
-
-  _vcmPending._creditsUsed = creditsUsed;
-  _vcmPending._walletUsed  = walletUsed;
-
-  document.getElementById('vcm-wallet-bal').textContent    = fmt(walletBalance);
-  document.getElementById('vcm-wallet-charge').textContent = walletUsed > 0 ? `₦${fmt(walletUsed)}` : '₦0.00';
-
-  const breakdown = document.getElementById('vcm-breakdown');
-  if (creditsUsed > 0 && walletUsed > 0) {
-    breakdown.style.display = 'block';
-    breakdown.textContent = `🎁 ₦${fmt(creditsUsed)} credits + 💰 ₦${fmt(walletUsed)} wallet`;
-  } else if (creditsUsed > 0) {
-    breakdown.style.display = 'block';
-    breakdown.textContent = `🎁 Fully paid from your credits balance`;
-  } else {
-    breakdown.style.display = 'none';
-  }
-
-  const errEl  = document.getElementById('vcm-error');
-  const payBtn = document.getElementById('vcm-pay-btn');
-  if (walletUsed > walletBalance) {
-    errEl.textContent   = `Insufficient wallet balance. Need ₦${fmt(walletUsed)}, have ₦${fmt(walletBalance)}.`;
-    errEl.style.display = 'block';
-    payBtn.disabled     = true;
-  } else {
-    errEl.style.display = 'none';
-    payBtn.disabled     = false;
-  }
-}
-
-async function vcmExecute() {
-  if (!_vcmPending) return;
-  const payBtn = document.getElementById('vcm-pay-btn');
-  payBtn.disabled    = true;
-  payBtn.textContent = 'Processing…';
-
-  const ok = await vtuPurchase(_vcmPending);
-  if (ok) {
-    closeVtuConfirm();
-  } else {
-    payBtn.disabled    = false;
-    payBtn.textContent = 'Pay';
-  }
-}
-
-// Shared purchase executor — called by vcmExecute after user confirms.
-// Now supports splitting: _creditsUsed + _walletUsed are set by the modal.
-async function vtuPurchase({ service, serviceID, billersCode, variation_code, amount, phone, btnId, btnLabel, _creditsUsed, _walletUsed }) {
-  const numericAmount = Number(amount);
-  const creditsUsed   = Number(_creditsUsed || 0);
-  const walletUsed    = Number(_walletUsed  ?? numericAmount);
-
-  const txRef    = 'VTU_' + Date.now() + '_' + Math.random().toString(36).slice(2,7).toUpperCase();
-  const meta     = currentUser.user_metadata || {};
+  const txRef = 'VTU_' + Date.now() + '_' + Math.random().toString(36).slice(2,7).toUpperCase();
+  const meta = currentUser.user_metadata || {};
   const userName = ((meta.first_name || '') + ' ' + (meta.last_name || '')).trim() || currentUser.email;
-  let debited    = false;
-
-  // Determine label for toasts/transactions
-  const fundLabel = creditsUsed > 0 && walletUsed === 0 ? 'Read & Earn credits'
-                  : creditsUsed > 0 && walletUsed > 0   ? 'credits + wallet'
-                  :                                        'wallet balance';
+  let debited = false;
+  let fundingSource = null; // 'credits' or 'wallet' — whichever actually got debited
+  let newBalance = walletBalance;
+  let newCredits = creditsBalance;
 
   try {
-    // 1. Re-fetch live balances to prevent race conditions
+    // 1. Re-check live balances and decide where to debit from.
+    //    Credits cover it fully, or they're not used at all — no splitting.
     const { data: walletData, error: walletErr } = await sb
       .from('wallets')
       .select('balance, credits_balance')
@@ -2128,27 +1947,41 @@ async function vtuPurchase({ service, serviceID, billersCode, variation_code, am
       .maybeSingle();
     if (walletErr) throw walletErr;
 
-    const liveBalance = walletData?.balance        ?? 0;
-    const liveCredits = walletData?.credits_balance ?? 0;
+    const currentBalance = walletData?.balance ?? 0;
+    const currentCredits = walletData?.credits_balance ?? 0;
 
-    // Guard: verify balances are still sufficient
-    if (creditsUsed > liveCredits) throw new Error('Your credits balance changed. Please try again.');
-    if (walletUsed  > liveBalance) throw new Error('Insufficient wallet balance. Please fund your wallet and try again.');
+    if (currentCredits >= numericAmount) {
+      // Credits fully cover it — spend from credits only.
+      fundingSource = 'credits';
+      newCredits = currentCredits - numericAmount;
+      const { error: updateErr } = await sb
+        .from('wallets')
+        .update({ credits_balance: newCredits })
+        .eq('user_id', currentUser.id);
+      if (updateErr) throw updateErr;
+      debited = true;
 
-    // 2. Deduct both sources atomically in one update
-    const updates = {};
-    if (creditsUsed > 0) updates.credits_balance = liveCredits - creditsUsed;
-    if (walletUsed  > 0) updates.balance          = liveBalance  - walletUsed;
+      creditsBalance = newCredits;
+      updateCreditsUI(creditsBalance);
+    } else {
+      // Credits don't fully cover it — use wallet instead (no splitting).
+      if (numericAmount > currentBalance) {
+        throw new Error('Insufficient balance. Please fund your wallet or earn more credits and try again.');
+      }
+      fundingSource = 'wallet';
+      newBalance = currentBalance - numericAmount;
+      const { error: updateErr } = await sb
+        .from('wallets')
+        .update({ balance: newBalance })
+        .eq('user_id', currentUser.id);
+      if (updateErr) throw updateErr;
+      debited = true;
 
-    const { error: updateErr } = await sb.from('wallets').update(updates).eq('user_id', currentUser.id);
-    if (updateErr) throw updateErr;
-    debited = true;
+      walletBalance = newBalance;
+      updateBalanceUI(walletBalance);
+    }
 
-    // Optimistically update local state
-    if (creditsUsed > 0) { creditsBalance = updates.credits_balance; updateCreditsUI(creditsBalance); }
-    if (walletUsed  > 0) { walletBalance  = updates.balance;         updateBalanceUI(walletBalance); }
-
-    // 3. Call VTU worker
+    // 2. Call the VTU worker to actually deliver the airtime/data/cable/bill.
     const accessToken = await vtuGetAccessToken();
     const resp = await fetch(`${VTU_WORKER_URL}/purchase`, {
       method: 'POST',
@@ -2158,20 +1991,20 @@ async function vtuPurchase({ service, serviceID, billersCode, variation_code, am
     const result = await resp.json();
     if (!resp.ok) throw new Error(result.error || 'Purchase failed.');
 
-    // 4. Log success
+    // 3. Record a successful debit transaction, noting which balance paid for it.
     await sb.from('transactions').insert([{
-      user_id:    currentUser.id,
-      type:       'debit',
-      category:   creditsUsed > 0 && walletUsed === 0 ? 'vtu_credits' : creditsUsed > 0 ? 'vtu_split' : 'vtu_wallet',
-      status:     'success',
-      amount:     numericAmount,
-      description: `${service}${phone ? ' — ' + phone : ''} (${fundLabel})`,
-      reference:  txRef,
-      user_name:  userName,
+      user_id: currentUser.id,
+      type: 'debit',
+      category: fundingSource === 'credits' ? 'vtu_credits' : 'vtu_wallet',
+      status: 'success',
+      amount: numericAmount,
+      description: `${service}${phone ? ' — ' + phone : ''} (paid with ${fundingSource === 'credits' ? 'credits' : 'wallet'})`,
+      reference: txRef,
+      user_name: userName,
       user_email: currentUser.email
     }]);
 
-    showToast(`✅ ${btnLabel || service} successful! Paid with ${fundLabel}.`, 'success', 5000);
+    showToast(`✅ ${btnLabel || service} successful! Paid with ${fundingSource === 'credits' ? 'Read & Earn credits' : 'wallet balance'}.`, 'success', 5000);
     loadWalletBalance();
     loadTransactions();
     return true;
@@ -2179,92 +2012,93 @@ async function vtuPurchase({ service, serviceID, billersCode, variation_code, am
   } catch (err) {
     console.error('vtuPurchase error:', err);
 
-    // Refund whatever was debited if VTU delivery failed
-    if (debited) {
+    // If we already debited a balance but the VTU purchase itself failed,
+    // refund the SAME source we took it from — never the other one.
+    if (debited && fundingSource) {
       try {
-        const { data: refreshed } = await sb.from('wallets').select('balance, credits_balance').eq('user_id', currentUser.id).maybeSingle();
-        const refundUpdates = {};
-        if (creditsUsed > 0) refundUpdates.credits_balance = (refreshed?.credits_balance ?? 0) + creditsUsed;
-        if (walletUsed  > 0) refundUpdates.balance          = (refreshed?.balance         ?? 0) + walletUsed;
+        const { data: refreshed } = await sb
+          .from('wallets')
+          .select('balance, credits_balance')
+          .eq('user_id', currentUser.id)
+          .maybeSingle();
 
-        await sb.from('wallets').update(refundUpdates).eq('user_id', currentUser.id);
-
-        if (refundUpdates.credits_balance !== undefined) { creditsBalance = refundUpdates.credits_balance; updateCreditsUI(creditsBalance); }
-        if (refundUpdates.balance         !== undefined) { walletBalance  = refundUpdates.balance;         updateBalanceUI(walletBalance); }
+        if (fundingSource === 'credits') {
+          const creditsNow = refreshed?.credits_balance ?? newCredits;
+          const refundedCredits = creditsNow + numericAmount;
+          await sb.from('wallets').update({ credits_balance: refundedCredits }).eq('user_id', currentUser.id);
+          creditsBalance = refundedCredits;
+          updateCreditsUI(creditsBalance);
+        } else {
+          const balanceNow = refreshed?.balance ?? newBalance;
+          const refundedBalance = balanceNow + numericAmount;
+          await sb.from('wallets').update({ balance: refundedBalance }).eq('user_id', currentUser.id);
+          walletBalance = refundedBalance;
+          updateBalanceUI(walletBalance);
+        }
 
         await sb.from('transactions').insert([{
-          user_id:    currentUser.id,
-          type:       'credit',
-          category:   'vtu_refund',
-          status:     'success',
-          amount:     numericAmount,
+          user_id: currentUser.id,
+          type: 'credit',
+          category: fundingSource === 'credits' ? 'vtu_refund_credits' : 'vtu_refund_wallet',
+          status: 'success',
+          amount: numericAmount,
           description: `Refund — failed ${service} purchase`,
-          reference:  txRef,
-          user_name:  userName,
+          reference: txRef,
+          user_name: userName,
           user_email: currentUser.email
         }]);
 
         loadTransactions();
-        showToast(`❌ ${err.message} Your ${fundLabel} has been refunded.`, 'red', 7000);
+        showToast('❌ ' + err.message + ` Your ${fundingSource === 'credits' ? 'credits' : 'wallet'} balance has been refunded.`, 'red', 7000);
       } catch (refundErr) {
         console.error('vtuPurchase refund error:', refundErr);
-        showToast('❌ Purchase failed and refund could not complete automatically. Contact support with ref: ' + txRef, 'red', 9000);
+        showToast('❌ Purchase failed and the refund could not be completed automatically. Please contact support with reference ' + txRef, 'red', 9000);
       }
     } else {
       showToast('❌ ' + err.message, 'red', 6000);
     }
-
-    // Show error inside modal if still open
-    const errEl = document.getElementById('vcm-error');
-    if (errEl && document.getElementById('vtu-confirm-modal').classList.contains('show')) {
-      errEl.textContent   = err.message;
-      errEl.style.display = 'block';
-    }
     return false;
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = originalLabel; }
   }
 }
 
-function vtuBuyAirtime() {
+async function vtuBuyAirtime() {
   const network = document.getElementById('vtu-air-network').value;
-  const phone   = document.getElementById('vtu-air-phone').value.trim();
-  const amount  = document.getElementById('vtu-air-amount').value;
-  if (!phone)   { showToast('Enter a phone number.', 'red'); return; }
-  if (!amount || Number(amount) < 50) { showToast('Enter a valid amount (min ₦50).', 'red'); return; }
-  showVtuConfirm({ service: 'Airtime', serviceID: network, amount, phone, btnLabel: 'Airtime purchase' });
+  const phone = document.getElementById('vtu-air-phone').value.trim();
+  const amount = document.getElementById('vtu-air-amount').value;
+  await vtuPurchase({ service: 'Airtime', serviceID: network, amount, phone, btnId: 'vtu-air-btn', btnLabel: 'Airtime purchase' });
 }
 
-function vtuBuyData() {
-  const network  = document.getElementById('vtu-data-network').value;
-  const phone    = document.getElementById('vtu-data-phone').value.trim();
-  const planSel  = document.getElementById('vtu-data-plan');
+async function vtuBuyData() {
+  const network = document.getElementById('vtu-data-network').value;
+  const phone = document.getElementById('vtu-data-phone').value.trim();
+  const planSel = document.getElementById('vtu-data-plan');
   const variation_code = planSel.value;
   if (!variation_code) { showToast('Choose a data plan.', 'red'); return; }
-  if (!phone) { showToast('Enter a phone number.', 'red'); return; }
-  const planText = planSel.selectedOptions[0]?.textContent || '';
-  const amount   = (planText.match(/₦([\d,]+)/) || [])[1]?.replace(/,/g, '') || 0;
-  showVtuConfirm({ service: 'Data', serviceID: network, variation_code, amount, phone, btnLabel: 'Data purchase', extraLabel: 'Data Plan', extraValue: planText });
+  // Amount is determined by the plan on VTpass's side; pass the displayed price along.
+  const amount = (planSel.selectedOptions[0]?.textContent.match(/₦([\d,]+)/) || [])[1]?.replace(/,/g, '') || 0;
+  await vtuPurchase({ service: 'Data', serviceID: network, variation_code, amount, phone, btnId: 'vtu-data-btn', btnLabel: 'Data purchase' });
 }
 
-function vtuPayCable() {
+async function vtuPayCable() {
   const provider = document.getElementById('vtu-cable-provider').value;
-  const card     = document.getElementById('vtu-cable-card').value.trim();
-  const planSel  = document.getElementById('vtu-cable-plan');
+  const card = document.getElementById('vtu-cable-card').value.trim();
+  const planSel = document.getElementById('vtu-cable-plan');
   const variation_code = planSel.value;
   if (!variation_code) { showToast('Choose a package.', 'red'); return; }
   if (!card) { showToast('Enter your smart card number.', 'red'); return; }
-  const planText = planSel.selectedOptions[0]?.textContent || '';
-  const amount   = (planText.match(/₦([\d,]+)/) || [])[1]?.replace(/,/g, '') || 0;
-  showVtuConfirm({ service: 'Cable TV', serviceID: provider, billersCode: card, variation_code, amount, phone: card, btnLabel: 'Cable TV payment', extraLabel: 'Package', extraValue: planText });
+  const amount = (planSel.selectedOptions[0]?.textContent.match(/₦([\d,]+)/) || [])[1]?.replace(/,/g, '') || 0;
+  await vtuPurchase({ service: 'Cable TV', serviceID: provider, billersCode: card, variation_code, amount, phone: card, btnId: 'vtu-cable-btn', btnLabel: 'Cable TV payment' });
 }
 
-function vtuPayElectricity() {
-  const disco      = document.getElementById('vtu-elec-disco').value;
-  const meterType  = document.getElementById('vtu-elec-type').value;
-  const meter      = document.getElementById('vtu-elec-meter').value.trim();
-  const amount     = document.getElementById('vtu-elec-amount').value;
-  if (!meter)  { showToast('Enter your meter number.', 'red'); return; }
-  if (!amount || Number(amount) < 500) { showToast('Enter a valid amount (min ₦500).', 'red'); return; }
-  showVtuConfirm({ service: 'Electricity', serviceID: `${disco}-${meterType}`, billersCode: meter, amount, phone: meter, btnLabel: 'Electricity payment', extraLabel: 'Meter No.', extraValue: meter });
+async function vtuPayElectricity() {
+  const disco = document.getElementById('vtu-elec-disco').value;
+  const meterType = document.getElementById('vtu-elec-type').value;
+  const meter = document.getElementById('vtu-elec-meter').value.trim();
+  const amount = document.getElementById('vtu-elec-amount').value;
+  if (!meter) { showToast('Enter your meter number.', 'red'); return; }
+  await vtuPurchase({ service: 'Electricity', serviceID: `${disco}-${meterType}`, billersCode: meter, amount, phone: meter, btnId: 'vtu-elec-btn', btnLabel: 'Electricity payment' });
 }
 
 // Load live data/cable plans the first time the VTU tab is opened.
