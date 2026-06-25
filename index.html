@@ -3067,27 +3067,13 @@ function startPayment() {
   handler.openIframe();
 }
 
-// ── VERIFY PAYMENT & CREDIT WALLET ──
+// ── VERIFY PAYMENT & CREDIT WALLET (silent background verification) ──
 async function verifyAndCredit(reference, expectedAmount) {
-  const proc = document.getElementById('pay-processing');
-  const procTitle = document.getElementById('processing-title');
-  const procSub = document.getElementById('processing-sub');
-
-  proc.classList.add('show');
-  procTitle.textContent = 'Verifying payment…';
-  procSub.textContent = 'Please wait, do not close this page';
-
-  // Poll with retries — handles cases where Paystack approval is slightly delayed
   const MAX_ATTEMPTS = 6;
   const DELAY_MS = 3000;
 
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     try {
-      if (attempt > 2) {
-        procTitle.textContent = 'Still verifying…';
-        procSub.textContent = `Checking with Paystack (attempt ${attempt}/${MAX_ATTEMPTS})`;
-      }
-
       const res = await sb.functions.invoke('verify-payment', {
         body: { reference, user_id: currentUser.id, amount: expectedAmount }
       });
@@ -3097,7 +3083,6 @@ async function verifyAndCredit(reference, expectedAmount) {
       const result = res.data;
 
       if (result?.status === 'success') {
-        proc.classList.remove('show');
         walletBalance = result.new_balance ?? walletBalance + expectedAmount;
         updateBalanceUI(walletBalance);
         loadTransactions();
@@ -3107,18 +3092,15 @@ async function verifyAndCredit(reference, expectedAmount) {
       }
 
       if (result?.status === 'already_processed') {
-        proc.classList.remove('show');
         showToast('This payment was already credited to your wallet.', 'info');
         return;
       }
 
       if (result?.status === 'failed') {
-        proc.classList.remove('show');
         showToast('❌ Payment was not successful. Please try again.', 'error', 6000);
         return;
       }
 
-      // Status is pending/unknown — wait and retry
       if (attempt < MAX_ATTEMPTS) {
         await new Promise(r => setTimeout(r, DELAY_MS));
       }
@@ -3131,13 +3113,7 @@ async function verifyAndCredit(reference, expectedAmount) {
     }
   }
 
-  // Exhausted retries — don't alarm, the webhook will still credit them
-  proc.classList.remove('show');
-  showToast(
-    '⏳ Payment is still being confirmed. Your wallet will be credited automatically — check back in a minute.',
-    'info',
-    8000
-  );
+  showToast('⏳ Payment confirmed — your wallet will reflect shortly.', 'info', 6000);
 }
 
 // ════════════════════════════════════════════════
