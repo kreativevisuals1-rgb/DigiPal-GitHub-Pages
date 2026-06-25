@@ -624,42 +624,87 @@
 // ADMIN AUTH
 // ═══════════════════════════════════════════════
 const ADMIN_EMAIL = 'kreativevisuals1@gmail.com';
-// Simple password — in production use server auth (Supabase, etc.)
-// Password is stored hashed for security; default: DigiPalAdmin2026!
-const ADMIN_PASS_HASH = btoa('DigiPalAdmin2026!'); // base64 — change in production
 
 let isLoggedIn = false;
 
-function doLogin() {
+async function doLogin() {
   const email = document.getElementById('loginEmail').value.trim().toLowerCase();
   const pass = document.getElementById('loginPass').value;
   const err = document.getElementById('loginError');
-  if (email === ADMIN_EMAIL && btoa(pass) === ADMIN_PASS_HASH) {
+  const btn = document.querySelector('.login-btn');
+
+  if (!sbAdmin) {
+    err.textContent = '❌ Supabase not configured — check console.';
+    err.style.display = 'block';
+    return;
+  }
+  if (btn) { btn.disabled = true; btn.textContent = 'Signing in…'; }
+
+  try {
+    const { data, error } = await sbAdmin.auth.signInWithPassword({ email, password: pass });
+    if (error) throw error;
+
+    // Real session exists now — but ALSO require admins-table membership,
+    // so knowing some other account's password can't get into this panel.
+    const { data: adminRow, error: adminErr } = await sbAdmin
+      .from('admins')
+      .select('user_id')
+      .eq('user_id', data.user.id)
+      .maybeSingle();
+
+    if (adminErr || !adminRow) {
+      await sbAdmin.auth.signOut();
+      throw new Error('not-an-admin');
+    }
+
     isLoggedIn = true;
-    sessionStorage.setItem('digipal_admin_auth', '1');
     document.getElementById('loginGate').style.display = 'none';
     document.getElementById('adminShell').style.display = 'block';
-    document.getElementById('sidebarEmail').textContent = ADMIN_EMAIL;
+    document.getElementById('sidebarEmail').textContent = data.user.email;
     initAdmin();
-  } else {
+  } catch (e) {
+    console.error('Admin login failed:', e);
+    err.textContent = '❌ Incorrect credentials. Access denied.';
     err.style.display = 'block';
     setTimeout(() => err.style.display = 'none', 3000);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Log In'; }
   }
 }
 
-function doLogout() {
-  sessionStorage.removeItem('digipal_admin_auth');
+async function doLogout() {
+  if (sbAdmin) await sbAdmin.auth.signOut();
   location.reload();
 }
 
-// Auto-login if session active
-if (sessionStorage.getItem('digipal_admin_auth') === '1') {
-  document.getElementById('loginGate').style.display = 'none';
-  document.getElementById('adminShell').style.display = 'block';
-  document.getElementById('sidebarEmail').textContent = ADMIN_EMAIL;
-  isLoggedIn = true;
-  window.addEventListener('DOMContentLoaded', initAdmin);
+// Restore a real Supabase session on page reload (instead of trusting a
+// sessionStorage flag) — and re-verify admin membership every time, so a
+// revoked admin loses access on their very next reload, not just next login.
+async function checkExistingAdminSession() {
+  if (!sbAdmin) return;
+  try {
+    const { data } = await sbAdmin.auth.getSession();
+    const session = data && data.session;
+    if (!session) return;
+
+    const { data: adminRow } = await sbAdmin
+      .from('admins')
+      .select('user_id')
+      .eq('user_id', session.user.id)
+      .maybeSingle();
+
+    if (!adminRow) { await sbAdmin.auth.signOut(); return; }
+
+    isLoggedIn = true;
+    document.getElementById('loginGate').style.display = 'none';
+    document.getElementById('adminShell').style.display = 'block';
+    document.getElementById('sidebarEmail').textContent = session.user.email;
+    initAdmin();
+  } catch (e) {
+    console.warn('Admin session check failed:', e);
+  }
 }
+window.addEventListener('DOMContentLoaded', checkExistingAdminSession);
 
 // ═══════════════════════════════════════════════
 // NAVIGATION
@@ -1152,9 +1197,9 @@ async function loadTodaysSupabasePosts() {
 // ═══════════════════════════════════════════════
 // INIT ON LOAD
 // ═══════════════════════════════════════════════
-document.addEventListener('DOMContentLoaded', () => {
-  if (sessionStorage.getItem('digipal_admin_auth') === '1') initAdmin();
-});
+// (Real session restore now happens in checkExistingAdminSession(),
+//  registered earlier alongside the login functions — no separate
+//  listener needed here anymore.)
 
 // ═══════════════════════════════════════════════
 // WITHDRAWAL MANAGEMENT
