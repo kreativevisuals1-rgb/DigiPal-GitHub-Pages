@@ -369,7 +369,8 @@ html,body{overflow-x:hidden;max-width:100vw}
 .toast.info{background:#2563eb}
 
 /* ── PROCESSING OVERLAY ── */
-
+.pay-processing{display:none;position:fixed;inset:0;background:rgba(255,255,255,.92);z-index:2000;align-items:center;justify-content:center;flex-direction:column;gap:1rem;text-align:center}
+.pay-processing.show{display:flex}
 .spin{width:44px;height:44px;border:4px solid var(--brand-light);border-top-color:var(--brand);border-radius:50%;animation:spin .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 
@@ -1183,7 +1184,12 @@ html,body{overflow-x:hidden;max-width:100vw}
       </div>
     </div>
 
-
+    <!-- PROCESSING OVERLAY -->
+    <div class="pay-processing" id="pay-processing">
+      <div class="spin"></div>
+      <div style="font-weight:700;font-size:1.05rem" id="processing-title">Verifying payment…</div>
+      <div style="font-size:.88rem;color:var(--text-muted)" id="processing-sub">Please wait, do not close this page</div>
+    </div>
 
     <!-- WITHDRAWAL SUCCESS OVERLAY -->
     <div class="modal-overlay" id="withdrawal-success-overlay" style="display:none;z-index:2000">
@@ -1210,13 +1216,32 @@ html,body{overflow-x:hidden;max-width:100vw}
     <!-- COURSES TAB -->
     <div class="dash-tab" id="tab-courses">
       <div class="dash-header"><div><h1>🎓 Digital Courses</h1><p>Master high-income digital skills.</p></div></div>
-      <div class="grid-3">
-        <div class="feat-card"><div class="feat-icon">💻</div><h3>Freelancing Mastery</h3><p>Learn how to earn $500–$5,000/month freelancing on Upwork, Fiverr, and Toptal.</p><button class="btn btn-primary" style="margin-top:1rem;width:100%" onclick="showToast('🎓 Course enrolment is launching soon!', 'info', 4000)">Enrol — ₦5,000</button></div>
-        <div class="feat-card"><div class="feat-icon">📊</div><h3>Digital Marketing</h3><p>Master Facebook Ads, Google Ads, SEO, and content marketing to grow any business.</p><button class="btn btn-primary" style="margin-top:1rem;width:100%" onclick="showToast('🎓 Course enrolment is launching soon!', 'info', 4000)">Enrol — ₦7,500</button></div>
-        <div class="feat-card"><div class="feat-icon">🎨</div><h3>Graphics Design</h3><p>From Canva to Adobe Illustrator — build a design skill set clients will pay for.</p><button class="btn btn-primary" style="margin-top:1rem;width:100%" onclick="showToast('🎓 Course enrolment is launching soon!', 'info', 4000)">Enrol — ₦4,500</button></div>
-        <div class="feat-card"><div class="feat-icon">📹</div><h3>Video Editing</h3><p>Edit professional videos using CapCut and Premiere Pro for content creators and brands.</p><button class="btn btn-primary" style="margin-top:1rem;width:100%" onclick="showToast('🎓 Course enrolment is launching soon!', 'info', 4000)">Enrol — ₦6,000</button></div>
-        <div class="feat-card"><div class="feat-icon">🤖</div><h3>AI for Business</h3><p>Use AI tools like ChatGPT, Claude, and Midjourney to 10× your productivity and income.</p><button class="btn btn-primary" style="margin-top:1rem;width:100%" onclick="showToast('🎓 Course enrolment is launching soon!', 'info', 4000)">Enrol — ₦8,000</button></div>
-        <div class="feat-card"><div class="feat-icon">🛒</div><h3>E-Commerce & Dropshipping</h3><p>Build a profitable online store and start selling products without holding inventory.</p><button class="btn btn-primary" style="margin-top:1rem;width:100%" onclick="showToast('🎓 Course enrolment is launching soon!', 'info', 4000)">Enrol — ₦9,500</button></div>
+      <div id="courses-grid" class="grid-3">
+        <div style="color:var(--text-muted);font-size:.9rem;grid-column:1/-1;text-align:center;padding:3rem">Loading courses…</div>
+      </div>
+    </div>
+
+    <!-- COURSE VIEWER MODAL -->
+    <div class="modal-overlay" id="course-viewer-modal" onclick="if(event.target===this)closeCourseViewer()" style="z-index:1200;align-items:flex-start;padding:1rem">
+      <div class="modal-box" style="max-width:780px;width:100%;max-height:90vh;overflow-y:auto;padding:0">
+        <!-- Header -->
+        <div style="padding:1.25rem 1.5rem;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:1rem;position:sticky;top:0;background:#fff;z-index:1">
+          <button onclick="closeCourseViewer()" class="btn btn-outline" style="padding:.4rem .9rem;font-size:.85rem">← Back</button>
+          <div>
+            <div style="font-weight:800;font-size:1.1rem" id="cv-title">Course</div>
+            <div style="font-size:.8rem;color:var(--text-muted)" id="cv-meta"></div>
+          </div>
+        </div>
+        <!-- Video area -->
+        <div style="background:#000;aspect-ratio:16/9;width:100%">
+          <iframe id="cv-video" width="100%" height="100%" frameborder="0" allow="accelerometer;autoplay;clipboard-write;encrypted-media;gyroscope;picture-in-picture" allowfullscreen style="display:block"></iframe>
+        </div>
+        <!-- Lesson notes + curriculum -->
+        <div style="padding:1.25rem 1.5rem">
+          <div id="cv-lesson-title" style="font-size:1rem;font-weight:700;margin-bottom:.75rem"></div>
+          <div id="cv-lesson-notes" style="font-size:.9rem;color:var(--text-muted);line-height:1.8;margin-bottom:1.5rem"></div>
+          <div id="cv-curriculum"></div>
+        </div>
       </div>
     </div>
 
@@ -1404,7 +1429,11 @@ html,body{overflow-x:hidden;max-width:100vw}
 </div>
 </div>
 
-
+<!-- ══════════════ CONFIG NOTICE ══════════════ -->
+<div id="config-notice" style="display:none;position:fixed;bottom:1rem;left:50%;transform:translateX(-50%);background:#1a1a1a;color:#fff;padding:1rem 1.5rem;border-radius:12px;font-size:.88rem;z-index:9999;max-width:90vw;text-align:center;box-shadow:0 4px 24px rgba(0,0,0,.3)">
+  ⚙️ <strong>Setup required:</strong> Add your Supabase URL and Anon Key in the &lt;script&gt; section to enable real auth.
+  <button onclick="this.parentElement.style.display='none'" style="margin-left:1rem;background:rgba(255,255,255,.15);border:none;color:#fff;padding:.3rem .7rem;border-radius:6px;cursor:pointer">✕</button>
+</div>
 
 <script>
 // ══════════════════════════════════════════════
@@ -1458,6 +1487,7 @@ function showToast(msg, type = 'info', duration = 4000) {
 
 function initSupabase() {
   if (SUPABASE_URL === 'YOUR_SUPABASE_URL' || SUPABASE_ANON_KEY === 'YOUR_SUPABASE_ANON_KEY') {
+    document.getElementById('config-notice').style.display = 'block';
     return false;
   }
   try {
@@ -1505,6 +1535,7 @@ function switchTab(name) {
   closeSidebar();
   if (name === 'earn') { initEarnTab(); loadEarnCredits(); }
   if (name === 'overview') { loadTransactions(); loadWalletBalance(); }
+  if (name === 'courses') { loadCoursesTab(); }
   // Remember which tab the user was on so a refresh restores it
   localStorage.setItem('digipal_active_tab', name);
   resetDashScroll();
@@ -4400,6 +4431,229 @@ document.addEventListener('click', function(e) {
 async function initEarnTab() {
   await earnRenderPosts();
   await earnRenderLeaderboard();
+}
+
+// ════════════════════════════════════════════════
+//  COURSES
+// ════════════════════════════════════════════════
+let _userEnrolments = null; // cached set of course IDs user has enrolled in
+let _courseViewerData = null; // {modules, lessons} for open course
+
+// Load enrolments once per session
+async function loadUserEnrolments() {
+  if (_userEnrolments !== null) return _userEnrolments;
+  if (!sb || !currentUser) { _userEnrolments = new Set(); return _userEnrolments; }
+  try {
+    const { data } = await sb.from('course_enrolments')
+      .select('course_id').eq('user_id', currentUser.id);
+    _userEnrolments = new Set((data || []).map(r => r.course_id));
+  } catch(_) { _userEnrolments = new Set(); }
+  return _userEnrolments;
+}
+
+async function loadCoursesTab() {
+  const grid = document.getElementById('courses-grid');
+  if (!sb) { grid.innerHTML = '<div style="color:var(--text-muted);grid-column:1/-1;text-align:center;padding:3rem">Unable to load courses.</div>'; return; }
+
+  grid.innerHTML = '<div style="color:var(--text-muted);font-size:.9rem;grid-column:1/-1;text-align:center;padding:3rem">Loading courses…</div>';
+
+  try {
+    const [{ data: courses, error }, enrolments] = await Promise.all([
+      sb.from('courses').select('id,title,icon,description,category,level,price,lesson_count').eq('published', true).order('created_at'),
+      loadUserEnrolments()
+    ]);
+    if (error) throw error;
+
+    if (!courses || !courses.length) {
+      grid.innerHTML = '<div style="color:var(--text-muted);grid-column:1/-1;text-align:center;padding:3rem">No courses available yet. Check back soon! 🎓</div>';
+      return;
+    }
+
+    grid.innerHTML = courses.map(c => {
+      const enrolled = enrolments.has(c.id);
+      const free = !c.price || c.price === 0;
+      const btnLabel = enrolled ? '▶ Continue Learning' : free ? 'Enrol Free' : `Enrol — ₦${Number(c.price).toLocaleString()}`;
+      const btnStyle = enrolled ? 'btn-accent' : 'btn-primary';
+      return `
+        <div class="feat-card" style="display:flex;flex-direction:column">
+          <div class="feat-icon" style="font-size:1.8rem">${c.icon || '🎓'}</div>
+          <div style="display:flex;gap:.4rem;margin-bottom:.5rem;flex-wrap:wrap">
+            <span style="font-size:.7rem;font-weight:700;background:var(--brand-light);color:var(--brand);padding:.2rem .6rem;border-radius:999px">${c.category || 'General'}</span>
+            <span style="font-size:.7rem;font-weight:700;background:#fef3c7;color:#92400e;padding:.2rem .6rem;border-radius:999px">${c.level || 'Beginner'}</span>
+          </div>
+          <h3 style="margin-bottom:.4rem">${c.title}</h3>
+          <p style="font-size:.88rem;color:var(--text-muted);flex:1">${c.description || ''}</p>
+          <div style="font-size:.78rem;color:var(--text-muted);margin:.6rem 0">${c.lesson_count || 0} lesson${c.lesson_count === 1 ? '' : 's'}</div>
+          <button class="btn ${btnStyle}" style="margin-top:.5rem;width:100%" onclick="handleCourseEnrol('${c.id}','${c.title.replace(/'/g,"\\'")}',${c.price||0},${enrolled})">
+            ${btnLabel}
+          </button>
+        </div>`;
+    }).join('');
+  } catch(err) {
+    grid.innerHTML = `<div style="color:#dc2626;grid-column:1/-1;text-align:center;padding:3rem">Failed to load courses: ${err.message}</div>`;
+  }
+}
+
+async function handleCourseEnrol(courseId, courseTitle, price, alreadyEnrolled) {
+  // If already enrolled, go straight to course viewer
+  if (alreadyEnrolled) { openCourseViewer(courseId, courseTitle); return; }
+
+  const free = !price || price === 0;
+
+  if (!free) {
+    // Check wallet balance
+    if (walletBalance < price) {
+      showToast(`❌ Insufficient wallet balance. You need ₦${Number(price).toLocaleString()} to enrol. Please add money first.`, 'error', 6000);
+      return;
+    }
+    const confirmed = confirm(`Enrol in "${courseTitle}" for ₦${Number(price).toLocaleString()}?\n\nThis will be deducted from your wallet balance.`);
+    if (!confirmed) return;
+  }
+
+  try {
+    const meta = currentUser?.user_metadata || {};
+    const userName = ((meta.first_name || '') + ' ' + (meta.last_name || '')).trim() || currentUser.email;
+    const txRef = 'COURSE_' + Date.now() + '_' + Math.random().toString(36).slice(2,7).toUpperCase();
+
+    if (!free) {
+      // Deduct from wallet
+      const { data: w, error: wErr } = await sb.from('wallets').select('balance').eq('user_id', currentUser.id).maybeSingle();
+      if (wErr) throw wErr;
+      const live = w?.balance ?? 0;
+      if (live < price) throw new Error('Insufficient balance. Please add money to your wallet.');
+
+      const { error: debitErr } = await sb.from('wallets').update({ balance: live - price }).eq('user_id', currentUser.id);
+      if (debitErr) throw debitErr;
+      walletBalance = live - price;
+      updateBalanceUI(walletBalance);
+
+      // Log transaction
+      await sb.from('transactions').insert([{
+        user_id: currentUser.id, type: 'debit', category: 'course_purchase',
+        status: 'success', amount: price,
+        description: `Course Enrolment — ${courseTitle}`,
+        reference: txRef, user_name: userName, user_email: currentUser.email
+      }]);
+    }
+
+    // Record enrolment
+    const { error: enrolErr } = await sb.from('course_enrolments').insert([{
+      user_id: currentUser.id, course_id: courseId,
+      enrolled_at: new Date().toISOString(), amount_paid: price
+    }]);
+    if (enrolErr && !enrolErr.message.includes('duplicate')) throw enrolErr;
+
+    // Update local cache
+    if (_userEnrolments) _userEnrolments.add(courseId);
+
+    showToast(`✅ Enrolled in "${courseTitle}"! Opening course now…`, 'success', 4000);
+
+    // Refresh the card to show "Continue Learning"
+    loadCoursesTab();
+
+    // Open the course viewer
+    setTimeout(() => openCourseViewer(courseId, courseTitle), 800);
+
+  } catch(err) {
+    showToast('❌ Enrolment failed: ' + err.message, 'error', 6000);
+  }
+}
+
+async function openCourseViewer(courseId, courseTitle) {
+  const modal = document.getElementById('course-viewer-modal');
+  document.getElementById('cv-title').textContent = courseTitle;
+  document.getElementById('cv-meta').textContent = 'Loading curriculum…';
+  document.getElementById('cv-video').src = '';
+  document.getElementById('cv-lesson-title').textContent = '';
+  document.getElementById('cv-lesson-notes').innerHTML = '';
+  document.getElementById('cv-curriculum').innerHTML = '';
+  modal.classList.add('show');
+
+  try {
+    const { data: modules, error: modErr } = await sb
+      .from('course_modules').select('*').eq('course_id', courseId).order('order_index');
+    if (modErr) throw modErr;
+
+    const { data: lessons, error: lesErr } = await sb
+      .from('course_lessons').select('*').eq('course_id', courseId).order('order_index');
+    if (lesErr) throw lesErr;
+
+    const mods = (modules || []).map(m => ({
+      ...m, lessons: (lessons || []).filter(l => l.module_id === m.id)
+    }));
+
+    _courseViewerData = { mods };
+
+    const totalLessons = (lessons || []).length;
+    document.getElementById('cv-meta').textContent = `${mods.length} module${mods.length===1?'':'s'} · ${totalLessons} lesson${totalLessons===1?'':'s'}`;
+
+    if (!mods.length || !totalLessons) {
+      document.getElementById('cv-curriculum').innerHTML = '<div style="color:var(--text-muted);font-size:.9rem">No lessons yet — check back soon!</div>';
+      return;
+    }
+
+    // Auto-play first lesson
+    const firstLesson = mods[0]?.lessons?.[0];
+    if (firstLesson) playCourseLesson(firstLesson);
+
+    // Build curriculum list
+    document.getElementById('cv-curriculum').innerHTML = `
+      <div style="font-weight:700;font-size:.95rem;margin-bottom:.75rem;border-top:1px solid var(--border);padding-top:1rem">📋 Curriculum</div>
+      ${mods.map((m, mi) => `
+        <div style="margin-bottom:1rem">
+          <div style="font-weight:700;font-size:.85rem;color:var(--brand);margin-bottom:.4rem;text-transform:uppercase;letter-spacing:.04em">
+            Module ${mi+1}: ${m.title}
+          </div>
+          ${m.lessons.map((l, li) => `
+            <div id="cv-lesson-${l.id}" onclick="playCourseLesson(${JSON.stringify(l).replace(/"/g,'&quot;')})"
+              style="display:flex;align-items:center;gap:.65rem;padding:.55rem .75rem;border-radius:8px;cursor:pointer;font-size:.88rem;margin-bottom:.25rem;transition:background .15s"
+              onmouseover="this.style.background='var(--brand-light)'" onmouseout="this.style.background='transparent'">
+              <span style="font-size:.8rem;color:var(--text-muted);min-width:1.5rem">${li+1}.</span>
+              <span style="flex:1">${l.title}</span>
+              <span style="font-size:.75rem;color:var(--text-muted)">${l.duration_min||0}m</span>
+            </div>
+          `).join('')}
+        </div>
+      `).join('')}`;
+
+  } catch(err) {
+    document.getElementById('cv-meta').textContent = '';
+    document.getElementById('cv-curriculum').innerHTML = `<div style="color:#dc2626">Failed to load course: ${err.message}</div>`;
+  }
+}
+
+function playCourseLesson(lesson) {
+  // Highlight active lesson
+  document.querySelectorAll('[id^="cv-lesson-"]').forEach(el => el.style.background = 'transparent');
+  const activeEl = document.getElementById('cv-lesson-' + lesson.id);
+  if (activeEl) activeEl.style.background = 'var(--brand-light)';
+
+  // Set video
+  const videoFrame = document.getElementById('cv-video');
+  if (lesson.youtube_url) {
+    const ytId = extractYouTubeId(lesson.youtube_url);
+    videoFrame.src = ytId ? `https://www.youtube.com/embed/${ytId}?autoplay=1` : '';
+  } else {
+    videoFrame.src = '';
+  }
+
+  // Set title & notes
+  document.getElementById('cv-lesson-title').textContent = lesson.title || '';
+  document.getElementById('cv-lesson-notes').innerHTML = lesson.notes || '<span style="color:var(--text-muted);font-size:.88rem">No notes for this lesson.</span>';
+
+  // Scroll to top of modal content
+  document.querySelector('#course-viewer-modal .modal-box').scrollTop = 0;
+}
+
+function extractYouTubeId(url) {
+  if (!url) return null;
+  const m = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([a-zA-Z0-9_-]{11})/);
+  return m ? m[1] : null;
+}
+
+function closeCourseViewer() {
+  document.getElementById('course-viewer-modal').classList.remove('show');
+  document.getElementById('cv-video').src = ''; // stop video
 }
 
 </script>
