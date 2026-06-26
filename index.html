@@ -1216,6 +1216,16 @@ html,body{overflow-x:hidden;max-width:100vw}
     <!-- COURSES TAB -->
     <div class="dash-tab" id="tab-courses">
       <div class="dash-header"><div><h1>🎓 Digital Courses</h1><p>Master high-income digital skills.</p></div></div>
+
+      <!-- MY COURSES section — shown only when enrolled in at least one course -->
+      <div id="my-courses-section" style="display:none;margin-bottom:2rem">
+        <h2 style="font-size:1rem;font-weight:700;margin-bottom:1rem;color:var(--brand)">📚 My Enrolled Courses</h2>
+        <div id="my-courses-grid" class="grid-3"></div>
+        <hr style="border:none;border-top:1px solid var(--border);margin:2rem 0">
+      </div>
+
+      <!-- ALL COURSES section -->
+      <h2 id="all-courses-heading" style="font-size:1rem;font-weight:700;margin-bottom:1rem">All Courses</h2>
       <div id="courses-grid" class="grid-3">
         <div style="color:var(--text-muted);font-size:.9rem;grid-column:1/-1;text-align:center;padding:3rem">Loading courses…</div>
       </div>
@@ -1232,15 +1242,38 @@ html,body{overflow-x:hidden;max-width:100vw}
             <div style="font-size:.8rem;color:var(--text-muted)" id="cv-meta"></div>
           </div>
         </div>
+        <!-- Progress bar -->
+        <div style="padding:.75rem 1.5rem;border-bottom:1px solid var(--border);background:#f9fafb">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.4rem">
+            <span style="font-size:.78rem;color:var(--text-muted);font-weight:600">Course progress</span>
+            <span id="cv-progress-label" style="font-size:.78rem;font-weight:700;color:var(--brand)">0 / 0 lessons</span>
+          </div>
+          <div style="height:6px;background:var(--border);border-radius:999px;overflow:hidden">
+            <div id="cv-progress-bar" style="height:100%;width:0%;background:var(--brand);border-radius:999px;transition:width .4s"></div>
+          </div>
+        </div>
         <!-- Video area -->
         <div style="background:#000;aspect-ratio:16/9;width:100%">
           <iframe id="cv-video" width="100%" height="100%" frameborder="0" allow="accelerometer;autoplay;clipboard-write;encrypted-media;gyroscope;picture-in-picture" allowfullscreen style="display:block"></iframe>
         </div>
         <!-- Lesson notes + curriculum -->
         <div style="padding:1.25rem 1.5rem">
-          <div id="cv-lesson-title" style="font-size:1rem;font-weight:700;margin-bottom:.75rem"></div>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:.75rem;flex-wrap:wrap">
+            <div id="cv-lesson-title" style="font-size:1rem;font-weight:700"></div>
+            <button id="cv-complete-btn" onclick="markLessonComplete()"
+              style="font-size:.8rem;padding:.35rem .9rem;border-radius:8px;border:1.5px solid var(--brand);background:transparent;color:var(--brand);cursor:pointer;white-space:nowrap;transition:all .2s;flex-shrink:0">
+              ✓ Mark as complete
+            </button>
+          </div>
           <div id="cv-lesson-notes" style="font-size:.9rem;color:var(--text-muted);line-height:1.8;margin-bottom:1.5rem"></div>
           <div id="cv-curriculum"></div>
+          <!-- Certificate section — shown at 100% completion -->
+          <div id="cv-cert-section" style="display:none;margin-top:1.5rem;padding:1.25rem;background:var(--brand-light);border-radius:12px;text-align:center">
+            <div style="font-size:1.5rem;margin-bottom:.5rem">🏆</div>
+            <div style="font-weight:700;margin-bottom:.25rem">Course Complete!</div>
+            <div style="font-size:.85rem;color:var(--text-muted);margin-bottom:1rem">You've finished every lesson in this course.</div>
+            <button class="btn btn-primary" onclick="generateCertificate()">⬇ Download Certificate</button>
+          </div>
         </div>
       </div>
     </div>
@@ -4436,10 +4469,11 @@ async function initEarnTab() {
 // ════════════════════════════════════════════════
 //  COURSES
 // ════════════════════════════════════════════════
-let _userEnrolments = null; // cached set of course IDs user has enrolled in
-let _courseViewerData = null; // {modules, lessons} for open course
+let _userEnrolments = null;   // Set of enrolled course IDs
+let _courseViewerData = null; // { courseId, courseTitle, mods, completedIds }
+let _activeLessonId   = null; // ID of lesson currently playing
 
-// Load enrolments once per session
+// ─── ENROLMENT CACHE ──────────────────────────────────────────────────────────
 async function loadUserEnrolments() {
   if (_userEnrolments !== null) return _userEnrolments;
   if (!sb || !currentUser) { _userEnrolments = new Set(); return _userEnrolments; }
@@ -4451,11 +4485,30 @@ async function loadUserEnrolments() {
   return _userEnrolments;
 }
 
-async function loadCoursesTab() {
-  const grid = document.getElementById('courses-grid');
-  if (!sb) { grid.innerHTML = '<div style="color:var(--text-muted);grid-column:1/-1;text-align:center;padding:3rem">Unable to load courses.</div>'; return; }
+// ─── LESSON PROGRESS CACHE ────────────────────────────────────────────────────
+async function loadLessonProgress(courseId) {
+  if (!sb || !currentUser) return new Set();
+  try {
+    const { data } = await sb.from('lesson_progress')
+      .select('lesson_id')
+      .eq('user_id', currentUser.id)
+      .eq('course_id', courseId);
+    return new Set((data || []).map(r => r.lesson_id));
+  } catch(_) { return new Set(); }
+}
 
-  grid.innerHTML = '<div style="color:var(--text-muted);font-size:.9rem;grid-column:1/-1;text-align:center;padding:3rem">Loading courses…</div>';
+// ─── COURSES TAB ──────────────────────────────────────────────────────────────
+async function loadCoursesTab() {
+  const grid      = document.getElementById('courses-grid');
+  const mySection = document.getElementById('my-courses-section');
+  const myGrid    = document.getElementById('my-courses-grid');
+  const allHead   = document.getElementById('all-courses-heading');
+
+  if (!sb) {
+    grid.innerHTML = '<div style="color:var(--text-muted);grid-column:1/-1;text-align:center;padding:3rem">Unable to load courses.</div>';
+    return;
+  }
+  grid.innerHTML = '<div style="color:var(--text-muted);font-size:.9rem;grid-column:1/-1;text-align:center;padding:3rem">Loading courses\u2026</div>';
 
   try {
     const [{ data: courses, error }, enrolments] = await Promise.all([
@@ -4465,170 +4518,203 @@ async function loadCoursesTab() {
     if (error) throw error;
 
     if (!courses || !courses.length) {
-      grid.innerHTML = '<div style="color:var(--text-muted);grid-column:1/-1;text-align:center;padding:3rem">No courses available yet. Check back soon! 🎓</div>';
+      grid.innerHTML = '<div style="color:var(--text-muted);grid-column:1/-1;text-align:center;padding:3rem">No courses available yet. Check back soon! \u{1F393}</div>';
+      if (mySection) mySection.style.display = 'none';
       return;
     }
 
-    grid.innerHTML = courses.map(c => {
-      const enrolled = enrolments.has(c.id);
-      const free = !c.price || c.price === 0;
-      const btnLabel = enrolled ? '▶ Continue Learning' : free ? 'Enrol Free' : `Enrol — ₦${Number(c.price).toLocaleString()}`;
-      const btnStyle = enrolled ? 'btn-accent' : 'btn-primary';
-      return `
-        <div class="feat-card" style="display:flex;flex-direction:column">
-          <div class="feat-icon" style="font-size:1.8rem">${c.icon || '🎓'}</div>
-          <div style="display:flex;gap:.4rem;margin-bottom:.5rem;flex-wrap:wrap">
-            <span style="font-size:.7rem;font-weight:700;background:var(--brand-light);color:var(--brand);padding:.2rem .6rem;border-radius:999px">${c.category || 'General'}</span>
-            <span style="font-size:.7rem;font-weight:700;background:#fef3c7;color:#92400e;padding:.2rem .6rem;border-radius:999px">${c.level || 'Beginner'}</span>
-          </div>
-          <h3 style="margin-bottom:.4rem">${c.title}</h3>
-          <p style="font-size:.88rem;color:var(--text-muted);flex:1">${c.description || ''}</p>
-          <div style="font-size:.78rem;color:var(--text-muted);margin:.6rem 0">${c.lesson_count || 0} lesson${c.lesson_count === 1 ? '' : 's'}</div>
-          <button class="btn ${btnStyle}" style="margin-top:.5rem;width:100%" onclick="handleCourseEnrol('${c.id}','${c.title.replace(/'/g,"\\'")}',${c.price||0},${enrolled})">
-            ${btnLabel}
-          </button>
-        </div>`;
-    }).join('');
+    const enrolledList = courses.filter(c => enrolments.has(c.id));
+    const browseList   = courses.filter(c => !enrolments.has(c.id));
+
+    // My Courses
+    if (enrolledList.length && mySection && myGrid) {
+      mySection.style.display = 'block';
+      myGrid.innerHTML = enrolledList.map(c => courseCard(c, true)).join('');
+    } else if (mySection) {
+      mySection.style.display = 'none';
+    }
+
+    if (allHead) allHead.textContent = enrolledList.length ? 'Browse More Courses' : 'All Courses';
+
+    grid.innerHTML = browseList.length
+      ? browseList.map(c => courseCard(c, false)).join('')
+      : '<div style="color:var(--text-muted);grid-column:1/-1;text-align:center;padding:2rem">\u{1F389} You\'re enrolled in all available courses!</div>';
+
   } catch(err) {
     grid.innerHTML = `<div style="color:#dc2626;grid-column:1/-1;text-align:center;padding:3rem">Failed to load courses: ${err.message}</div>`;
   }
 }
 
+function courseCard(c, enrolled) {
+  const free     = !c.price || c.price === 0;
+  const btnLabel = enrolled ? '\u25B6 Continue Learning' : free ? 'Enrol Free' : `Enrol \u2014 \u20A6${Number(c.price).toLocaleString()}`;
+  const btnStyle = enrolled ? 'btn-accent' : 'btn-primary';
+  const badge    = enrolled
+    ? `<span style="font-size:.7rem;font-weight:700;background:#d1fae5;color:#065f46;padding:.2rem .6rem;border-radius:999px">\u2713 Enrolled</span>`
+    : '';
+  return `
+    <div class="feat-card" style="display:flex;flex-direction:column">
+      <div class="feat-icon" style="font-size:1.8rem">${c.icon || '\u{1F393}'}</div>
+      <div style="display:flex;gap:.4rem;margin-bottom:.5rem;flex-wrap:wrap">
+        <span style="font-size:.7rem;font-weight:700;background:var(--brand-light);color:var(--brand);padding:.2rem .6rem;border-radius:999px">${c.category || 'General'}</span>
+        <span style="font-size:.7rem;font-weight:700;background:#fef3c7;color:#92400e;padding:.2rem .6rem;border-radius:999px">${c.level || 'Beginner'}</span>
+        ${badge}
+      </div>
+      <h3 style="margin-bottom:.4rem">${c.title}</h3>
+      <p style="font-size:.88rem;color:var(--text-muted);flex:1">${c.description || ''}</p>
+      <div style="font-size:.78rem;color:var(--text-muted);margin:.6rem 0">${c.lesson_count || 0} lesson${c.lesson_count === 1 ? '' : 's'}</div>
+      <button class="btn ${btnStyle}" style="margin-top:.5rem;width:100%"
+        onclick="handleCourseEnrol('${c.id}','${c.title.replace(/'/g,"\\'")}',${c.price||0},${enrolled})">
+        ${btnLabel}
+      </button>
+    </div>`;
+}
+
+// ─── ENROLMENT HANDLER ────────────────────────────────────────────────────────
 async function handleCourseEnrol(courseId, courseTitle, price, alreadyEnrolled) {
-  // If already enrolled, go straight to course viewer
   if (alreadyEnrolled) { openCourseViewer(courseId, courseTitle); return; }
 
   const free = !price || price === 0;
 
   if (!free) {
-    // Check wallet balance
     if (walletBalance < price) {
-      showToast(`❌ Insufficient wallet balance. You need ₦${Number(price).toLocaleString()} to enrol. Please add money first.`, 'error', 6000);
+      showToast(`\u274C Insufficient wallet balance. You need \u20A6${Number(price).toLocaleString()} to enrol. Please add money first.`, 'error', 6000);
       return;
     }
-    const confirmed = confirm(`Enrol in "${courseTitle}" for ₦${Number(price).toLocaleString()}?\n\nThis will be deducted from your wallet balance.`);
+    const confirmed = confirm(`Enrol in "${courseTitle}" for \u20A6${Number(price).toLocaleString()}?\n\nThis will be deducted from your wallet balance.`);
     if (!confirmed) return;
   }
 
   try {
-    const meta = currentUser?.user_metadata || {};
+    const meta     = currentUser?.user_metadata || {};
     const userName = ((meta.first_name || '') + ' ' + (meta.last_name || '')).trim() || currentUser.email;
-    const txRef = 'COURSE_' + Date.now() + '_' + Math.random().toString(36).slice(2,7).toUpperCase();
+    const txRef    = 'COURSE_' + Date.now() + '_' + Math.random().toString(36).slice(2,7).toUpperCase();
 
     if (!free) {
-      // Deduct from wallet
       const { data: w, error: wErr } = await sb.from('wallets').select('balance').eq('user_id', currentUser.id).maybeSingle();
       if (wErr) throw wErr;
       const live = w?.balance ?? 0;
       if (live < price) throw new Error('Insufficient balance. Please add money to your wallet.');
-
       const { error: debitErr } = await sb.from('wallets').update({ balance: live - price }).eq('user_id', currentUser.id);
       if (debitErr) throw debitErr;
       walletBalance = live - price;
       updateBalanceUI(walletBalance);
-
-      // Log transaction
       await sb.from('transactions').insert([{
         user_id: currentUser.id, type: 'debit', category: 'course_purchase',
         status: 'success', amount: price,
-        description: `Course Enrolment — ${courseTitle}`,
+        description: `Course Enrolment \u2014 ${courseTitle}`,
         reference: txRef, user_name: userName, user_email: currentUser.email
       }]);
     }
 
-    // Record enrolment
     const { error: enrolErr } = await sb.from('course_enrolments').insert([{
       user_id: currentUser.id, course_id: courseId,
       enrolled_at: new Date().toISOString(), amount_paid: price
     }]);
     if (enrolErr && !enrolErr.message.includes('duplicate')) throw enrolErr;
 
-    // Update local cache
     if (_userEnrolments) _userEnrolments.add(courseId);
-
-    showToast(`✅ Enrolled in "${courseTitle}"! Opening course now…`, 'success', 4000);
-
-    // Refresh the card to show "Continue Learning"
+    showToast(`\u2705 Enrolled in "${courseTitle}"! Opening course now\u2026`, 'success', 4000);
     loadCoursesTab();
-
-    // Open the course viewer
     setTimeout(() => openCourseViewer(courseId, courseTitle), 800);
 
   } catch(err) {
-    showToast('❌ Enrolment failed: ' + err.message, 'error', 6000);
+    showToast('\u274C Enrolment failed: ' + err.message, 'error', 6000);
   }
 }
 
+// ─── COURSE VIEWER ────────────────────────────────────────────────────────────
 async function openCourseViewer(courseId, courseTitle) {
   const modal = document.getElementById('course-viewer-modal');
-  document.getElementById('cv-title').textContent = courseTitle;
-  document.getElementById('cv-meta').textContent = 'Loading curriculum…';
-  document.getElementById('cv-video').src = '';
+  document.getElementById('cv-title').textContent  = courseTitle;
+  document.getElementById('cv-meta').textContent   = 'Loading curriculum\u2026';
+  document.getElementById('cv-video').src          = '';
   document.getElementById('cv-lesson-title').textContent = '';
-  document.getElementById('cv-lesson-notes').innerHTML = '';
-  document.getElementById('cv-curriculum').innerHTML = '';
+  document.getElementById('cv-lesson-notes').innerHTML   = '';
+  document.getElementById('cv-curriculum').innerHTML     = '';
+  document.getElementById('cv-progress-bar').style.width = '0%';
+  document.getElementById('cv-progress-label').textContent = '0 / 0 lessons';
+  document.getElementById('cv-cert-section').style.display = 'none';
+  _activeLessonId = null;
   modal.classList.add('show');
 
   try {
-    const { data: modules, error: modErr } = await sb
-      .from('course_modules').select('*').eq('course_id', courseId).order('order_index');
+    const [{ data: modules, error: modErr }, { data: lessons, error: lesErr }, completedIds] = await Promise.all([
+      sb.from('course_modules').select('*').eq('course_id', courseId).order('order_index'),
+      sb.from('course_lessons').select('*').eq('course_id', courseId).order('order_index'),
+      loadLessonProgress(courseId)
+    ]);
     if (modErr) throw modErr;
-
-    const { data: lessons, error: lesErr } = await sb
-      .from('course_lessons').select('*').eq('course_id', courseId).order('order_index');
     if (lesErr) throw lesErr;
 
     const mods = (modules || []).map(m => ({
       ...m, lessons: (lessons || []).filter(l => l.module_id === m.id)
     }));
 
-    _courseViewerData = { mods };
+    _courseViewerData = { courseId, courseTitle, mods, completedIds };
 
     const totalLessons = (lessons || []).length;
-    document.getElementById('cv-meta').textContent = `${mods.length} module${mods.length===1?'':'s'} · ${totalLessons} lesson${totalLessons===1?'':'s'}`;
+    document.getElementById('cv-meta').textContent =
+      `${mods.length} module${mods.length===1?'':'s'} \u00B7 ${totalLessons} lesson${totalLessons===1?'':'s'}`;
+
+    updateCourseProgressBar(completedIds.size, totalLessons);
 
     if (!mods.length || !totalLessons) {
-      document.getElementById('cv-curriculum').innerHTML = '<div style="color:var(--text-muted);font-size:.9rem">No lessons yet — check back soon!</div>';
+      document.getElementById('cv-curriculum').innerHTML =
+        '<div style="color:var(--text-muted);font-size:.9rem">No lessons yet \u2014 check back soon!</div>';
       return;
     }
 
-    // Auto-play first lesson
     const firstLesson = mods[0]?.lessons?.[0];
     if (firstLesson) playCourseLesson(firstLesson);
 
-    // Build curriculum list
-    document.getElementById('cv-curriculum').innerHTML = `
-      <div style="font-weight:700;font-size:.95rem;margin-bottom:.75rem;border-top:1px solid var(--border);padding-top:1rem">📋 Curriculum</div>
-      ${mods.map((m, mi) => `
-        <div style="margin-bottom:1rem">
-          <div style="font-weight:700;font-size:.85rem;color:var(--brand);margin-bottom:.4rem;text-transform:uppercase;letter-spacing:.04em">
-            Module ${mi+1}: ${m.title}
-          </div>
-          ${m.lessons.map((l, li) => `
-            <div id="cv-lesson-${l.id}" onclick="playCourseLesson(${JSON.stringify(l).replace(/"/g,'&quot;')})"
-              style="display:flex;align-items:center;gap:.65rem;padding:.55rem .75rem;border-radius:8px;cursor:pointer;font-size:.88rem;margin-bottom:.25rem;transition:background .15s"
-              onmouseover="this.style.background='var(--brand-light)'" onmouseout="this.style.background='transparent'">
-              <span style="font-size:.8rem;color:var(--text-muted);min-width:1.5rem">${li+1}.</span>
-              <span style="flex:1">${l.title}</span>
-              <span style="font-size:.75rem;color:var(--text-muted)">${l.duration_min||0}m</span>
-            </div>
-          `).join('')}
-        </div>
-      `).join('')}`;
+    renderCourseCurriculum();
 
   } catch(err) {
     document.getElementById('cv-meta').textContent = '';
-    document.getElementById('cv-curriculum').innerHTML = `<div style="color:#dc2626">Failed to load course: ${err.message}</div>`;
+    document.getElementById('cv-curriculum').innerHTML =
+      `<div style="color:#dc2626">Failed to load course: ${err.message}</div>`;
   }
 }
 
-function playCourseLesson(lesson) {
-  // Highlight active lesson
-  document.querySelectorAll('[id^="cv-lesson-"]').forEach(el => el.style.background = 'transparent');
-  const activeEl = document.getElementById('cv-lesson-' + lesson.id);
-  if (activeEl) activeEl.style.background = 'var(--brand-light)';
+function renderCourseCurriculum() {
+  if (!_courseViewerData) return;
+  const { mods, completedIds } = _courseViewerData;
+  document.getElementById('cv-curriculum').innerHTML = `
+    <div style="font-weight:700;font-size:.95rem;margin-bottom:.75rem;border-top:1px solid var(--border);padding-top:1rem">\u{1F4CB} Curriculum</div>
+    ${mods.map((m, mi) => `
+      <div style="margin-bottom:1rem">
+        <div style="font-weight:700;font-size:.85rem;color:var(--brand);margin-bottom:.4rem;text-transform:uppercase;letter-spacing:.04em">
+          Module ${mi+1}: ${m.title}
+        </div>
+        ${m.lessons.map((l, li) => {
+          const done     = completedIds.has(l.id);
+          const isActive = l.id === _activeLessonId;
+          const bg       = isActive ? 'var(--brand-light)' : 'transparent';
+          return `
+            <div id="cv-lesson-${l.id}" onclick="playCourseLesson(${JSON.stringify(l).replace(/"/g,'&quot;')})"
+              style="display:flex;align-items:center;gap:.65rem;padding:.55rem .75rem;border-radius:8px;cursor:pointer;font-size:.88rem;margin-bottom:.25rem;transition:background .15s;background:${bg}"
+              onmouseover="this.style.background='var(--brand-light)'" onmouseout="this.style.background='${isActive?'var(--brand-light)':'transparent'}'">
+              <span style="font-size:.85rem;min-width:1.5rem;color:${done?'var(--brand)':'var(--text-muted)'}">${done ? '\u2705' : (li+1)+'.'}</span>
+              <span style="flex:1${done?';text-decoration:line-through;color:var(--text-muted)':''}">${l.title}</span>
+              <span style="font-size:.75rem;color:var(--text-muted)">${l.duration_min||0}m</span>
+            </div>`;
+        }).join('')}
+      </div>
+    `).join('')}`;
+}
 
-  // Set video
+function updateCourseProgressBar(done, total) {
+  const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+  document.getElementById('cv-progress-bar').style.width   = pct + '%';
+  document.getElementById('cv-progress-label').textContent = `${done} / ${total} lessons`;
+  const certSection = document.getElementById('cv-cert-section');
+  if (certSection) certSection.style.display = (pct === 100 && total > 0) ? 'block' : 'none';
+}
+
+function playCourseLesson(lesson) {
+  _activeLessonId = lesson.id;
+
   const videoFrame = document.getElementById('cv-video');
   if (lesson.youtube_url) {
     const ytId = extractYouTubeId(lesson.youtube_url);
@@ -4637,12 +4723,141 @@ function playCourseLesson(lesson) {
     videoFrame.src = '';
   }
 
-  // Set title & notes
   document.getElementById('cv-lesson-title').textContent = lesson.title || '';
-  document.getElementById('cv-lesson-notes').innerHTML = lesson.notes || '<span style="color:var(--text-muted);font-size:.88rem">No notes for this lesson.</span>';
+  document.getElementById('cv-lesson-notes').innerHTML   = lesson.notes ||
+    '<span style="color:var(--text-muted);font-size:.88rem">No notes for this lesson.</span>';
 
-  // Scroll to top of modal content
+  // Update Mark-Complete button
+  const done = _courseViewerData?.completedIds?.has(lesson.id);
+  const btn  = document.getElementById('cv-complete-btn');
+  if (btn) {
+    btn.textContent       = done ? '\u2705 Completed' : '\u2713 Mark as complete';
+    btn.style.background  = done ? 'var(--brand-light)' : 'transparent';
+    btn.disabled          = !!done;
+  }
+
+  renderCourseCurriculum();
   document.querySelector('#course-viewer-modal .modal-box').scrollTop = 0;
+}
+
+// ─── MARK LESSON COMPLETE ─────────────────────────────────────────────────────
+async function markLessonComplete() {
+  if (!_activeLessonId || !_courseViewerData || !sb || !currentUser) return;
+  const { courseId, completedIds } = _courseViewerData;
+  if (completedIds.has(_activeLessonId)) return;
+
+  try {
+    await sb.from('lesson_progress').insert([{
+      user_id:      currentUser.id,
+      course_id:    courseId,
+      lesson_id:    _activeLessonId,
+      completed_at: new Date().toISOString()
+    }]);
+
+    completedIds.add(_activeLessonId);
+
+    // Update button
+    const btn = document.getElementById('cv-complete-btn');
+    if (btn) { btn.textContent = '\u2705 Completed'; btn.style.background = 'var(--brand-light)'; btn.disabled = true; }
+
+    // Recalculate total
+    const allLessons = _courseViewerData.mods.flatMap(m => m.lessons);
+    updateCourseProgressBar(completedIds.size, allLessons.length);
+    renderCourseCurriculum();
+
+    showToast('\u2705 Lesson marked as complete!', 'success', 2500);
+
+  } catch(err) {
+    showToast('\u274C Could not save progress: ' + err.message, 'error', 5000);
+  }
+}
+
+// ─── CERTIFICATE GENERATOR ────────────────────────────────────────────────────
+function generateCertificate() {
+  if (!_courseViewerData) return;
+  const { courseTitle } = _courseViewerData;
+  const meta      = currentUser?.user_metadata || {};
+  const fullName  = ((meta.first_name || '') + ' ' + (meta.last_name || '')).trim() || currentUser?.email || 'Student';
+  const dateStr   = new Date().toLocaleDateString('en-NG', { day:'numeric', month:'long', year:'numeric' });
+
+  try {
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+    const W   = pdf.internal.pageSize.getWidth();
+    const H   = pdf.internal.pageSize.getHeight();
+
+    // Background
+    pdf.setFillColor(4, 52, 44);
+    pdf.rect(0, 0, W, H, 'F');
+
+    // Decorative border
+    pdf.setDrawColor(239, 159, 39);
+    pdf.setLineWidth(2);
+    pdf.rect(10, 10, W-20, H-20);
+    pdf.setLineWidth(0.5);
+    pdf.rect(13, 13, W-26, H-26);
+
+    // Brand
+    pdf.setTextColor(239, 159, 39);
+    pdf.setFontSize(28);
+    pdf.setFont('helvetica', 'bold');
+    pdf.text('DigiPal', W/2, 38, { align: 'center' });
+
+    // Title
+    pdf.setTextColor(255, 255, 255);
+    pdf.setFontSize(14);
+    pdf.setFont('helvetica', 'normal');
+    pdf.text('CERTIFICATE OF COMPLETION', W/2, 52, { align: 'center' });
+
+    // Divider
+    pdf.setDrawColor(239, 159, 39);
+    pdf.setLineWidth(0.8);
+    pdf.line(W/2 - 60, 58, W/2 + 60, 58);
+
+    // Presented to
+    pdf.setTextColor(200, 230, 220);
+    pdf.setFontSize(11);
+    pdf.text('This certifies that', W/2, 70, { align: 'center' });
+
+    // Name
+    pdf.setTextColor(255, 255, 255);
+    pdf.setFontSize(26);
+    pdf.setFont('helvetica', 'bold');
+    pdf.text(fullName, W/2, 88, { align: 'center' });
+
+    // Description
+    pdf.setFont('helvetica', 'normal');
+    pdf.setFontSize(11);
+    pdf.setTextColor(200, 230, 220);
+    pdf.text('has successfully completed all lessons in', W/2, 100, { align: 'center' });
+
+    // Course title
+    pdf.setTextColor(239, 159, 39);
+    pdf.setFontSize(18);
+    pdf.setFont('helvetica', 'bold');
+    pdf.text(courseTitle, W/2, 115, { align: 'center' });
+
+    // Date
+    pdf.setFont('helvetica', 'normal');
+    pdf.setFontSize(10);
+    pdf.setTextColor(200, 230, 220);
+    pdf.text(`Issued on ${dateStr}`, W/2, 130, { align: 'center' });
+
+    // Bottom line
+    pdf.setDrawColor(239, 159, 39);
+    pdf.setLineWidth(0.8);
+    pdf.line(W/2 - 60, 136, W/2 + 60, 136);
+
+    pdf.setFontSize(9);
+    pdf.setTextColor(150, 200, 180);
+    pdf.text('DigiPal Solutions \u2014 Nigeria\'s Digital Learning Platform', W/2, 145, { align: 'center' });
+
+    const filename = `DigiPal_Certificate_${courseTitle.replace(/[^a-z0-9]/gi,'_')}.pdf`;
+    pdf.save(filename);
+    showToast('\u2B07 Certificate downloaded!', 'success', 3000);
+  } catch(err) {
+    showToast('\u274C Could not generate certificate: ' + err.message, 'error', 5000);
+  }
 }
 
 function extractYouTubeId(url) {
