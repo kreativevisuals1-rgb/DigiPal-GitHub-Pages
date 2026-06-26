@@ -306,6 +306,12 @@
         <div class="nav-item" onclick="showPage('posts')">
           <span class="nav-icon">📰</span><span>Manage Posts</span>
         </div>
+        <div class="nav-item" onclick="showPage('courses')">
+          <span class="nav-icon">🎓</span><span>Manage Courses</span>
+        </div>
+        <div class="nav-item" onclick="showPage('enrolments')">
+          <span class="nav-icon">📋</span><span>Enrolments</span>
+        </div>
         <div class="nav-item" onclick="showPage('leaderboard')">
           <span class="nav-icon">🏆</span><span>Leaderboard</span>
         </div>
@@ -351,6 +357,21 @@
             <div class="s-label">Monthly Prize</div>
             <div class="s-value green">₦5,000</div>
             <div class="s-note">paid at month end</div>
+          </div>
+          <div class="stat-card">
+            <div class="s-label">Published Courses</div>
+            <div class="s-value" id="statCourses">—</div>
+            <div class="s-note">visible to users</div>
+          </div>
+          <div class="stat-card">
+            <div class="s-label">Total Enrolments</div>
+            <div class="s-value green" id="statEnrolments">—</div>
+            <div class="s-note">all time</div>
+          </div>
+          <div class="stat-card">
+            <div class="s-label">Course Revenue</div>
+            <div class="s-value green" id="statCourseRevenue">—</div>
+            <div class="s-note">total paid enrolments</div>
           </div>
         </div>
 
@@ -500,6 +521,124 @@
         </div>
       </div>
 
+      <!-- MANAGE COURSES -->
+      <div class="page" id="page-courses">
+
+        <!-- ── LIST VIEW ── -->
+        <div id="coursesListView">
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:4px">
+            <div>
+              <div class="page-title">🎓 Manage Courses</div>
+              <div class="page-sub">Courses users can enrol in from their wallet. Only published courses are visible to users.</div>
+            </div>
+            <button class="btn btn-green" onclick="openCourseEditor(null)">➕ New Course</button>
+          </div>
+
+          <div class="card">
+            <div id="coursesListContainer">
+              <div style="color:var(--muted); font-size:0.88rem;">Loading…</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── EDITOR VIEW (course details + modules/lessons) ── -->
+        <div id="coursesEditorView" style="display:none">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
+            <button class="btn btn-outline" onclick="closeCourseEditor()" style="padding:6px 12px">← Back</button>
+            <div class="page-title" id="courseEditorTitle" style="margin-bottom:0">New Course</div>
+          </div>
+          <div class="page-sub">Fill in the course details, then add modules and lessons below.</div>
+
+          <div class="card">
+            <h3>📋 Course Details</h3>
+            <div class="row-2">
+              <div class="form-row">
+                <label>Title</label>
+                <input type="text" id="courseTitle" placeholder="e.g. Freelancing Mastery" />
+              </div>
+              <div class="form-row">
+                <label>Icon (single emoji)</label>
+                <input type="text" id="courseIcon" placeholder="💻" maxlength="4" />
+              </div>
+            </div>
+            <div class="form-row">
+              <label>Description</label>
+              <input type="text" id="courseDescription" placeholder="One or two sentences shown on the course card" />
+            </div>
+            <div class="row-2">
+              <div class="form-row">
+                <label>Category</label>
+                <input type="text" id="courseCategory" placeholder="e.g. Freelancing" />
+              </div>
+              <div class="form-row">
+                <label>Level</label>
+                <select id="courseLevel">
+                  <option>Beginner</option>
+                  <option>Intermediate</option>
+                  <option>Advanced</option>
+                  <option>All Levels</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-row" style="max-width:220px">
+              <label>Price (₦)</label>
+              <input type="number" id="coursePrice" placeholder="5000" min="0" step="100" />
+            </div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:4px">
+              <button class="btn btn-green" id="courseSaveBtn" onclick="saveCourseDetails()">💾 Save Course Details</button>
+              <label style="display:flex;align-items:center;gap:8px;font-size:0.85rem;font-weight:600;cursor:pointer">
+                <input type="checkbox" id="coursePublished" style="width:16px;height:16px" /> Published (visible to users)
+              </label>
+              <span id="courseSaveStatus" style="font-size:0.82rem;color:var(--muted)"></span>
+            </div>
+          </div>
+
+          <!-- Modules + lessons builder — only usable once the course exists -->
+          <div class="card" id="courseModulesCard" style="display:none">
+            <h3>🧩 Curriculum <span id="courseLessonCount" style="color:var(--muted);font-weight:400;font-size:0.85rem"></span></h3>
+            <div id="modulesContainer"></div>
+            <div style="display:flex;gap:10px;margin-top:8px">
+              <button class="btn btn-outline" onclick="addModule()">➕ Add Module</button>
+              <button class="btn btn-green" onclick="saveCurriculum()">💾 Save Curriculum</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ENROLMENTS -->
+      <div class="page" id="page-enrolments">
+        <div class="page-title">📋 Course Enrolments</div>
+        <div class="page-sub">All users who have enrolled in a course.</div>
+
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;align-items:center">
+          <input type="text" id="enrolSearch" placeholder="Search by name, email or course…"
+            oninput="filterEnrolments()"
+            style="padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:0.88rem;width:260px;outline:none"/>
+          <select id="enrolCourseFilter" onchange="filterEnrolments()"
+            style="padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:0.88rem;outline:none">
+            <option value="">All Courses</option>
+          </select>
+        </div>
+
+        <div class="card" style="padding:0;overflow:hidden">
+          <div style="overflow-x:auto">
+            <table style="width:100%;border-collapse:collapse;font-size:0.85rem">
+              <thead>
+                <tr style="background:#f9fafb;border-bottom:1px solid var(--border)">
+                  <th style="padding:10px 14px;text-align:left;font-weight:700;color:var(--muted);font-size:0.78rem;text-transform:uppercase">User</th>
+                  <th style="padding:10px 14px;text-align:left;font-weight:700;color:var(--muted);font-size:0.78rem;text-transform:uppercase">Course</th>
+                  <th style="padding:10px 14px;text-align:left;font-weight:700;color:var(--muted);font-size:0.78rem;text-transform:uppercase">Amount Paid</th>
+                  <th style="padding:10px 14px;text-align:left;font-weight:700;color:var(--muted);font-size:0.78rem;text-transform:uppercase">Enrolled On</th>
+                </tr>
+              </thead>
+              <tbody id="enrolments-tbody">
+                <tr><td colspan="4" style="padding:2rem;text-align:center;color:var(--muted)">Loading…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
       <!-- LEADERBOARD -->
       <div class="page" id="page-leaderboard">
         <div class="page-title">🏆 Monthly Leaderboard</div>
@@ -625,6 +764,10 @@
 // ═══════════════════════════════════════════════
 const ADMIN_EMAIL = 'kreativevisuals1@gmail.com';
 
+// AI proxy Worker — same one used for Read & Earn post generation,
+// now also used for course curriculum/lesson-notes generation.
+const WORKER_URL = 'https://digipal-ai-proxy.kreativevisuals1.workers.dev';
+
 let isLoggedIn = false;
 
 async function doLogin() {
@@ -719,6 +862,8 @@ function showPage(id) {
   if (id === 'leaderboard') renderAdminLB();
   if (id === 'winner') renderWinnerPage();
   if (id === 'posts') { renderPostList(); loadGenerationStatus(); loadTodaysSupabasePosts(); }
+  if (id === 'courses') { loadCoursesList(); }
+  if (id === 'enrolments') { loadEnrolments(); }
   if (id === 'withdrawals') loadWithdrawals();
 }
 
@@ -777,15 +922,10 @@ async function generatePost() {
 
   const catLabels = { tech: 'Technology', finance: 'Finance', business: 'Business', lifestyle: 'Lifestyle' };
 
-  // ⚠️ IMPORTANT: replace this with YOUR Cloudflare Worker URL after deploying
-  // digipal-ai-proxy-worker.js (see setup instructions in that file).
-  const WORKER_URL = 'https://digipal-ai-proxy.kreativevisuals1.workers.dev';
+  // Same AI proxy Worker used everywhere in the admin panel — see
+  // WORKER_URL declared near the top of this script.
 
   try {
-    if (WORKER_URL.includes('YOUR-SUBDOMAIN')) {
-      throw new Error('AI proxy not configured yet. Deploy digipal-ai-proxy-worker.js and update WORKER_URL.');
-    }
-
     const systemPrompt = `You are a content writer for DigiPal, a Nigerian digital platform. Write engaging, informative articles for Nigerian readers. The article should be relevant to everyday Nigerian life, written in a clear and friendly tone.
 
 Respond ONLY with valid JSON in this exact format (no markdown, no backticks):
@@ -879,6 +1019,388 @@ function clearPostForm() {
   document.getElementById('aiStatus').style.display = 'none';
 }
 
+// ═══════════════════════════════════════════════
+// MANAGE COURSES
+// ═══════════════════════════════════════════════
+
+// In-memory state for whichever course is currently open in the editor.
+// null = creating a brand-new course that doesn't exist in Supabase yet.
+let currentCourseId = null;
+let currentModules = []; // [{id, title, order_index, lessons:[{id, title, youtube_url, notes, duration_min, order_index}]}]
+let moduleIdCounter = 0;
+let lessonIdCounter = 0;
+
+async function loadCoursesList() {
+  const container = document.getElementById('coursesListContainer');
+  if (!sbAdmin) { container.innerHTML = '<div style="color:var(--red)">Supabase not configured.</div>'; return; }
+  container.innerHTML = '<div style="color:var(--muted);font-size:0.88rem">Loading…</div>';
+
+  try {
+    const { data, error } = await sbAdmin
+      .from('courses')
+      .select('id, title, icon, category, level, price, lesson_count, published, created_at')
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+
+    if (!data || !data.length) {
+      container.innerHTML = '<div style="color:var(--muted);font-size:0.88rem">No courses yet. Click "New Course" to create your first one.</div>';
+      return;
+    }
+
+    container.innerHTML = data.map(c => `
+      <div class="post-list-item">
+        <span class="pli-tag" style="background:#e0f2f1;color:#00695c">${escHtml(c.icon || '🎓')}</span>
+        <div class="pli-title">
+          ${escHtml(c.title)}
+          <span style="font-weight:400;color:var(--muted);font-size:0.8rem">— ${escHtml(c.category || 'General')} · ${c.lesson_count || 0} lessons</span>
+          ${c.published
+            ? '<span style="margin-left:6px;font-size:0.72rem;background:#dcfce7;color:#15803d;padding:2px 8px;border-radius:20px;font-weight:700">PUBLISHED</span>'
+            : '<span style="margin-left:6px;font-size:0.72rem;background:#fef3c7;color:#92400e;padding:2px 8px;border-radius:20px;font-weight:700">DRAFT</span>'}
+        </div>
+        <div class="pli-reward">₦${Number(c.price || 0).toLocaleString()}</div>
+        <div style="display:flex;gap:6px;flex-shrink:0">
+          <button class="btn btn-outline" style="padding:6px 12px;font-size:0.8rem" onclick="openCourseEditor('${c.id}')">Edit</button>
+          <button class="btn btn-outline" style="padding:6px 12px;font-size:0.8rem;color:var(--red);border-color:var(--red)" onclick="deleteCourse('${c.id}','${escHtml(c.title).replace(/'/g,"\\'")}')">Delete</button>
+        </div>
+      </div>
+    `).join('');
+  } catch (err) {
+    container.innerHTML = `<div style="color:var(--red)">Error: ${escHtml(err.message)}</div>`;
+  }
+}
+
+async function deleteCourse(id, title) {
+  if (!confirm(`Delete "${title}"? This also deletes its modules, lessons, and enrollment records. This cannot be undone.`)) return;
+  try {
+    const { error } = await sbAdmin.from('courses').delete().eq('id', id);
+    if (error) throw error;
+    showToast('Course deleted.', 'green');
+    loadCoursesList();
+  } catch (err) {
+    showToast('Delete failed: ' + err.message, 'red');
+  }
+}
+
+// ── Editor: open / close ──
+async function openCourseEditor(id) {
+  document.getElementById('coursesListView').style.display = 'none';
+  document.getElementById('coursesEditorView').style.display = 'block';
+  document.getElementById('courseModulesCard').style.display = id ? 'block' : 'none';
+  document.getElementById('courseSaveStatus').textContent = '';
+
+  currentCourseId = id;
+  currentModules = [];
+
+  if (!id) {
+    // Brand new course — blank form
+    document.getElementById('courseEditorTitle').textContent = 'New Course';
+    document.getElementById('courseTitle').value = '';
+    document.getElementById('courseIcon').value = '🎓';
+    document.getElementById('courseDescription').value = '';
+    document.getElementById('courseCategory').value = '';
+    document.getElementById('courseLevel').value = 'Beginner';
+    document.getElementById('coursePrice').value = '';
+    document.getElementById('coursePublished').checked = false;
+    return;
+  }
+
+  document.getElementById('courseEditorTitle').textContent = 'Edit Course';
+  try {
+    const { data: course, error } = await sbAdmin.from('courses').select('*').eq('id', id).single();
+    if (error) throw error;
+
+    document.getElementById('courseTitle').value = course.title || '';
+    document.getElementById('courseIcon').value = course.icon || '🎓';
+    document.getElementById('courseDescription').value = course.description || '';
+    document.getElementById('courseCategory').value = course.category || '';
+    document.getElementById('courseLevel').value = course.level || 'Beginner';
+    document.getElementById('coursePrice').value = course.price || '';
+    document.getElementById('coursePublished').checked = !!course.published;
+
+    await loadModulesAndLessons(id);
+  } catch (err) {
+    showToast('Failed to load course: ' + err.message, 'red');
+  }
+}
+
+function closeCourseEditor() {
+  document.getElementById('coursesEditorView').style.display = 'none';
+  document.getElementById('coursesListView').style.display = 'block';
+  loadCoursesList();
+}
+
+// ── Save course details (insert if new, update if existing) ──
+async function saveCourseDetails() {
+  const title = document.getElementById('courseTitle').value.trim();
+  const icon = document.getElementById('courseIcon').value.trim() || '🎓';
+  const description = document.getElementById('courseDescription').value.trim();
+  const category = document.getElementById('courseCategory').value.trim() || 'General';
+  const level = document.getElementById('courseLevel').value;
+  const price = parseFloat(document.getElementById('coursePrice').value) || 0;
+  const published = document.getElementById('coursePublished').checked;
+
+  if (!title) { showToast('Enter a course title first.', 'red'); return; }
+
+  const btn = document.getElementById('courseSaveBtn');
+  const status = document.getElementById('courseSaveStatus');
+  btn.disabled = true;
+  status.textContent = 'Saving…';
+
+  const payload = { title, icon, description, category, level, price, published, updated_at: new Date().toISOString() };
+
+  try {
+    if (currentCourseId) {
+      const { error } = await sbAdmin.from('courses').update(payload).eq('id', currentCourseId);
+      if (error) throw error;
+    } else {
+      const { data, error } = await sbAdmin.from('courses').insert([payload]).select('id').single();
+      if (error) throw error;
+      currentCourseId = data.id;
+      document.getElementById('courseEditorTitle').textContent = 'Edit Course';
+      document.getElementById('courseModulesCard').style.display = 'block';
+      await loadModulesAndLessons(currentCourseId);
+    }
+    status.textContent = '✅ Saved ' + new Date().toLocaleTimeString();
+    showToast('Course saved!', 'green');
+  } catch (err) {
+    status.textContent = '';
+    showToast('Save failed: ' + err.message, 'red');
+  }
+  btn.disabled = false;
+}
+
+// ── Modules & lessons: load from Supabase into in-memory state ──
+async function loadModulesAndLessons(courseId) {
+  try {
+    const { data: modules, error: modErr } = await sbAdmin
+      .from('course_modules').select('*').eq('course_id', courseId).order('order_index');
+    if (modErr) throw modErr;
+
+    const { data: lessons, error: lesErr } = await sbAdmin
+      .from('course_lessons').select('*').eq('course_id', courseId).order('order_index');
+    if (lesErr) throw lesErr;
+
+    currentModules = (modules || []).map(m => ({
+      id: m.id, title: m.title, order_index: m.order_index,
+      lessons: (lessons || []).filter(l => l.module_id === m.id).map(l => ({
+        id: l.id, title: l.title, youtube_url: l.youtube_url, notes: l.notes,
+        duration_min: l.duration_min, order_index: l.order_index
+      }))
+    }));
+    renderModulesBuilder();
+  } catch (err) {
+    showToast('Failed to load curriculum: ' + err.message, 'red');
+  }
+}
+
+function renderModulesBuilder() {
+  const container = document.getElementById('modulesContainer');
+  let totalLessons = 0;
+  currentModules.forEach(m => totalLessons += m.lessons.length);
+  document.getElementById('courseLessonCount').textContent = `(${totalLessons} lesson${totalLessons === 1 ? '' : 's'})`;
+
+  if (!currentModules.length) {
+    container.innerHTML = '<div style="color:var(--muted);font-size:0.85rem;padding:8px 0">No modules yet. Add one to start building the curriculum.</div>';
+    return;
+  }
+
+  container.innerHTML = currentModules.map((m, mi) => `
+    <div style="border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:14px;background:#fafafa">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+        <input type="text" value="${escHtml(m.title)}" placeholder="Module title, e.g. Getting Started"
+          oninput="updateModuleTitle(${mi}, this.value)"
+          style="flex:1;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-weight:700;font-size:0.9rem" />
+        <button class="btn btn-outline" style="padding:6px 10px;font-size:0.78rem;color:var(--red);border-color:var(--red)" onclick="removeModule(${mi})">Remove</button>
+      </div>
+      <div id="lessonsFor${mi}">
+        ${m.lessons.map((l, li) => renderLessonRow(mi, li, l)).join('')}
+      </div>
+      <button class="btn btn-outline" style="padding:6px 12px;font-size:0.8rem;margin-top:4px" onclick="addLesson(${mi})">➕ Add Lesson</button>
+    </div>
+  `).join('');
+}
+
+function renderLessonRow(mi, li, lesson) {
+  const hasNotes = lesson.notes && lesson.notes.trim().length > 0;
+  return `
+    <div style="background:#fff;border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:8px">
+      <div class="row-2" style="margin-bottom:8px">
+        <div class="form-row" style="margin-bottom:0">
+          <label style="font-size:0.75rem">Lesson Title</label>
+          <input type="text" value="${escHtml(lesson.title)}" placeholder="e.g. Setting up your Upwork profile"
+            oninput="updateLessonField(${mi},${li},'title',this.value)" />
+        </div>
+        <div class="form-row" style="margin-bottom:0">
+          <label style="font-size:0.75rem">YouTube URL</label>
+          <input type="text" value="${escHtml(lesson.youtube_url)}" placeholder="https://youtube.com/watch?v=…"
+            oninput="updateLessonField(${mi},${li},'youtube_url',this.value)" />
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+        <label style="font-size:0.75rem;color:var(--muted)">Duration (min)</label>
+        <input type="number" value="${lesson.duration_min || 10}" min="1" style="width:70px;padding:6px 8px;border:1px solid var(--border);border-radius:6px"
+          oninput="updateLessonField(${mi},${li},'duration_min',parseInt(this.value)||10)" />
+        <button class="btn btn-green" style="padding:6px 12px;font-size:0.78rem;margin-left:auto" onclick="generateLessonNotes(${mi},${li})" id="genNotesBtn-${mi}-${li}">
+          ✨ ${hasNotes ? 'Regenerate' : 'Generate'} Notes
+        </button>
+        <button class="btn btn-outline" style="padding:6px 10px;font-size:0.78rem;color:var(--red);border-color:var(--red)" onclick="removeLesson(${mi},${li})">✕</button>
+      </div>
+      <textarea placeholder="Lesson notes — write your own or click Generate Notes above (HTML: <p>, <h4>, <strong>, <ul><li>)"
+        oninput="updateLessonField(${mi},${li},'notes',this.value)"
+        style="width:100%;min-height:90px;padding:8px;border:1px solid var(--border);border-radius:6px;font-size:0.82rem;font-family:inherit;resize:vertical">${escHtml(lesson.notes || '')}</textarea>
+    </div>
+  `;
+}
+
+function addModule() {
+  currentModules.push({ id: 'new-' + (++moduleIdCounter), title: '', order_index: currentModules.length, lessons: [] });
+  renderModulesBuilder();
+}
+
+function updateModuleTitle(mi, value) {
+  currentModules[mi].title = value;
+}
+
+async function removeModule(mi) {
+  const m = currentModules[mi];
+  if (!confirm(`Remove module "${m.title || '(untitled)'}" and all its lessons?`)) return;
+  if (!String(m.id).startsWith('new-')) {
+    try {
+      const { error } = await sbAdmin.from('course_modules').delete().eq('id', m.id);
+      if (error) throw error;
+    } catch (err) { showToast('Failed to delete module: ' + err.message, 'red'); return; }
+  }
+  currentModules.splice(mi, 1);
+  renderModulesBuilder();
+  await saveCurriculum();
+}
+
+function addLesson(mi) {
+  currentModules[mi].lessons.push({
+    id: 'new-' + (++lessonIdCounter), title: '', youtube_url: '', notes: '',
+    duration_min: 10, order_index: currentModules[mi].lessons.length
+  });
+  renderModulesBuilder();
+}
+
+function updateLessonField(mi, li, field, value) {
+  currentModules[mi].lessons[li][field] = value;
+}
+
+async function removeLesson(mi, li) {
+  const lesson = currentModules[mi].lessons[li];
+  if (!confirm(`Remove lesson "${lesson.title || '(untitled)'}"?`)) return;
+  if (!String(lesson.id).startsWith('new-')) {
+    try {
+      const { error } = await sbAdmin.from('course_lessons').delete().eq('id', lesson.id);
+      if (error) throw error;
+    } catch (err) { showToast('Failed to delete lesson: ' + err.message, 'red'); return; }
+  }
+  currentModules[mi].lessons.splice(li, 1);
+  renderModulesBuilder();
+  await saveCurriculum();
+}
+
+// ── AI-generate notes for one lesson (curriculum outline → detailed notes) ──
+async function generateLessonNotes(mi, li) {
+  const lesson = currentModules[mi].lessons[li];
+  const courseTitle = document.getElementById('courseTitle').value.trim();
+  if (!lesson.title) { showToast('Give the lesson a title first.', 'red'); return; }
+
+  const btn = document.getElementById(`genNotesBtn-${mi}-${li}`);
+  const originalLabel = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Writing…';
+
+  try {
+    const systemPrompt = `You are an expert curriculum writer for DigiPal, a Nigerian online learning platform. You write clear, practical lesson notes that accompany a YouTube video lesson — NOT a transcript, but a structured study companion: key points, step-by-step instructions, and practical tips relevant to Nigerians.
+
+Respond ONLY with valid JSON in this exact format (no markdown, no backticks):
+{
+  "notes": "HTML lesson notes using only <p>, <h4>, <strong>, <ul>, <li> tags, 200-350 words, structured with a short intro, key takeaways as a bullet list, and one practical tip for Nigerian learners"
+}`;
+    const userPrompt = `Course: "${courseTitle}". Lesson: "${lesson.title}". Write study notes for this lesson.`;
+
+    const response = await fetch(WORKER_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ system: systemPrompt, prompt: userPrompt })
+    });
+    if (!response.ok) {
+      const errBody = await response.text();
+      throw new Error(`Proxy/API error (${response.status}): ${errBody.slice(0, 200)}`);
+    }
+    const data = await response.json();
+    const text = data.choices?.[0]?.message?.content || '';
+    const clean = text.replace(/```json|```/g, '').trim();
+    const result = JSON.parse(clean);
+
+    lesson.notes = result.notes || '';
+    renderModulesBuilder();
+    showToast('Lesson notes generated!', 'green');
+  } catch (err) {
+    showToast('Generation failed: ' + err.message, 'red');
+    btn.innerHTML = originalLabel;
+  }
+  btn.disabled = false;
+}
+
+// ── Save the whole curriculum (all modules + lessons) to Supabase ──
+async function saveCurriculum() {
+  if (!currentCourseId) { showToast('Save the course details first.', 'red'); return; }
+  const status = document.getElementById('courseSaveStatus');
+  status.textContent = 'Saving curriculum…';
+
+  try {
+    let totalLessons = 0;
+    for (let mi = 0; mi < currentModules.length; mi++) {
+      const m = currentModules[mi];
+      if (!m.title.trim()) continue; // skip empty/unfinished modules silently
+
+      let moduleId = m.id;
+      if (String(moduleId).startsWith('new-')) {
+        const { data, error } = await sbAdmin.from('course_modules')
+          .insert([{ course_id: currentCourseId, title: m.title, order_index: mi }])
+          .select('id').single();
+        if (error) throw error;
+        moduleId = data.id;
+        m.id = moduleId;
+      } else {
+        const { error } = await sbAdmin.from('course_modules')
+          .update({ title: m.title, order_index: mi }).eq('id', moduleId);
+        if (error) throw error;
+      }
+
+      for (let li = 0; li < m.lessons.length; li++) {
+        const l = m.lessons[li];
+        if (!l.title.trim()) continue;
+        totalLessons++;
+        const lessonPayload = {
+          module_id: moduleId, course_id: currentCourseId, title: l.title,
+          youtube_url: l.youtube_url || '', notes: l.notes || '',
+          duration_min: l.duration_min || 10, order_index: li
+        };
+        if (String(l.id).startsWith('new-')) {
+          const { data, error } = await sbAdmin.from('course_lessons').insert([lessonPayload]).select('id').single();
+          if (error) throw error;
+          l.id = data.id;
+        } else {
+          const { error } = await sbAdmin.from('course_lessons').update(lessonPayload).eq('id', l.id);
+          if (error) throw error;
+        }
+      }
+    }
+
+    // Keep the denormalized lesson_count on the course row in sync.
+    await sbAdmin.from('courses').update({ lesson_count: totalLessons }).eq('id', currentCourseId);
+
+    status.textContent = '✅ Curriculum saved ' + new Date().toLocaleTimeString();
+  } catch (err) {
+    status.textContent = '';
+    showToast('Curriculum save failed: ' + err.message, 'red');
+  }
+}
+
 function deletePost(id) {
   if (!confirm('Delete this post?')) return;
   const posts = getAdminPosts().filter(p => p.id !== id);
@@ -924,6 +1446,24 @@ async function renderOverviewStats() {
   })();
   document.getElementById('statUsers').textContent = todayState.earned || 0;
   document.getElementById('statTop').textContent = lb[0] ? lb[0].name : '—';
+
+  // Course stats
+  if (sbAdmin) {
+    try {
+      const [{ count: pubCount }, { data: enrolData }] = await Promise.all([
+        sbAdmin.from('courses').select('id', { count: 'exact', head: true }).eq('published', true),
+        sbAdmin.from('course_enrolments').select('amount_paid')
+      ]);
+      document.getElementById('statCourses').textContent = pubCount ?? '—';
+      document.getElementById('statEnrolments').textContent = (enrolData || []).length;
+      const revenue = (enrolData || []).reduce((s, r) => s + (r.amount_paid || 0), 0);
+      document.getElementById('statCourseRevenue').textContent = '₦' + Number(revenue).toLocaleString();
+    } catch(_) {
+      document.getElementById('statCourses').textContent = '—';
+      document.getElementById('statEnrolments').textContent = '—';
+      document.getElementById('statCourseRevenue').textContent = '—';
+    }
+  }
 }
 
 // ═══════════════════════════════════════════════
@@ -1417,6 +1957,93 @@ async function markFailed(id) {
 }
 
 // Badge count is now loaded inside initAdmin() above
+
+// ═══════════════════════════════════════════════
+// ENROLMENTS
+// ═══════════════════════════════════════════════
+let _allEnrolments = [];
+
+async function loadEnrolments() {
+  const tbody = document.getElementById('enrolments-tbody');
+  const courseFilter = document.getElementById('enrolCourseFilter');
+  tbody.innerHTML = '<tr><td colspan="4" style="padding:2rem;text-align:center;color:var(--muted)">Loading…</td></tr>';
+
+  if (!sbAdmin) {
+    tbody.innerHTML = '<tr><td colspan="4" style="padding:2rem;text-align:center;color:var(--red)">Supabase not configured.</td></tr>';
+    return;
+  }
+
+  try {
+    // Fetch enrolments joined with course titles
+    const { data, error } = await sbAdmin
+      .from('course_enrolments')
+      .select('id, user_id, course_id, amount_paid, enrolled_at, courses(title)')
+      .order('enrolled_at', { ascending: false });
+    if (error) throw error;
+
+    // Also fetch user profiles for names/emails
+    const userIds = [...new Set((data || []).map(r => r.user_id))];
+    let profileMap = {};
+    if (userIds.length) {
+      const { data: profiles } = await sbAdmin
+        .from('profiles')
+        .select('id, first_name, last_name, email')
+        .in('id', userIds);
+      (profiles || []).forEach(p => { profileMap[p.id] = p; });
+    }
+
+    _allEnrolments = (data || []).map(r => ({
+      ...r,
+      courseTitle: r.courses?.title || r.course_id,
+      userName: ((profileMap[r.user_id]?.first_name || '') + ' ' + (profileMap[r.user_id]?.last_name || '')).trim() || '—',
+      userEmail: profileMap[r.user_id]?.email || '—'
+    }));
+
+    // Populate course filter dropdown
+    const courseTitles = [...new Set(_allEnrolments.map(r => r.courseTitle))].sort();
+    courseFilter.innerHTML = '<option value="">All Courses</option>' +
+      courseTitles.map(t => `<option value="${t}">${t}</option>`).join('');
+
+    renderEnrolmentsTable(_allEnrolments);
+
+  } catch(err) {
+    tbody.innerHTML = `<tr><td colspan="4" style="padding:2rem;text-align:center;color:var(--red)">Error: ${err.message}</td></tr>`;
+  }
+}
+
+function filterEnrolments() {
+  const q = document.getElementById('enrolSearch').value.trim().toLowerCase();
+  const course = document.getElementById('enrolCourseFilter').value;
+  const filtered = _allEnrolments.filter(r => {
+    const matchCourse = !course || r.courseTitle === course;
+    const matchQ = !q || r.userName.toLowerCase().includes(q) || r.userEmail.toLowerCase().includes(q) || r.courseTitle.toLowerCase().includes(q);
+    return matchCourse && matchQ;
+  });
+  renderEnrolmentsTable(filtered);
+}
+
+function renderEnrolmentsTable(rows) {
+  const tbody = document.getElementById('enrolments-tbody');
+  if (!rows.length) {
+    tbody.innerHTML = '<tr><td colspan="4" style="padding:2rem;text-align:center;color:var(--muted)">No enrolments found.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = rows.map(r => `
+    <tr style="border-bottom:1px solid var(--border)">
+      <td style="padding:10px 14px">
+        <div style="font-weight:600">${r.userName}</div>
+        <div style="font-size:0.78rem;color:var(--muted)">${r.userEmail}</div>
+      </td>
+      <td style="padding:10px 14px">${r.courseTitle}</td>
+      <td style="padding:10px 14px;font-weight:700;color:${r.amount_paid > 0 ? 'var(--green-dark)' : 'var(--muted)'}">
+        ${r.amount_paid > 0 ? '₦' + Number(r.amount_paid).toLocaleString() : 'Free'}
+      </td>
+      <td style="padding:10px 14px;color:var(--muted);font-size:0.82rem">
+        ${new Date(r.enrolled_at).toLocaleDateString('en-NG', {day:'numeric',month:'short',year:'numeric'})}
+      </td>
+    </tr>
+  `).join('');
+}
 </script>
 </body>
 </html>
