@@ -3129,7 +3129,7 @@ function openWithdrawModal() {
   document.getElementById('withdraw-account-name').textContent = '';
   document.getElementById('withdraw-modal-error').style.display = 'none';
   document.getElementById('withdraw-balance-hint').textContent =
-    'Available balance: ₦' + Number(walletBalance).toLocaleString('en-NG', {minimumFractionDigits: 2});
+    'Wallet balance only: ₦' + Number(walletBalance).toLocaleString('en-NG', {minimumFractionDigits: 2}) + ' (Read & Earn credits cannot be withdrawn)';
   // Disable Withdraw button until account is verified
   document.getElementById('withdraw-submit-btn').disabled = true;
   withdrawResolvedAccount = null;
@@ -3389,8 +3389,8 @@ function goToWithdrawReview() {
     errEl.style.display = 'block';
     return;
   }
-  if (amount > walletBalance) {
-    errEl.textContent = 'Withdrawal amount exceeds your wallet balance.';
+ if (amount > walletBalance) {
+    errEl.textContent = 'Withdrawal amount exceeds your wallet balance. Note: Read & Earn credits cannot be withdrawn — only used for VTU services.';
     errEl.style.display = 'block';
     return;
   }
