@@ -1195,15 +1195,15 @@ html,body{overflow-x:hidden;max-width:100vw}
     <div class="modal-overlay" id="withdrawal-success-overlay" style="display:none;z-index:2000">
       <div class="modal-box" style="text-align:center;max-width:380px">
         <div style="font-size:3.5rem;margin-bottom:.75rem">🏦</div>
-        <h2 style="font-size:1.3rem;font-weight:800;margin-bottom:.5rem">Withdrawal Request Received</h2>
+        <h2 style="font-size:1.3rem;font-weight:800;margin-bottom:.5rem">Withdrawal Sent</h2>
         <p style="color:var(--text-muted);font-size:.9rem;margin-bottom:1.25rem">
-          <strong id="wd-success-amount">₦0</strong> is being sent to <strong id="wd-success-name">your account</strong>. Your transfer is reviewed and sent manually by our team, usually within <strong>24 hours</strong>.
+          <strong id="wd-success-amount">₦0</strong> is being transferred to <strong id="wd-success-name">your account</strong> automatically. This is usually instant, and rarely takes more than a few minutes.
         </p>
         <div style="background:var(--brand-light);border-radius:10px;padding:1rem;font-size:.85rem;color:var(--brand);margin-bottom:1.25rem;text-align:left">
           <div style="font-weight:700;margin-bottom:.4rem">What happens next?</div>
           <div>✅ Your wallet has been debited immediately.</div>
-          <div style="margin-top:.3rem">⏳ Your transaction shows <strong>Pending</strong> while our team reviews and sends the transfer from our bank.</div>
-          <div style="margin-top:.3rem">🔔 Once sent, it will change to <strong>Successful</strong>.</div>
+          <div style="margin-top:.3rem">⏳ Your transaction shows <strong>Processing</strong> while your bank confirms receipt.</div>
+          <div style="margin-top:.3rem">🔔 Once confirmed, it will change to <strong>Successful</strong> — no action needed from you.</div>
         </div>
         <button class="btn btn-primary" style="width:100%" onclick="closeWithdrawalSuccess()">View Transaction History</button>
       </div>
@@ -2684,10 +2684,11 @@ function txMeta(tx) {
 
 function txStatusInfo(tx) {
   const s = tx.status;
-  if (s === 'pending')   return { label: 'Pending',    color: '#92400e', bg: '#fef9c3' };
-  if (s === 'failed')    return { label: 'Failed',     color: '#991b1b', bg: '#fee2e2' };
-  if (s === 'processed') return { label: 'Successful', color: '#15803d', bg: '#dcfce7' };
-  return                          { label: 'Completed', color: '#15803d', bg: '#dcfce7' };
+  if (s === 'pending')    return { label: 'Pending',    color: '#92400e', bg: '#fef9c3' };
+  if (s === 'processing') return { label: 'Processing', color: '#92400e', bg: '#fef9c3' };
+  if (s === 'failed')     return { label: 'Failed',     color: '#991b1b', bg: '#fee2e2' };
+  if (s === 'processed')  return { label: 'Successful', color: '#15803d', bg: '#dcfce7' };
+  return                           { label: 'Completed', color: '#15803d', bg: '#dcfce7' };
 }
 
 function fmtDate(iso) {
@@ -2789,7 +2790,7 @@ function renderTransactions(txs, updateCache = true) {
       const timeStr = d.toLocaleTimeString('en-NG', {hour:'2-digit', minute:'2-digit'});
       const statusDot = tx.status === 'failed'
         ? '<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#ef4444;margin-right:4px;vertical-align:middle"></span>'
-        : tx.status === 'pending'
+        : (tx.status === 'pending' || tx.status === 'processing')
         ? '<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#f59e0b;margin-right:4px;vertical-align:middle"></span>'
         : '';
       return `<div onclick="openReceipt('${tx.id}')" style="display:flex;align-items:center;gap:.9rem;padding:.85rem 1.25rem;cursor:pointer;transition:background .15s;border-bottom:1px solid #f9fafb" onmouseover="this.style.background='#f9fafb'" onmouseout="this.style.background=''">
@@ -3674,6 +3675,32 @@ async function logWithdrawalRecords(txPayload, reqPayload, isRetry = false) {
   if (reqErr) console.warn('Could not write withdrawal_request:', reqErr.message);
 
   loadTransactions();
+
+  // Kick off the automatic Paystack transfer. This is fire-and-forget from
+  // the UI's perspective — the user already sees "withdrawal received", and
+  // the paystack-webhook function will finalize the real status shortly.
+  // If this call itself fails (e.g. network hiccup), the row simply stays
+  // 'pending' and shows up in the admin dashboard as a manual fallback,
+  // exactly like the old flow did.
+  triggerAutoWithdrawal(txPayload.reference);
+}
+
+// Calls the process-withdrawal edge function to have Paystack actually move
+// the money. Errors here are logged, not shown to the user — the withdrawal
+// record already exists and will be picked up by admin if automation fails.
+async function triggerAutoWithdrawal(reference) {
+  try {
+    const res = await sb.functions.invoke('process-withdrawal', { body: { reference } });
+    if (res.error) {
+      console.warn('Auto-withdrawal trigger failed, will fall back to manual admin processing:', res.error);
+      return;
+    }
+    // Refresh so the "Processing" status (if the wallet-debit page is still
+    // open) reflects the real state right away.
+    loadTransactions();
+  } catch (err) {
+    console.warn('Auto-withdrawal trigger error:', err);
+  }
 }
 
 function showWithdrawalSuccess(amount, accountName) {
