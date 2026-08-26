@@ -247,8 +247,10 @@
   .wd-table tr:hover td { background: #f9fafb; }
   .status-badge { font-size:0.72rem; font-weight:700; padding:3px 10px; border-radius:999px; white-space:nowrap; }
   .status-pending { background:#fef9c3; color:#92400e; }
+  .status-processing { background:#fef3c7; color:#b45309; }
   .status-processed { background:#dcfce7; color:#15803d; }
   .status-failed { background:#fee2e2; color:#991b1b; }
+  .status-review { background:#fee2e2; color:#b91c1c; }
   .wd-user-cell { display:flex; flex-direction:column; gap:2px; }
   .wd-user-name { font-weight:700; }
   .wd-user-email { font-size:0.75rem; color:var(--muted); }
@@ -698,17 +700,19 @@
       <!-- WITHDRAWALS PAGE -->
       <div class="page" id="page-withdrawals">
         <div class="page-title">💸 Withdrawal Requests</div>
-        <div class="page-sub">Review, process, and mark withdrawal requests as paid.</div>
+        <div class="page-sub">Withdrawals are now sent automatically via Paystack. This view is for monitoring and manual override only.</div>
 
         <div class="stats-row" style="grid-template-columns:repeat(auto-fit,minmax(140px,1fr));margin-bottom:20px">
-          <div class="stat-card"><div class="s-label">Pending</div><div class="s-value" id="wd-stat-pending" style="color:#f59e0b">—</div></div>
+          <div class="stat-card"><div class="s-label">Needs Attention</div><div class="s-value" id="wd-stat-pending" style="color:#f59e0b">—</div></div>
+          <div class="stat-card"><div class="s-label">Processing</div><div class="s-value" id="wd-stat-processing" style="color:#b45309">—</div></div>
           <div class="stat-card"><div class="s-label">Processed</div><div class="s-value green" id="wd-stat-processed">—</div></div>
-          <div class="stat-card"><div class="s-label">Total ₦ Pending</div><div class="s-value" id="wd-stat-amount" style="font-size:1.1rem;padding-top:4px">—</div></div>
+          <div class="stat-card"><div class="s-label">Total ₦ Needing Attention</div><div class="s-value" id="wd-stat-amount" style="font-size:1.1rem;padding-top:4px">—</div></div>
         </div>
 
         <div class="card">
           <div class="filter-row">
-            <button class="filter-btn active" id="filter-pending" onclick="setWdFilter('pending')">⏳ Pending</button>
+            <button class="filter-btn active" id="filter-pending" onclick="setWdFilter('pending')">⚠️ Needs Attention</button>
+            <button class="filter-btn" id="filter-processing" onclick="setWdFilter('processing')">⏳ Processing</button>
             <button class="filter-btn" id="filter-processed" onclick="setWdFilter('processed')">✅ Processed</button>
             <button class="filter-btn" id="filter-all" onclick="setWdFilter('all')">📋 All</button>
             <button class="btn btn-outline" style="margin-left:auto;font-size:0.82rem" onclick="loadWithdrawals()">🔄 Refresh</button>
@@ -1752,7 +1756,7 @@ let pendingWdData = null;
 
 function setWdFilter(f) {
   currentWdFilter = f;
-  ['pending','processed','all'].forEach(id => {
+  ['pending','processing','processed','all'].forEach(id => {
     const btn = document.getElementById('filter-' + id);
     if (btn) btn.classList.toggle('active', id === f);
   });
@@ -1785,21 +1789,27 @@ async function loadWithdrawals() {
 }
 
 function updateWdStats() {
-  const pending = allWithdrawals.filter(w => w.status === 'pending');
+  // "Needs attention" = automation never ran (still 'pending') OR Paystack
+  // flagged it for manual finalization (needs_review, e.g. an OTP-gated
+  // transfer). Everything else moves through on its own.
+  const needsAttention = allWithdrawals.filter(w => w.status === 'pending' || w.needs_review);
+  const processing = allWithdrawals.filter(w => w.status === 'processing' && !w.needs_review);
   const processed = allWithdrawals.filter(w => w.status === 'processed');
-  const pendingAmt = pending.reduce((s, w) => s + (w.amount || 0), 0);
+  const attentionAmt = needsAttention.reduce((s, w) => s + (w.amount || 0), 0);
   const pEl = document.getElementById('wd-stat-pending');
+  const procEl = document.getElementById('wd-stat-processing');
   const prEl = document.getElementById('wd-stat-processed');
   const aEl = document.getElementById('wd-stat-amount');
-  if (pEl) pEl.textContent = pending.length;
+  if (pEl) pEl.textContent = needsAttention.length;
+  if (procEl) procEl.textContent = processing.length;
   if (prEl) prEl.textContent = processed.length;
-  if (aEl) aEl.textContent = '₦' + pendingAmt.toLocaleString();
+  if (aEl) aEl.textContent = '₦' + attentionAmt.toLocaleString();
 }
 
 function updatePendingBadge() {
   const badge = document.getElementById('pending-badge');
   if (!badge) return;
-  const count = allWithdrawals.filter(w => w.status === 'pending').length;
+  const count = allWithdrawals.filter(w => w.status === 'pending' || w.needs_review).length;
   if (count > 0) { badge.textContent = count; badge.style.display = 'inline'; }
   else { badge.style.display = 'none'; }
 }
@@ -1807,7 +1817,8 @@ function updatePendingBadge() {
 function renderWithdrawalsTable() {
   const tbody = document.getElementById('wd-table-body');
   let rows = allWithdrawals;
-  if (currentWdFilter === 'pending') rows = rows.filter(w => w.status === 'pending');
+  if (currentWdFilter === 'pending') rows = rows.filter(w => w.status === 'pending' || w.needs_review);
+  if (currentWdFilter === 'processing') rows = rows.filter(w => w.status === 'processing' && !w.needs_review);
   if (currentWdFilter === 'processed') rows = rows.filter(w => w.status === 'processed');
 
   if (!rows.length) {
@@ -1817,12 +1828,29 @@ function renderWithdrawalsTable() {
 
   tbody.innerHTML = rows.map(w => {
     const date = new Date(w.created_at).toLocaleDateString('en-NG', {day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
-    const statusClass = w.status === 'pending' ? 'status-pending' : w.status === 'processed' ? 'status-processed' : 'status-failed';
-    const statusLabel = w.status === 'pending' ? '⏳ Pending' : w.status === 'processed' ? '✅ Processed' : '❌ Failed';
-    const actionBtn = w.status === 'pending'
+    let statusClass, statusLabel;
+    if (w.needs_review) { statusClass = 'status-review'; statusLabel = '⚠️ Needs Manual Finalize'; }
+    else if (w.status === 'pending') { statusClass = 'status-pending'; statusLabel = '⚠️ Not Sent Yet'; }
+    else if (w.status === 'processing') { statusClass = 'status-processing'; statusLabel = '⏳ Processing (Paystack)'; }
+    else if (w.status === 'processed') { statusClass = 'status-processed'; statusLabel = '✅ Processed'; }
+    else { statusClass = 'status-failed'; statusLabel = '❌ Failed (refunded)'; }
+
+    // Automation handles 'processing' and 'processed' on its own — the manual
+    // buttons stay available as a fallback for rows that need a human:
+    // never-sent ('pending'), or flagged by Paystack ('needs_review').
+    const showManualActions = w.status === 'pending' || w.needs_review;
+    const actionBtn = showManualActions
       ? `<button class="mark-btn" onclick="openWdModal('${w.id}')">Mark Processed</button>
          <button class="mark-btn fail" style="margin-top:4px" onclick="markFailed('${w.id}')">Mark Failed</button>`
-      : (w.status === 'processed' ? '<span style="color:var(--green-dark);font-size:0.8rem;font-weight:700">✅ Done</span>' : '<span style="color:var(--red);font-size:0.8rem">❌ Failed</span>');
+      : (w.status === 'processing' ? '<span style="color:#b45309;font-size:0.8rem">⏳ Awaiting Paystack</span>'
+        : w.status === 'processed' ? '<span style="color:var(--green-dark);font-size:0.8rem;font-weight:700">✅ Done</span>'
+        : '<span style="color:var(--red);font-size:0.8rem">❌ Refunded to user</span>');
+
+    const reasonHTML = w.failure_reason
+      ? `<div style="font-size:0.72rem;color:var(--muted);margin-top:3px;max-width:220px">${escHtml(w.failure_reason)}</div>` : '';
+    const traceHTML = w.transfer_code
+      ? `<div style="font-size:0.7rem;color:var(--muted);margin-top:2px">Paystack: ${escHtml(w.transfer_code)}</div>` : '';
+
     return `<tr>
       <td>
         <div class="wd-user-cell">
@@ -1835,9 +1863,9 @@ function renderWithdrawalsTable() {
         <strong>${escHtml(w.bank_name || '—')}</strong><br>
         ${escHtml(w.account_number || '')} · ${escHtml(w.account_name || '')}
       </td>
-      <td class="wd-ref">${escHtml(w.reference || '—')}</td>
+      <td class="wd-ref">${escHtml(w.reference || '—')}${traceHTML}</td>
       <td style="font-size:0.8rem;white-space:nowrap">${date}</td>
-      <td><span class="status-badge ${statusClass}">${statusLabel}</span></td>
+      <td><span class="status-badge ${statusClass}">${statusLabel}</span>${reasonHTML}</td>
       <td style="display:flex;flex-direction:column;gap:4px">${actionBtn}</td>
     </tr>`;
   }).join('');
@@ -1878,7 +1906,7 @@ async function confirmMarkProcessed() {
     // 1. Update withdrawal_requests
     const { error: reqErr } = await sbAdmin
       .from('withdrawal_requests')
-      .update({ status: 'processed', transfer_note: note || null, processed_at: new Date().toISOString() })
+      .update({ status: 'processed', transfer_note: note || null, processed_at: new Date().toISOString(), needs_review: false })
       .eq('id', pendingWdId);
     if (reqErr) throw reqErr;
 
@@ -1915,7 +1943,7 @@ async function markFailed(id) {
     // 1. Update withdrawal_requests status to failed
     const { error: reqErr } = await sbAdmin
       .from('withdrawal_requests')
-      .update({ status: 'failed' })
+      .update({ status: 'failed', needs_review: false })
       .eq('id', id);
     if (reqErr) throw reqErr;
 
