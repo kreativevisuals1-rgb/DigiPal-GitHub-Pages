@@ -3571,135 +3571,56 @@ async function handleSharedPinComplete(value) {
   }
 }
 
-// ── STEP 3 → submit: the actual withdrawal write, now gated by PIN ──
+// ── STEP 3 → submit: hand the whole withdrawal to the `withdraw` edge
+// function. It authenticates you from your session, debits the wallet,
+// records everything, and kicks off the real Paystack transfer — all in
+// one atomic step server-side. Either it fully succeeds, or nothing about
+// your balance changes (any mid-flight failure is auto-refunded on the
+// server before you ever see a response), so unlike before, a failure
+// here is always safe to retry. ──
 async function executeWithdrawal(amount) {
   const errEl = document.getElementById('withdraw-modal-error');
   errEl.style.display = 'none';
 
-  const txRef = 'WD_' + Date.now() + '_' + Math.random().toString(36).slice(2,7).toUpperCase();
-  const meta = currentUser.user_metadata || {};
-  const userName = ((meta.first_name || '') + ' ' + (meta.last_name || '')).trim() || currentUser.email;
-  let newBalance;
-
-  // ── PHASE 1: debit the wallet. Nothing has moved yet, so if anything here
-  // fails it's genuinely safe to tell the person "failed, try again." ──
   try {
-    const { data: walletData, error: walletErr } = await sb
-      .from('wallets')
-      .select('balance')
-      .eq('user_id', currentUser.id)
-      .maybeSingle();
-    if (walletErr) throw walletErr;
-    const currentBalance = walletData?.balance ?? 0;
-    if (amount > currentBalance) throw new Error('Insufficient balance. Please refresh and try again.');
+    const res = await sb.functions.invoke('withdraw', {
+      body: {
+        amount,
+        bank_code: withdrawResolvedAccount.bank_code,
+        bank_name: withdrawResolvedAccount.bank_name,
+        account_number: withdrawResolvedAccount.account_number,
+        account_name: withdrawResolvedAccount.account_name,
+      }
+    });
 
-    newBalance = currentBalance - amount;
-    const { error: updateErr } = await sb
-      .from('wallets')
-      .update({ balance: newBalance })
-      .eq('user_id', currentUser.id);
-    if (updateErr) throw updateErr;
+    if (res.error) {
+      let msg = 'Withdrawal failed. Please try again.';
+      try {
+        const errBody = res.error?.context ? await res.error.context.json() : null;
+        if (errBody?.error) msg = errBody.error;
+      } catch (_) { /* fall back to generic message */ }
+      throw new Error(msg);
+    }
+
+    const data = res.data;
+    if (!data || data.status === 'failed') {
+      throw new Error(data?.error || 'Withdrawal failed. Please try again.');
+    }
+
+    // Success (status is 'processed', 'processing', or the rare
+    // needs_review case) — the wallet has been debited server-side.
+    walletBalance = data.new_balance;
+    updateBalanceUI(walletBalance);
+    closeWithdrawModal();
+    showWithdrawalSuccess(amount, withdrawResolvedAccount.account_name);
+    loadTransactions();
 
   } catch (err) {
-    console.error('Withdrawal error (pre-debit, safe to retry):', err);
+    console.error('Withdrawal error:', err);
     showToast('⚠️ ' + (err.message || 'Withdrawal failed. Please try again.'), 'error', 5000);
     document.getElementById('withdraw-modal').classList.add('show');
     errEl.textContent = err.message || 'Withdrawal failed. Please try again.';
     errEl.style.display = 'block';
-    return;
-  }
-
-  // ── PHASE 2: the wallet is already debited from this point on. A failure
-  // here must NEVER say "failed, try again" — that would invite a second
-  // debit for money that already left the wallet. Instead: update the UI
-  // immediately (the debit is real), retry the record-keeping once, and if
-  // it still fails, surface a clear "your money moved, here's your
-  // reference" warning instead of a generic error. ──
-  walletBalance = newBalance;
-  updateBalanceUI(walletBalance);
-  closeWithdrawModal();
-  showWithdrawalSuccess(amount, withdrawResolvedAccount.account_name);
-
-  const txPayload = {
-    user_id: currentUser.id,
-    type: 'debit',
-    category: 'withdrawal',
-    status: 'pending',
-    amount,
-    description: 'Withdrawal to ' + withdrawResolvedAccount.bank_name,
-    bank_name: withdrawResolvedAccount.bank_name,
-    bank_code: withdrawResolvedAccount.bank_code,
-    account_number: withdrawResolvedAccount.account_number,
-    account_name: withdrawResolvedAccount.account_name,
-    reference: txRef,
-    user_name: userName,
-    user_email: currentUser.email
-  };
-  const reqPayload = {
-    user_id: currentUser.id,
-    user_name: userName,
-    user_email: currentUser.email,
-    amount,
-    bank_name: withdrawResolvedAccount.bank_name,
-    bank_code: withdrawResolvedAccount.bank_code,
-    account_number: withdrawResolvedAccount.account_number,
-    account_name: withdrawResolvedAccount.account_name,
-    reference: txRef,
-    status: 'pending'
-  };
-  logWithdrawalRecords(txPayload, reqPayload);
-}
-
-// Writes the withdrawal's transaction + admin-notification rows. Awaited,
-// retried once, and loudly surfaced if it still fails — see the comment
-// in PHASE 2 above for why this can never fail silently.
-async function logWithdrawalRecords(txPayload, reqPayload, isRetry = false) {
-  const { error: txErr } = await sb.from('transactions').insert([txPayload]);
-  if (txErr) {
-    console.error('Withdrawal record log failed' + (isRetry ? ' (retry)' : '') + ':', txErr);
-    if (!isRetry) {
-      setTimeout(() => logWithdrawalRecords(txPayload, reqPayload, true), 1200);
-      return;
-    }
-    showToast(
-      `⚠️ ₦${Number(txPayload.amount).toLocaleString()} left your wallet but we couldn't save it to your history. Reference: ${txPayload.reference} — please screenshot this and contact support.`,
-      'red', 10000
-    );
-    loadTransactions(); // refresh anyway, in case it actually landed despite the reported error
-    return;
-  }
-
-  // Transaction record saved — now notify admin (non-critical: the
-  // withdrawal itself is already recorded even if this part fails).
-  const { error: reqErr } = await sb.from('withdrawal_requests').insert([reqPayload]);
-  if (reqErr) console.warn('Could not write withdrawal_request:', reqErr.message);
-
-  loadTransactions();
-
-  // Kick off the automatic Paystack transfer. This is fire-and-forget from
-  // the UI's perspective — the user already sees "withdrawal received", and
-  // the paystack-webhook function will finalize the real status shortly.
-  // If this call itself fails (e.g. network hiccup), the row simply stays
-  // 'pending' and shows up in the admin dashboard as a manual fallback,
-  // exactly like the old flow did.
-  triggerAutoWithdrawal(txPayload.reference);
-}
-
-// Calls the process-withdrawal edge function to have Paystack actually move
-// the money. Errors here are logged, not shown to the user — the withdrawal
-// record already exists and will be picked up by admin if automation fails.
-async function triggerAutoWithdrawal(reference) {
-  try {
-    const res = await sb.functions.invoke('process-withdrawal', { body: { reference } });
-    if (res.error) {
-      console.warn('Auto-withdrawal trigger failed, will fall back to manual admin processing:', res.error);
-      return;
-    }
-    // Refresh so the "Processing" status (if the wallet-debit page is still
-    // open) reflects the real state right away.
-    loadTransactions();
-  } catch (err) {
-    console.warn('Auto-withdrawal trigger error:', err);
   }
 }
 
